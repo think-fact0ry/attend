@@ -249,11 +249,19 @@ var AttEngine = (function () {
   }
 
   // ── 미기록일(케이스 A=퇴근만 없음 / B=둘 다 없음) — 닫기 불가 시트 소스, 오래된 날부터 ──
+  //    판정 시작 = max(발생 시작월 1일, 첫 도장 날짜): 도입 전 기간(시드 부여만 있던 7월, 런치 지연분)을
+  //    미기록으로 몰아 첫 화면을 시트 큐로 막던 런치 블로커 수정(2026-07-22). 도장 0이면 판정 자체를 안 시작.
   function missingDays(events, settings, todayStr) {
     var corr = corrections(events);
     var swaps = swapOverrides(events, settings);
+    var firstPunch = null;
+    for (var fp = 0; fp < events.length; fp++) {
+      var t6 = events[fp].type;
+      if (t6 === '출근' || t6 === '퇴근' || t6 === '보정퇴근') { firstPunch = events[fp].date; break; }
+    }
+    if (!firstPunch) return [];
     var from = settings.accrualFrom + '-01';
-    if (events.length && events[0].date < from) from = events[0].date;
+    if (firstPunch > from) from = firstPunch;
     var out = [];
     for (var d = from; d < todayStr; d = addDays(d, 1)) {
       var st = dayStatus(d, events, settings, swaps, corr, todayStr, null);
