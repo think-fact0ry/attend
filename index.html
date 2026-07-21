@@ -24,14 +24,17 @@
   --p-disabled:#b7e0c8;
   --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#c07f00;
 /* TOKENS:END */
-  /* 앱 전용(마커 밖) */
-  --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,14px); --r-lg:clamp(13px,3.2vw,20px);
-  --fs-display:clamp(28px,6vw,42px); --fs-h1:clamp(23px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px); --fs-h3:20px;
-  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
-  --maxw:520px;
+  /* 앱 전용(마커 밖) — 07-22 유성: "100에서 전체적으로 좀 줄었으면" → 토큰 일괄 축소(~92%) */
+  --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,13px); --r-lg:clamp(13px,3.2vw,18px);
+  --fs-display:clamp(26px,5.5vw,36px); --fs-h1:clamp(21px,3.2vw,27px); --fs-h2:clamp(19px,2.4vw,24px); --fs-h3:19px;
+  --fs-title:16px; --fs-body:14.5px; --fs-sm:13px; --fs-caption:11.5px;
+  --maxw:480px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
+/* 07-22 유성: 스크롤바가 생겼다 사라지며 폭이 흔들림 → 스크롤바 자체를 안 그림(스크롤은 그대로) */
+html{scrollbar-width:none;-ms-overflow-style:none}
+::-webkit-scrollbar{display:none;width:0;height:0}
 body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 #app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
@@ -51,7 +54,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 
 .scr{display:none;flex-direction:column;flex:1}
 .scr.on{display:flex}
-.body{padding:18px 20px calc(20px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
+.body{padding:16px 18px calc(18px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
 
 /* ── 공통 컴포넌트 ── */
 .rows{background:var(--g50);border-radius:var(--r-md);padding:4px 18px}
@@ -61,7 +64,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .row .v{font-weight:700;color:var(--g900);text-align:right}
 .row .v.gr{color:var(--green-dark)}
 .bplus{color:var(--green600)}
-.btn{width:100%;border:0;border-radius:15px;padding:17px;font:inherit;font-size:var(--fs-title);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;overflow:hidden}
+.btn{width:100%;border:0;border-radius:14px;padding:15px;font:inherit;font-size:var(--fs-title);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;overflow:hidden}
 .btn:active{transform:scale(.97)}
 .btn.fill{background:var(--green600);color:#fff}
 .btn.fill:active{background:var(--green700)}
@@ -82,7 +85,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .bigin:focus{box-shadow:0 0 0 2px var(--green500) inset}
 
 /* ── 메인 ── */
-.hero{padding:26px 4px 22px}
+.hero{padding:20px 4px 18px}
 .hero .hl{font-size:var(--fs-sm);color:var(--g500);font-weight:600}
 .hero .hv{font-size:var(--fs-display);font-weight:800;letter-spacing:-1px;margin-top:4px}
 .hero .hv small{font-size:var(--fs-h3);font-weight:700;color:var(--g700);margin-left:2px}
@@ -94,8 +97,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .today.late .dot{background:var(--warn)}
 .today.gray{background:var(--g50);color:var(--g600)}
 .today.gray .dot{background:var(--g300)}
-.punch{display:flex;gap:10px;margin-top:auto;padding-top:18px}
-.punch .btn{padding:22px 0;font-size:18px}
+.punch{display:flex;gap:10px;margin-top:auto;padding-top:16px}
+.punch .btn{padding:18px 0;font-size:17px}
 .punch .done{background:var(--g100);color:var(--g500);font-weight:600;cursor:default}
 .punch .done b{display:block;color:var(--g700);font-size:var(--fs-body);margin-top:3px}
 .punch .done:active{transform:none}
@@ -135,10 +138,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .doneov .ds{font-size:var(--fs-title);color:var(--g500);margin-top:-8px}
 
 /* ── 캘린더 ── */
-.wdrow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;border-bottom:1px solid var(--g200);padding-bottom:8px;margin-bottom:6px}
+.wdrow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;border-bottom:1px solid var(--g200);padding-bottom:8px;margin:2px 0 6px} /* 07-22 유성: 연도월↔요일행 +2px */
 .wdrow .wd{font-size:var(--fs-caption);color:var(--g500);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
-.day{border-radius:10px;padding:8px 0 6px;height:54px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.day{border-radius:10px;padding:7px 0 5px;height:50px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .day:active{transform:scale(.88)}
 .day.blank{cursor:default}
 .day.blank:active{transform:none}
@@ -148,7 +151,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day.cur{background:var(--green100)} /* v6: 메인 .today 필 CSS와 충돌(8px 밀림 실측) → .cur로 분리 */
 .day.sel{background:var(--g100)}
 .day .bdg{display:inline-block;font-size:9px;font-weight:700;border-radius:99px;padding:1.5px 6px;margin-top:2px;background:var(--g100);color:var(--g500)}
-.dots{position:absolute;top:33px;left:0;right:0;display:flex;justify-content:center;gap:3px;height:8px} /* §10.11 상단 고정 절대 배치 */
+.dots{position:absolute;top:30px;left:0;right:0;display:flex;justify-content:center;gap:3px;height:8px} /* §10.11 상단 고정 절대 배치 */
 .dots .d{width:7px;height:7px;border-radius:50%}
 .d.ok{background:var(--green500)}
 .d.la{background:var(--warn)}
@@ -333,7 +336,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 /* ── v6 캘린더: 확정=회색 날짜+빨간 텍스트, 대기=회색 점, 미체크=링, 점 줄=상단 고정(§10.11) ── */
 .day{position:relative}
 .day.leave .n{color:var(--g300);opacity:.6}
-.lvtxt{position:absolute;top:31px;left:0;right:0;font-size:10px;font-weight:700;color:var(--red);letter-spacing:-.2px;text-align:center}
+.lvtxt{position:absolute;top:28px;left:0;right:0;font-size:10px;font-weight:700;color:var(--red);letter-spacing:-.2px;text-align:center}
 .d.pd{background:var(--g300)}
 .d.ring{background:none;border:1.6px solid var(--g900);width:8px;height:8px}
 .d.ring.rok{border-color:var(--green500)}
@@ -343,6 +346,21 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 /* ── v6 완료 오버레이 주황(신청 대기) 변형 ── */
 .dcirc.wait{background:var(--warn)}
 .doneov .ds{white-space:pre-line;text-align:center;line-height:1.5}
+
+/* ── v6.1 월 휠 피커(07-22 유성 — 연도월 탭→드래그 스크럽, 끊김 없이) ── */
+.mwheel{position:fixed;left:50%;transform:translateX(-50%);top:calc(56px + env(safe-area-inset-top));width:190px;height:220px;background:#fff;border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.18);z-index:650;overflow:hidden;display:none;touch-action:none}
+.mwheel.on{display:block}
+.mwheel .mfade{position:absolute;left:0;right:0;height:66px;pointer-events:none;z-index:2}
+.mwheel .mfade.top{top:0;background:linear-gradient(#fff,rgba(255,255,255,0))}
+.mwheel .mfade.bot{bottom:0;background:linear-gradient(rgba(255,255,255,0),#fff)}
+.mwheel .msel{position:absolute;left:12px;right:12px;top:88px;height:44px;border-radius:10px;background:var(--g50);z-index:0}
+.mwheel .mlist{position:relative;z-index:1;transition:transform .22s cubic-bezier(.2,1,.3,1)}
+.mwheel.grab .mlist{transition:none}
+.mwheel .mitem{height:44px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--g400);font-size:var(--fs-body);cursor:pointer}
+.mwheel .mitem.on{color:var(--g900);font-size:var(--fs-title)}
+
+/* ── v6.1 내 정보 소정근로 줄간격·PIN 행 ── */
+.row .v.sched{line-height:1.9;font-weight:600}
 </style>
 </head>
 <body>
@@ -362,10 +380,15 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   <!-- 메인 -->
   <section class="scr" id="s-main">
     <div class="hd">
-      <div class="t">근태</div>
-      <button class="ic" id="toCal" title="월 캘린더">
-        <svg class="li" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      </button>
+      <div class="t" id="mainTitle">근태</div>
+      <div style="display:flex;gap:2px"><!-- 07-22 유성: 캘린더+메뉴 아이콘 나란히(메뉴 직행) -->
+        <button class="ic" id="toCal" title="월 캘린더">
+          <svg class="li" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+        <button class="ic" id="menuBtnMain" title="메뉴">
+          <svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </button>
+      </div>
     </div>
     <div class="body">
       <div class="hero">
@@ -551,6 +574,10 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   <div class="blockdim" id="blockDim"></div>
   <div class="vsheet noclose" id="missSheet"></div>
   <div class="vsheet close" id="rejSheet"></div>
+  <div class="mwheel" id="mWheel">
+    <div class="mfade top"></div><div class="mfade bot"></div><div class="msel"></div>
+    <div class="mlist" id="mWheelList"></div>
+  </div>
   <div class="mdim" id="mDim"></div>
   <div class="cmodal" id="cModal">
     <div class="mt2" id="mTitle">취소할까요?</div>
@@ -569,9 +596,10 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   <div class="toast" id="toast"></div>
 </div>
 
+<script src="근태엔진.js"></script><!-- 서버와 동일 파일(scripts/19와 동기) — 파생을 클라에서: 월 이동·내역·내 정보=네트워크 0 -->
 <script>
-/* ═══ 근태 PWA — 설계 정본 docs/4(2026-07-14 v5) · 캘린더 D안+P1·P3 ═══
-   불변: 실시간 경고 0 / 지각=색만("지각" 문구 금지) / 출근 1탭·퇴근 2단계 / 도장=등록 기기 전용 */
+/* ═══ 근태 PWA — 설계 정본 docs/4(2026-07-14 v5 + §10 v6) · 캘린더 D안+P1·P3 ═══
+   불변: 실시간 경고 0 / 지각=색만("지각" 문구 금지) / 도장=등록 기기+출퇴근 비밀번호(07-22 키오스크 픽) */
 var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8SyUuwU-Ma0r3db446Nl56_yGRkFq_dsaXq5gk70FWQ/exec';
 var DEMO = /[?&]demo=1/.test(location.search);
 var $ = function (id) { return document.getElementById(id); };
@@ -582,7 +610,91 @@ var store = {
   get dev() { try { return JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { return null; } },
   set dev(v) { localStorage.setItem('att_dev', JSON.stringify(v)); }
 };
-var state = { status: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
+var state = { status: null, db: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
+
+/* ── 클라 파생 계층(07-22): sync 한 번 → 근태엔진(서버와 동일 코드)이 로컬에서 전부 계산.
+   월 이동·연차 내역·내 정보 = 네트워크 0(유성 "캐시 말고 근본" — 원장을 받아 파생을 옮김). 쓰기 검증은 서버 그대로. ── */
+function bonusLabel(l) { return l === '초기 보너스(런치)' ? '입사 보너스' : l; } // 07-14 시드의 내부 명칭 표시 정규화
+function liveNow() { // sync 시점 서버시각 + 로컬 경과 보정(클라 시계 자체는 불신 — 차이만 씀)
+  var db = state.db;
+  if (!db) return null;
+  var p = db.nowHms.split(':');
+  var sec = (+p[0]) * 3600 + (+p[1]) * 60 + (+p[2] || 0) + Math.floor((Date.now() - db.atLocal) / 1000);
+  if (sec > 86399) sec = 86399; // 자정 넘김=다음 sync가 today 갱신
+  var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = sec % 60;
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  return p2(h) + ':' + p2(m) + ':' + p2(s2);
+}
+function compose() { // 서버 _status_와 같은 모양을 로컬에서
+  var db = state.db;
+  if (!db) return null;
+  var E = AttEngine, s = db.settings, evs = db.events;
+  var today = db.today, nowHms = liveNow();
+  var corr = E.corrections(evs), swaps = E.swapOverrides(evs, s);
+  var st = E.dayStatus(today, evs, s, swaps, corr, today, nowHms);
+  var bal = E.balance(evs, s, today);
+  var nowMin = Math.floor(((+nowHms.slice(0, 2)) * 60 + (+nowHms.slice(3, 5))));
+  var cards = [], rejections = [];
+  E.listRequests(evs, s, today, nowHms).forEach(function (r) {
+    if ((r.status === '대기' || r.status === '승인' || r.status === '자동확정') && r.date >= today) {
+      var plan = E.dayPlan(r.date, s, swaps);
+      cards.push({
+        rid: r.rid, date: r.date, kind: r.kind, hours: r.hours,
+        status: r.status === '대기' ? '대기' : '확정',
+        cancelable: r.date > today || (r.date === today && plan.work && nowMin < E.toMin(plan.start))
+      });
+    }
+    if (r.status === '반려' && !r.acked) rejections.push({ rid: r.rid, date: r.date, kind: r.kind, hours: r.hours, memo: r.memo });
+  });
+  return {
+    ok: true, name: db.name, today: today, nowHms: nowHms,
+    plan: st.plan, segments: st.segments, open: st.open, late: st.late,
+    workedMin: st.workedMin, leaves: st.leaves,
+    balance: {
+      baseMin: bal.baseMin, bonusMin: bal.bonusMin, unpaidMin: bal.unpaidMin,
+      bonusLots: (bal.liveLots || []).filter(function (l) { return l.kind === '보너스' && l.leftMin > 0; })
+        .map(function (l) { return { label: bonusLabel(l.label), leftMin: l.leftMin }; })
+    },
+    missing: E.missingDays(evs, s, today), cards: cards, rejections: rejections,
+    deviceOk: db.deviceOk, pinSet: db.pinSet
+  };
+}
+function calView(ym) { // 서버 _month_와 같은 모양
+  var db = state.db, E = AttEngine;
+  var mv = E.monthView(ym, db.events, db.settings, db.today, liveNow());
+  var bal = E.balance(db.events, db.settings, db.today);
+  var ded = 0, unpaid = 0;
+  bal.rows.forEach(function (r) {
+    if (r.at.slice(0, 7) !== ym) return;
+    if (r.kind === '차감') ded += -r.deltaMin;
+    if (r.kind === '무급') unpaid += r.unpaidMin || 0;
+  });
+  return {
+    ok: true, today: db.today, month: mv,
+    balance: {
+      baseMin: bal.baseMin, bonusMin: bal.bonusMin, unpaidMin: bal.unpaidMin,
+      bonusLots: (bal.liveLots || []).filter(function (l) { return l.kind === '보너스' && l.leftMin > 0; })
+        .map(function (l) { return { label: bonusLabel(l.label), leftMin: l.leftMin }; })
+    },
+    monthDedMin: ded, monthUnpaidMin: unpaid
+  };
+}
+function syncNow(cb) {
+  api('sync').then(function (r) {
+    if (!r.ok) {
+      if (r.code === 'auth') { localStorage.removeItem('att_token'); go('token'); toast(r.error); return; }
+      toast(r.error); return;
+    }
+    state.db = {
+      events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms,
+      name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, devices: r.devices || [], atLocal: Date.now()
+    };
+    var c = compose();
+    state.status = c;
+    renderMain(c);
+    if (cb) cb(c);
+  }).catch(function () { toast('연결이 안 돼요. 새로고침해 주세요'); });
+}
 
 /* ── RPC: 읽기=소백오프 재시도 / 쓰기=단발+멱등 cid (gas-webapp-echo-404-retry) ── */
 function cid() { return (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random())); }
@@ -663,7 +775,9 @@ function go(name) {
   if (name === 'me') loadMe();
 }
 function closeDrawer() { $('drawer').classList.remove('on'); $('dim').classList.remove('on'); }
-$('menuBtn').addEventListener('click', function () { $('drawer').classList.add('on'); $('dim').classList.add('on'); });
+function openDrawer() { $('drawer').classList.add('on'); $('dim').classList.add('on'); }
+$('menuBtn').addEventListener('click', openDrawer);
+$('menuBtnMain').addEventListener('click', openDrawer); // 07-22 유성: 메인에서 메뉴 직행
 $('dim').addEventListener('click', closeDrawer);
 document.querySelectorAll('.mi').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.go); }); });
 $('toCal').addEventListener('click', function () { go('cal'); });
@@ -675,14 +789,16 @@ $('tokenGo').addEventListener('click', function () {
   var v = $('tokenIn').value.trim();
   if (!v) return;
   var old = store.token; store.token = v;
-  api('status').then(function (r) {
+  api('sync').then(function (r) {
     if (!r.ok) { store.token = old || ''; toast(r.error || '코드가 맞지 않아요'); return; }
-    state.status = r; go('main'); renderMain(r);
+    state.db = { events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms, name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, devices: r.devices || [], atLocal: Date.now() };
+    var c = compose(); state.status = c; pollKey = pollSnap(c);
+    go('main'); renderMain(c);
   }).catch(function () { store.token = old || ''; toast('연결이 안 돼요. 잠시 후 다시 눌러 주세요'); });
 });
 
 /* ── 메인 ── */
-function refreshMain() { api('status').then(function (r) { if (r.ok) { state.status = r; renderMain(r); } }); }
+function refreshMain() { syncNow(); }
 function heroB(b) { // 잔여 표기 B안(§10.9): "44시간 (+4)" + 아랫줄 = 개근분 + 보너스 이유 병기
   var val, sub = [];
   if (b.baseMin % 60 === 0 && b.bonusMin % 60 === 0) {
@@ -695,6 +811,7 @@ function heroB(b) { // 잔여 표기 B안(§10.9): "44시간 (+4)" + 아랫줄 =
   return { val: val, sub: sub.length ? sub.join(' + ') : '연차는 한 달 개근하면 다음 달 1일에 4시간씩 생겨요' };
 }
 function renderMain(r) {
+  $('mainTitle').textContent = r.name ? r.name + ' 근태' : '근태'; // 07-22 유성: 이름 한 줄 표기(누구 근태인지 명시)
   var hb = heroB(r.balance);
   $('heroVal').innerHTML = hb.val;
   $('heroSub').textContent = hb.sub;
@@ -726,13 +843,31 @@ function renderMain(r) {
     }
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
 }
-$('btnIn').addEventListener('click', function () { // 출근 = 1탭 즉시
-  if ($('btnIn').disabled) return;
-  $('btnIn').disabled = true;
-  api('punch', { kind: 'in', cid: cid() }, true).then(function (r) {
-    if (!r.ok) { toast(r.error); refreshMain(); return; }
-    state.status = r; showDone('출근을 기록했어요', ampm(r.recorded.at)); renderMain(r);
+/* 도장 = 기기 게이트 + 출퇴근 비밀번호(4자리, 07-22 키오스크 픽 — 찍는 사람=비밀번호 주인) */
+function sendPunch(kind, pin) {
+  api('punch', { kind: kind, pin: pin || '', cid: cid() }, true).then(function (r) {
+    if (!r.ok) {
+      if (r.code === 'pin') { punchPin(kind, '비밀번호가 맞지 않아요'); return; }
+      toast(r.error); refreshMain(); return;
+    }
+    showDone((kind === 'in' ? '출근' : '퇴근') + '을 기록했어요', ampm(r.recorded.at));
+    syncNow();
   }).catch(function () { toast('기록이 안 됐어요. 다시 눌러 주세요'); refreshMain(); });
+}
+function punchPin(kind, titleOverride) {
+  pinPrompt({
+    title: titleOverride || '출퇴근 비밀번호', sub: '숫자 4자리를 눌러 주세요', digits: 4,
+    onDone: function (p, h) { h.close(); sendPunch(kind, p); }
+  });
+}
+function doPunch(kind) {
+  var c = state.status;
+  if (c && c.pinSet) punchPin(kind);
+  else sendPunch(kind, ''); // 비밀번호를 만들기 전엔 기존 방식(전환기 안전판)
+}
+$('btnIn').addEventListener('click', function () {
+  if ($('btnIn').disabled) return;
+  doPunch('in');
 });
 $('btnOut').addEventListener('click', function () { // 퇴근 = 2단계(논모달 시트)
   if ($('btnOut').disabled) return;
@@ -759,7 +894,7 @@ function initSheetDrag(sh, onClose) {
   var startY = null, dy = 0;
   sh.addEventListener('pointerdown', function (e) {
     if (e.target.closest('.btn') || e.target.closest('input')) return;
-    startY = e.clientY; dy = 0; sh.classList.add('grab'); sh.setPointerCapture(e.pointerId);
+    startY = e.clientY; dy = 0; sh.classList.add('grab'); try { sh.setPointerCapture(e.pointerId); } catch (err) { }
   });
   sh.addEventListener('pointermove', function (e) {
     if (startY === null) return;
@@ -779,10 +914,7 @@ function initSheetDrag(sh, onClose) {
 initSheetDrag($('outSheet'), hideSheet);
 $('outGo').addEventListener('click', function () {
   hideSheet();
-  api('punch', { kind: 'out', cid: cid() }, true).then(function (r) {
-    if (!r.ok) { toast(r.error); refreshMain(); return; }
-    state.status = r; showDone('퇴근을 기록했어요', ampm(r.recorded.at)); renderMain(r);
-  }).catch(function () { toast('기록이 안 됐어요. 다시 눌러 주세요'); refreshMain(); });
+  doPunch('out');
 });
 function showDone(txt, sub, wait) { // wait=true → 주황 시계(신청 대기, §10.8)
   $('doneTxt').textContent = txt; $('doneSub').textContent = sub || '';
@@ -931,10 +1063,12 @@ function showMissSheet(miss, r) {
     sh.querySelector('#missGo').addEventListener('click', function () {
       var t = sh.querySelector('#missTw').value24();
       if (!t) { toast('시각을 끝까지 적어 주세요'); return; }
-      api('amend', { date: miss.date, time: t, cid: cid() }, true).then(function (rr) {
-        if (!rr.ok) { toast(rr.error); return; }
-        close(); state.status = rr; renderMain(rr); toast('퇴근 시각을 남겼어요');
-      }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      withPin(function (p) {
+        api('amend', { date: miss.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
+          if (!rr.ok) { toast(rr.error); return; }
+          close(); toast('퇴근 시각을 남겼어요'); syncNow();
+        }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      });
     });
   } else { // 케이스 B — 둘 다 없음: 행복센터(fill) / 병가(gray) + 무급 3상태 문구(§10.14)
     var total = r.balance.baseMin + r.balance.bonusMin;
@@ -965,37 +1099,94 @@ function hideBlockSheet() {
   if ($('missSheet').classList.contains('on')) { $('missSheet').classList.remove('on'); $('blockDim').classList.remove('on'); }
 }
 function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function withPin(cb) { // 도장류(보정) 쓰기 전 비밀번호 확인 — 설정돼 있을 때만
+  if (state.status && state.status.pinSet) {
+    pinPrompt({ title: '출퇴근 비밀번호', sub: '숫자 4자리를 눌러 주세요', digits: 4, onDone: function (p, h) { h.close(); cb(p); } });
+  } else cb('');
+}
 
-/* ── v6 반영 폴링(§10.12): 창 보이는 동안 60s + visibilitychange 즉시, 변경 시 토스트 1회 ── */
+/* ── v6 반영 폴링(§10.12): 창 보이는 동안 60s sync + visibilitychange 즉시, 변경 시 토스트 1회 ── */
 var pollKey = '';
 function pollSnap(r) { return JSON.stringify([(r.cards || []), r.balance, (r.rejections || []).length, (r.missing || []).length]); }
 function pollTick(immediate) {
   if (document.hidden) return;
   if (!store.token || !$('s-main').classList.contains('on')) return;
-  api('status').then(function (r) {
-    if (!r.ok) return;
-    var k = pollSnap(r);
-    var changed = pollKey && k !== pollKey;
+  var prev = pollKey;
+  syncNow(function (c) {
+    var k = pollSnap(c);
     pollKey = k;
-    state.status = r;
-    renderMain(r);
-    if (changed && !immediate) toast('바뀐 내용을 반영했어요');
-  }).catch(function () { });
+    if (prev && k !== prev && !immediate) toast('바뀐 내용을 반영했어요');
+  });
 }
 setInterval(function () { pollTick(false); }, 60000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) pollTick(true); });
 
-/* ── 캘린더 (D안: 점 + 선택일 상세 카드) ── */
+/* ── 캘린더 (D안: 점 + 선택일 상세 카드) — 07-22부터 로컬 파생(월 이동=네트워크 0·즉시) ── */
 function loadCal() {
-  if (!state.calYm) state.calYm = (state.status ? state.status.today : new Date().toISOString().slice(0, 10)).slice(0, 7);
+  if (!state.db) { syncNow(function () { loadCal(); }); return; }
+  if (!state.calYm) state.calYm = state.db.today.slice(0, 7);
   $('calTitle').textContent = ymTitle(state.calYm);
-  api('month', { ym: state.calYm }).then(function (r) {
-    if (!r.ok) { toast(r.error); return; }
-    state.calData = r; renderCal(r);
-  }).catch(function () { toast('불러오기가 안 됐어요'); });
+  var r = calView(state.calYm);
+  state.calData = r;
+  renderCal(r);
 }
 $('calPrev').addEventListener('click', function () { state.calYm = shiftYm(state.calYm, -1); state.calSel = null; loadCal(); });
 $('calNext').addEventListener('click', function () { state.calYm = shiftYm(state.calYm, 1); state.calSel = null; loadCal(); });
+
+/* ── 월 휠 피커(07-22 유성): 연도월 탭 → 드래그 스크럽, 손 추종 중 transition 없음·놓으면 스냅→그 달로 ── */
+(function () {
+  var ITEM = 44, BASE = 88; // .msel top
+  var wheel = $('mWheel'), list = $('mWheelList');
+  var months = [], curIdx = 0, offY = 0, startY = null, startOff = 0, moved = false, selTm = null;
+  function build() {
+    months = [];
+    var from = state.db ? shiftYm(state.db.settings.accrualFrom, -1) : '2026-07';
+    var to = state.db ? shiftYm(state.db.today.slice(0, 7), 16) : '2027-12';
+    for (var ym = from; ym <= to; ym = shiftYm(ym, 1)) months.push(ym);
+    list.innerHTML = months.map(function (m) { return '<div class="mitem" data-ym="' + m + '">' + ymTitle(m) + '</div>'; }).join('');
+  }
+  function setOff(y) { offY = y; list.style.transform = 'translateY(' + y + 'px)'; }
+  function idxToOff(i) { return BASE - i * ITEM; }
+  function paint() { [].forEach.call(list.children, function (el, i) { el.classList.toggle('on', i === curIdx); }); }
+  function select(i, fromDrag) {
+    curIdx = Math.max(0, Math.min(months.length - 1, i));
+    paint(); setOff(idxToOff(curIdx));
+    clearTimeout(selTm);
+    selTm = setTimeout(function () { state.calYm = months[curIdx]; state.calSel = null; loadCal(); }, fromDrag ? 180 : 0);
+  }
+  function open() {
+    build();
+    var i = months.indexOf(state.calYm);
+    curIdx = i < 0 ? 0 : i;
+    paint(); setOff(idxToOff(curIdx));
+    wheel.classList.add('on');
+  }
+  function close() { wheel.classList.remove('on'); }
+  $('calTitle').addEventListener('click', function () { if (wheel.classList.contains('on')) close(); else open(); });
+  wheel.addEventListener('pointerdown', function (e) {
+    startY = e.clientY; startOff = offY; moved = false;
+    wheel.classList.add('grab'); try { wheel.setPointerCapture(e.pointerId); } catch (err) { }
+  });
+  wheel.addEventListener('pointermove', function (e) {
+    if (startY === null) return;
+    var dy = e.clientY - startY;
+    if (Math.abs(dy) > 4) moved = true;
+    var min = idxToOff(months.length - 1), max = idxToOff(0);
+    setOff(Math.max(min - 18, Math.min(max + 18, startOff + dy)));
+  });
+  function end(e) {
+    if (startY === null) return;
+    wheel.classList.remove('grab');
+    if (!moved && e && e.target.closest('.mitem')) select(months.indexOf(e.target.closest('.mitem').dataset.ym), false);
+    else select(Math.round((BASE - offY) / ITEM), true);
+    startY = null;
+  }
+  wheel.addEventListener('pointerup', end);
+  wheel.addEventListener('pointercancel', function () { end(null); });
+  document.addEventListener('pointerdown', function (e) {
+    if (wheel.classList.contains('on') && !e.target.closest('#mWheel') && !e.target.closest('#calTitle')) close();
+  }, true);
+})();
 function renderCal(r) {
   var g = $('calGrid'); g.innerHTML = '';
   var first = new Date(+r.month.ym.slice(0, 4), +r.month.ym.slice(5, 7) - 1, 1).getDay();
@@ -1054,10 +1245,12 @@ function renderCal(r) {
       $('selAmendGo').addEventListener('click', function () {
         var t = $('selTw').value24();
         if (!t) { toast('시각을 끝까지 적어 주세요'); return; }
-        api('amend', { date: sel.date, time: t, cid: cid() }, true).then(function (rr) {
-          if (!rr.ok) { toast(rr.error); return; }
-          toast('퇴근 시각을 남겼어요'); loadCal();
-        }).catch(function () { toast('저장이 안 됐어요'); });
+        withPin(function (p) {
+          api('amend', { date: sel.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
+            if (!rr.ok) { toast(rr.error); return; }
+            toast('퇴근 시각을 남겼어요'); syncNow(function () { loadCal(); });
+          }).catch(function () { toast('저장이 안 됐어요'); });
+        });
       });
     }
   } else { sc.style.display = 'none'; }
@@ -1151,12 +1344,12 @@ $('applyGo').addEventListener('click', function () {
   }).catch(function () { toast('신청이 안 됐어요. 다시 시도해 주세요'); $('applyGo').disabled = false; });
 });
 
-/* ── 나의 근태 ── */
+/* ── 나의 근태 — 로컬 파생 ── */
 function loadMy() {
-  if (!state.myYm) state.myYm = (state.status ? state.status.today : new Date().toISOString().slice(0, 10)).slice(0, 7);
+  if (!state.db) { syncNow(function () { loadMy(); }); return; }
+  if (!state.myYm) state.myYm = state.db.today.slice(0, 7);
   $('myTitle').textContent = ymTitle(state.myYm);
-  api('month', { ym: state.myYm }).then(function (r) {
-    if (!r.ok) { toast(r.error); return; }
+  Promise.resolve(calView(state.myYm)).then(function (r) {
     $('stLate').textContent = r.month.lateCount + '회';
     $('stLate').className = 'sv' + (r.month.lateCount ? ' warn' : '');
     $('stAbs').textContent = r.month.absentCount + '회';
@@ -1183,54 +1376,82 @@ function loadMy() {
 $('myPrev').addEventListener('click', function () { state.myYm = shiftYm(state.myYm, -1); loadMy(); });
 $('myNext').addEventListener('click', function () { state.myYm = shiftYm(state.myYm, 1); loadMy(); });
 
-/* ── 연차 내역 ── */
+/* ── 연차 내역 — 로컬 파생 ── */
 function loadLedger() {
-  api('ledger').then(function (r) {
-    if (!r.ok) { toast(r.error); return; }
-    $('ledgerLeft').innerHTML = fmtBal(r.balance);
-    var wrap = $('ledgerRows'); wrap.innerHTML = '';
-    if (!r.rows.length) { wrap.innerHTML = '<div class="row"><span class="l">아직 내역이 없어요</span><span class="v" style="color:var(--g400)">8월부터 쌓여요</span></div>'; return; }
-    r.rows.slice().reverse().forEach(function (row) {
-      var d = document.createElement('div'); d.className = 'row';
-      var v, color;
-      if (row.kind === '발생' || row.kind === '부여') { v = '+' + fmtMin(row.deltaMin); color = 'var(--green-dark)'; }
-      else if (row.kind === '차감') { v = '−' + fmtMin(-row.deltaMin); color = 'var(--g700)'; }
-      else if (row.kind === '무급') { v = '무급 ' + fmtMin(row.unpaidMin || 0); color = 'var(--g400)'; }
-      else { v = '소멸 ' + fmtMin(-row.deltaMin); color = 'var(--g400)'; }
-      d.innerHTML = '<span class="l">' + row.at + ' - ' + row.label + '</span><span class="v" style="color:' + color + '">' + v + '</span>';
-      wrap.appendChild(d);
-    });
-  }).catch(function () { toast('불러오기가 안 됐어요'); });
+  if (!state.db) { syncNow(function () { loadLedger(); }); return; }
+  var bal = AttEngine.balance(state.db.events, state.db.settings, state.db.today);
+  $('ledgerLeft').innerHTML = fmtBal(bal);
+  var wrap = $('ledgerRows'); wrap.innerHTML = '';
+  if (!bal.rows.length) { wrap.innerHTML = '<div class="row"><span class="l">아직 내역이 없어요</span><span class="v" style="color:var(--g400)">8월부터 쌓여요</span></div>'; return; }
+  bal.rows.slice().reverse().forEach(function (row) {
+    var d = document.createElement('div'); d.className = 'row';
+    var v, color;
+    if (row.kind === '발생' || row.kind === '부여') { v = '+' + fmtMin(row.deltaMin); color = 'var(--green-dark)'; }
+    else if (row.kind === '차감') { v = '−' + fmtMin(-row.deltaMin); color = 'var(--g700)'; }
+    else if (row.kind === '무급') { v = '무급 ' + fmtMin(row.unpaidMin || 0); color = 'var(--g400)'; }
+    else { v = '소멸 ' + fmtMin(-row.deltaMin); color = 'var(--g400)'; }
+    d.innerHTML = '<span class="l">' + row.at + ' - ' + bonusLabel(row.label) + '</span><span class="v" style="color:' + color + '">' + v + '</span>';
+    wrap.appendChild(d);
+  });
 }
 
-/* ── 내 정보 (+관리자 잠수함 진입: 제목 5초 롱프레스 → PIN) ── */
+/* ── 내 정보 (로컬 렌더 — 네트워크 0. +관리자 잠수함 진입: 제목 5초 롱프레스 → PIN) ── */
 var WD = ['일', '월', '화', '수', '목', '금', '토'];
 function loadMe() {
-  api('me').then(function (r) {
-    if (!r.ok) { toast(r.error); return; }
-    var rows = $('meRows'); rows.innerHTML = '';
-    function add(l, v) { var d = document.createElement('div'); d.className = 'row'; d.innerHTML = '<span class="l">' + l + '</span><span class="v">' + v + '</span>'; rows.appendChild(d); }
-    add('이름', r.name);
-    var sched = Object.keys(r.schedule).sort().map(function (k) { return WD[+k] + ' ' + r.schedule[k][0] + '~' + r.schedule[k][1]; }).join('<br>');
-    add('소정근로', sched);
-    add('지각 기준', '시업 후 ' + r.graceMin + '분부터');
-    add('연차', '한 달 개근하면 다음 달 1일에 4시간');
-    add('연차 시작', '2026년 8월 근무분부터');
-    $('meNote').textContent = r.devices.length ? '도장 기기: ' + r.devices.map(function (d) { return d.label; }).join(', ') : '이 계정에 등록된 도장 기기가 아직 없어요';
-  }).catch(function () { toast('불러오기가 안 됐어요'); });
+  var db = state.db;
+  if (!db) { syncNow(function () { loadMe(); }); return; }
+  var rows = $('meRows'); rows.innerHTML = '';
+  function add(l, v, cls) { var d = document.createElement('div'); d.className = 'row'; d.innerHTML = '<span class="l">' + l + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span>'; rows.appendChild(d); }
+  add('이름', db.name);
+  var sched = Object.keys(db.settings.schedule).sort().map(function (k) { return WD[+k] + ' ' + db.settings.schedule[k][0] + '~' + db.settings.schedule[k][1]; }).join('<br>');
+  add('소정근로', sched, 'sched'); // 07-22 유성: 줄간격 확대
+  add('지각 기준', '근무 시작 후 ' + db.settings.graceMin + '분까지 괜찮아요'); // '시업' 표현 폐기(07-22)
+  add('연차', '한 달 개근하면 다음 달 1일에 4시간');
+  add('연차 시작', '2026년 8월 근무분부터');
+  add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>');
+  $('pinChangeGo').addEventListener('click', changePinFlow);
+  $('meNote').innerHTML = (db.devices && db.devices.length
+    ? '출퇴근을 찍는 컴퓨터: ' + db.devices.map(function (d) { return d.label; }).join(', ')
+    : '출퇴근을 찍는 컴퓨터가 아직 등록되지 않았어요. 등록은 대표님이 해요')
+    + '<div style="margin-top:16px;text-align:center"><button class="tlink" id="logoutGo">로그아웃 하기</button></div>';
+  $('logoutGo').addEventListener('click', function () {
+    localStorage.removeItem('att_token'); // 기기 등록(att_dev)은 PC 소속이라 유지
+    state.db = null; state.status = null;
+    go('token'); toast('로그아웃했어요. 등록 코드를 다시 입력하면 들어와요');
+  });
 }
-// 롱프레스 5초 — pointerdown 타이머, 이동·해제 시 취소(§4.9)
+// 롱프레스 5초 — ⚠️07-22 버그 수정: 마우스 미세 떨림(pointermove)이 타이머를 죽여 데스크탑에서 안 열렸음 → 8px 이상 이동만 취소
 (function () {
-  var tm = null;
+  var tm = null, sx = 0, sy = 0;
   var el = $('meTitle');
-  el.addEventListener('pointerdown', function () { tm = setTimeout(openPin, 5000); });
-  ['pointerup', 'pointerleave', 'pointercancel', 'pointermove'].forEach(function (evn) {
+  el.addEventListener('pointerdown', function (e) { sx = e.clientX; sy = e.clientY; clearTimeout(tm); tm = setTimeout(openAdminPin, 5000); });
+  el.addEventListener('pointermove', function (e) {
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) clearTimeout(tm);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (evn) {
     el.addEventListener(evn, function () { clearTimeout(tm); });
   });
 })();
 
-/* ── PIN 키패드(§4.2-4: 매 진입·오답 재배치, 오답=제목 스왑, 5회=닫힘) ── */
-var pin = '', pinFails = 0;
+/* ── PIN 키패드 공용(§4.2-4: 매 진입·오답 재배치, 오답=제목 스왑, 5회=닫힘) — 관리자 6·도장 4·비밀번호 변경 공유 ── */
+var pinCtx = null, pin = '', pinFails = 0;
+var pinHelpers = {
+  close: function () { $('pinOv').classList.remove('on'); pinCtx = null; },
+  fail: function (msg) {
+    pinFails++;
+    if (pinFails >= 5) { pinHelpers.close(); toast('여러 번 틀려서 닫았어요. 잠시 후 다시 해 주세요'); return; }
+    document.querySelector('#pinOv .pt').textContent = msg || '맞지 않아요'; // 오답=제목 스왑(별도 에러줄 X)
+    $('pinDots').classList.add('shake');
+    setTimeout(function () { $('pinDots').classList.remove('shake'); pin = ''; renderPinDots(); shufflePad(); }, 400);
+  }
+};
+function pinPrompt(opts) { // {title, sub, digits, onDone(pin, helpers)}
+  pinCtx = opts; pin = ''; pinFails = 0;
+  document.querySelector('#pinOv .pt').textContent = opts.title;
+  document.querySelector('#pinOv .ps').textContent = opts.sub || ('숫자 ' + opts.digits + '자리를 입력해 주세요');
+  renderPinDots(); shufflePad();
+  $('pinOv').classList.add('on');
+}
 function shufflePad() { // 숫자 재배치 + 셀 구성
   var pad = $('pinPad'); pad.innerHTML = '';
   var digits = '0123456789'.split('').sort(function () { return Math.random() - .5; });
@@ -1243,36 +1464,63 @@ function shufflePad() { // 숫자 재배치 + 셀 구성
     pad.appendChild(b);
   });
 }
-function openPin() {
-  pin = ''; pinFails = 0;
-  document.querySelector('#pinOv .pt').textContent = '관리자 비밀번호';
-  renderPinDots(); shufflePad();
-  $('pinOv').classList.add('on');
-}
 function renderPinDots() {
+  var n = pinCtx ? pinCtx.digits : 6;
   var d = $('pinDots'); d.innerHTML = '';
-  for (var i = 0; i < 6; i++) { var s = document.createElement('i'); if (i < pin.length) s.className = 'f'; d.appendChild(s); }
+  for (var i = 0; i < n; i++) { var s = document.createElement('i'); if (i < pin.length) s.className = 'f'; d.appendChild(s); }
 }
 function pushPin(c) {
-  if (pin.length >= 6) return;
+  if (!pinCtx || pin.length >= pinCtx.digits) return;
   pin += c; renderPinDots();
-  if (pin.length === 6) {
-    api('admin_summary', { adminPin: pin }).then(function (r) {
-      if (!r.ok) {
-        pinFails++;
-        if (pinFails >= 5) { $('pinOv').classList.remove('on'); toast('여러 번 틀려서 닫았어요 — 잠시 후 다시'); return; }
-        document.querySelector('#pinOv .pt').textContent = '비밀번호가 맞지 않아요'; // 오답=제목 스왑(별도 에러줄 X)
-        $('pinDots').classList.add('shake');
-        setTimeout(function () { $('pinDots').classList.remove('shake'); pin = ''; renderPinDots(); shufflePad(); }, 400);
-        return;
-      }
-      state.adminPin = pin; sessionStorage.setItem('att_admin', pin);
-      $('pinOv').classList.remove('on');
-      go('admin'); renderAdmin(r);
-    }).catch(function () { toast('연결이 안 돼요'); });
-  }
+  if (pin.length === pinCtx.digits) pinCtx.onDone(pin, pinHelpers);
 }
-$('pinCancel').addEventListener('click', function () { $('pinOv').classList.remove('on'); });
+$('pinCancel').addEventListener('click', function () { pinHelpers.close(); });
+function openAdminPin() {
+  pinPrompt({
+    title: '관리자 비밀번호', digits: 6,
+    onDone: function (p, h) {
+      api('admin_summary', { adminPin: p }).then(function (r) {
+        if (!r.ok) { h.fail('비밀번호가 맞지 않아요'); return; }
+        state.adminPin = p; sessionStorage.setItem('att_admin', p);
+        h.close(); go('admin'); renderAdmin(r);
+      }).catch(function () { toast('연결이 안 돼요'); });
+    }
+  });
+}
+/* 출퇴근 비밀번호 만들기·바꾸기(07-22 유성 — 내 정보에서 본인 변경) */
+function changePinFlow() {
+  var db = state.db;
+  function save(cur, next) {
+    api('set_pin', { cur: cur, next: next, cid: cid() }, true).then(function (r) {
+      if (!r.ok) { toast(r.error); return; }
+      toast('출퇴근 비밀번호를 저장했어요');
+      syncNow(function () { loadMe(); });
+    }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+  }
+  function askNew(cur) {
+    pinPrompt({
+      title: '새 출퇴근 비밀번호', sub: '숫자 4자리를 정해 주세요', digits: 4,
+      onDone: function (p1, h) {
+        h.close();
+        setTimeout(function () {
+          pinPrompt({
+            title: '한 번 더 눌러 주세요', sub: '똑같이 4자리', digits: 4,
+            onDone: function (p2, h2) {
+              if (p1 !== p2) { h2.fail('서로 달라요'); return; }
+              h2.close(); save(cur, p1);
+            }
+          });
+        }, 150);
+      }
+    });
+  }
+  if (db && db.pinSet) {
+    pinPrompt({
+      title: '지금 비밀번호', sub: '숫자 4자리', digits: 4,
+      onDone: function (pc, h) { h.close(); setTimeout(function () { askNew(pc); }, 150); }
+    });
+  } else askNew('');
+}
 
 /* ── 관리자 ── */
 function adminApi(action, data, isWrite) { return api(action, Object.assign({ adminPin: state.adminPin }, data || {}), isWrite); }
@@ -1472,121 +1720,117 @@ function summarizeSched(schedule) {
   return Object.keys(groups).map(function (g) { return groups[g].join('') + ' ' + g; }).join(' · ');
 }
 
-/* ── 데모 모드(?demo=1) — 헤드리스 검증·화면 확인용, GAS 미호출. 상태풀(신청→대기→승인→차감 관통).
-   ?demo=1&scene=miss → 미기록일 시트 2종 / &scene=rej → 반려 시트 ── */
-var demo = {
-  n: 0,
-  requests: [
-    { rid: 'demo-appr', date: '2026-08-21', kind: '연차', hours: 4, half: '', status: '승인', memo: '', acked: true, decidedAt: '2026-08-13', reqAt: '2026-08-12T14:10:00', startHm: '12:00' },
-    { rid: 'demo-pend', date: '2026-08-24', kind: '반차', hours: 2, half: 'front', status: '대기', memo: '', acked: true, decidedAt: '', reqAt: '2026-08-14T10:00:00', startHm: '11:00' }
-  ],
-  sick: {}, ext: {}, amended: {}
-};
+/* ── 데모 모드(?demo=1) — 헤드리스 검증·화면 확인용, GAS 미호출.
+   07-22 재작성: 가짜 이벤트 원장 + 실제 근태엔진(클라 파생 파이프라인 그대로) — 신청→대기→승인→차감 관통.
+   ?demo=1&scene=miss → 미기록일 시트 2종 / &scene=rej → 반려 시트 / &scene=cal → 캘린더 직행 ── */
 var DEMO_SCENE = (location.search.match(/[?&]scene=(\w+)/) || [])[1] || '';
-if (DEMO_SCENE === 'rej') demo.requests.push({ rid: 'demo-rej', date: '2026-08-13', kind: '연차', hours: 4, half: '', status: '반려', memo: '그날 서구 행사 지원이 있어요. 8월 다른 주는 다 괜찮으니 편한 날짜로 다시 신청해 주세요.', acked: false, decidedAt: '2026-08-13', reqAt: '2026-08-12T09:00:00', startHm: '11:00' });
-function demoActive(q) { return q.status !== '반려' && q.status !== '취소'; }
-function demoBal() { // 데모 표시용 단순 산식(보너스 lot은 남겨 hero B안 병기 확인용 — 실계산은 엔진 테스트가 담당)
-  var ded = 360; // 기존 사용분(8/10 병가 등)
-  demo.requests.forEach(function (q) { if (demoActive(q)) ded += q.hours * 60; });
-  Object.keys(demo.sick).forEach(function () { ded += 240; });
-  return { baseMin: 3000 - ded, bonusMin: 240, unpaidMin: 0, bonusLots: [{ label: '입사 보너스', leftMin: 240 }] };
+var DEMO_SETTINGS = {
+  emp: 'hyeona', name: '이현아',
+  schedule: { '1': ['11:00', '15:00'], '2': ['11:00', '15:00'], '3': ['11:00', '15:00'], '5': ['12:00', '16:00'] },
+  graceMin: 3,
+  holidays: ['2026-08-15', '2026-08-17', '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-28', '2026-10-03', '2026-10-05', '2026-10-09', '2026-12-25', '2027-01-01'],
+  accrualFrom: '2025-09', anchor: '2025-10-01'
+};
+var demo = { pin: '', n: 0, events: [] };
+function demoEv(date, type, val, flag) {
+  demo.events.push({ at: date + 'T03:00:00.000Z', emp: 'hyeona', date: date, type: type, val: val, src: 'demo', flag: flag || '', cid: '' });
 }
-function demoMissing(today) {
-  if (DEMO_SCENE !== 'miss') return [];
-  var out = [];
-  if (!demo.ext['2026-08-11'] && !demo.sick['2026-08-11']) out.push({ date: '2026-08-11', kind: 'both' });
-  if (!demo.amended['2026-08-12']) out.push({ date: '2026-08-12', kind: 'out', end: '15:00', firstIn: '11:03:00' });
-  return out;
-}
-function demoCards(today) {
-  return demo.requests.filter(function (q) { return demoActive(q) && q.date >= today; }).map(function (q) {
-    return { rid: q.rid, date: q.date, kind: q.kind, hours: q.hours, status: q.status === '대기' ? '대기' : '확정', cancelable: q.date > today };
-  });
+(function buildDemoEvents() {
+  var E = AttEngine, today = '2026-08-14';
+  demoEv('2025-09-01', '부여', { hours: 16, note: '입사 보너스' }); // (+N) 표시 확인용
+  // 2025-09-01 ~ 어제까지 개근 도장(요일 스케줄 추종) — 예외일은 아래서 덮음
+  var skip = { '2026-08-05': 1, '2026-08-10': 1, '2026-08-11': 1, '2026-08-12': 1 };
+  for (var d = '2025-09-01'; d < today; d = E.addDays(d, 1)) {
+    var p = E.dayPlan(d, DEMO_SETTINGS, {});
+    if (!p.work || skip[d]) continue;
+    demoEv(d, '출근', p.start + ':00');
+    demoEv(d, '퇴근', p.end + ':01');
+  }
+  demoEv('2026-08-05', '출근', '11:07:00'); demoEv('2026-08-05', '퇴근', '15:07:00'); // 지각
+  demoEv('2026-08-10', '병가', { hours: 4, half: '' });                                // 병가일
+  if (DEMO_SCENE !== 'miss') { // miss 씬에선 8/11=둘 다 없음, 8/12=퇴근만 없음
+    demoEv('2026-08-11', '연차', { hours: 2, half: 'back' });
+    demoEv('2026-08-11', '출근', '11:00:00'); demoEv('2026-08-11', '퇴근', '13:01:00');
+    demoEv('2026-08-12', '출근', '11:00:00'); demoEv('2026-08-12', '퇴근', '15:01:00');
+  } else {
+    demoEv('2026-08-12', '출근', '11:03:00'); // 퇴근만 없음
+  }
+  demoEv('2026-08-21', '신청', { rid: 'demo-appr', kind: '연차', hours: 4, half: '' });
+  demoEv('2026-08-13', '승인', { target: 'demo-appr' });
+  demoEv('2026-08-24', '신청', { rid: 'demo-pend', kind: '연차', hours: 2, half: 'front' });
+  if (DEMO_SCENE === 'rej') {
+    demoEv('2026-08-20', '신청', { rid: 'demo-rej', kind: '연차', hours: 4, half: '' });
+    demoEv('2026-08-13', '반려', { target: 'demo-rej', memo: '그날 서구 행사 지원이 있어요. 8월 다른 주는 다 괜찮으니 편한 날짜로 다시 신청해 주세요.' });
+  }
+  demoEv(today, '출근', '11:02:00'); // 오늘 근무 중
+})();
+function demoSync() {
+  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: true, pinSet: !!demo.pin, devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
 }
 function demoApi(action, data) {
-  var today = '2026-08-14';
-  var days = [];
-  for (var i = 1; i <= 31; i++) {
-    var d = '2026-08-' + (i < 10 ? '0' : '') + i;
-    var wd = new Date(2026, 7, i).getDay();
-    var work = [1, 2, 3, 5].indexOf(wd) >= 0 && ['2026-08-15', '2026-08-17'].indexOf(d) < 0;
-    var o = { date: d, work: work, hol: ['2026-08-15', '2026-08-17'].indexOf(d) >= 0, holBadge: d === '2026-08-17', dots: [], segs: [], open: null, leaves: [], late: false, amended: false, missingOut: false, absent: false, workedMin: 0, planStart: wd === 5 ? '12:00' : '11:00', planEnd: wd === 5 ? '16:00' : '15:00' };
-    if (work && d < today) { o.segs = [[wd === 5 ? '12:00:00' : '11:00:00', wd === 5 ? '16:01:00' : '15:01:00']]; o.workedMin = 241; o.dots = ['ok']; }
-    if (d === '2026-08-05') { o.late = true; o.dots = ['la']; o.segs = [['11:07:00', '15:02:00']]; o.workedMin = 235; }
-    if (d === '2026-08-10') { o.leaves = [{ type: '병가', hours: 4 }]; o.dots = ['lv']; o.segs = []; o.workedMin = 0; }
-    if (d === '2026-08-11') { o.leaves = [{ type: '연차', hours: 2 }]; o.segs = [['11:00:00', '13:01:00']]; o.workedMin = 121; o.dots = ['ok', 'lv']; }
-    if (d === '2026-08-12') { o.segs = []; o.open = '11:03:00'; o.missingOut = true; o.dots = ['mx']; o.workedMin = 0; }
-    if (d === today) { o.segs = []; o.open = '11:02:00'; o.dots = ['ok']; o.workedMin = 188; }
-    if (DEMO_SCENE === 'miss') { // 미기록일 씬: 8/11=둘 다 없음, 8/12=퇴근만 없음
-      if (d === '2026-08-11') { o.leaves = []; o.segs = []; o.workedMin = 0; o.dots = []; o.absent = !demo.ext[d] && !demo.sick[d]; }
-      if (demo.ext[d]) { o.external = true; o.absent = false; o.workedMin = 240; o.dots = ['ok']; }
-      if (demo.sick[d]) { o.leaves = [{ type: '병가', hours: 4 }]; o.absent = false; o.dots = ['lv']; }
-      if (d === '2026-08-12' && demo.amended[d]) { o.missingOut = false; o.segs = [['11:03:00', '15:00:00']]; o.open = null; o.amended = true; o.workedMin = 237; o.dots = ['ok']; }
-    }
-    // v6: 신청 상태를 날짜에 부착(대기=pd 점, 확정=텍스트 표기 소스)
-    o.requests = demo.requests.filter(function (q) { return q.date === d && demoActive(q); })
-      .map(function (q) { return { rid: q.rid, kind: q.kind, hours: q.hours, status: q.status === '대기' ? '대기' : (q.status === '승인' ? '승인' : q.status) }; });
-    if (o.requests.some(function (q) { return q.status === '대기'; })) o.dots = o.dots.concat(['pd']);
-    days.push(o);
-  }
   data = data || {};
-  // ── 상태 변이 액션(관통 검증용) ──
+  var today = '2026-08-14', E = AttEngine;
+  if (action === 'sync') return Promise.resolve(demoSync());
+  if (action === 'punch') {
+    if (demo.pin && data.pin !== demo.pin) return Promise.resolve({ ok: false, error: '비밀번호가 맞지 않아요', code: 'pin' });
+    demoEv(today, data.kind === 'in' ? '출근' : '퇴근', '14:10:22');
+    return Promise.resolve({ ok: true, recorded: { type: data.kind, at: '14:10:22', name: '이현아' } });
+  }
+  if (action === 'amend') {
+    if (demo.pin && data.pin !== demo.pin) return Promise.resolve({ ok: false, error: '비밀번호가 맞지 않아요', code: 'pin' });
+    demoEv(data.date, '보정퇴근', data.time, '보정');
+    return Promise.resolve({ ok: true });
+  }
+  if (action === 'set_pin') {
+    if (demo.pin && data.cur !== demo.pin) return Promise.resolve({ ok: false, error: '지금 비밀번호가 맞지 않아요', code: 'cur' });
+    if (!/^\d{4}$/.test(String(data.next || ''))) return Promise.resolve({ ok: false, error: '숫자 4자리로 만들어 주세요' });
+    demo.pin = String(data.next);
+    return Promise.resolve({ ok: true });
+  }
+  if (action === 'preview') {
+    var pv = E.previewRequest(demo.events, DEMO_SETTINGS, today, data.kind, data.date, data.hours);
+    return Promise.resolve({ ok: true, preview: pv });
+  }
   if (action === 'request') {
     if (data.kind === '연차') {
-      var nrid = 'demo-r' + (++demo.n);
-      demo.requests.push({ rid: nrid, date: data.date, kind: data.hours === 2 ? '반차' : '연차', hours: data.hours, half: data.half || '', status: '대기', memo: '', acked: true, decidedAt: '', reqAt: today + 'T14:10:00', startHm: data.half === 'back' ? '13:00' : '11:00' });
-      return Promise.resolve({ ok: true, pending: true, rid: nrid, balance: demoBal(), dup: false });
+      var rid = 'demo-r' + (++demo.n);
+      demoEv(data.date, '신청', { rid: rid, kind: '연차', hours: data.hours, half: data.half || '' });
+      return Promise.resolve({ ok: true, pending: true, rid: rid });
     }
-    demo.sick[data.date] = 1;
-    return Promise.resolve({ ok: true, pending: false, balance: demoBal(), dup: false, unpaidAddMin: 0 });
+    demoEv(data.date, '병가', { hours: data.hours, half: data.half || '' });
+    return Promise.resolve({ ok: true, pending: false });
   }
-  if (action === 'cancel') {
-    demo.requests.forEach(function (q) { if (q.rid === data.rid) q.status = '취소'; });
-    return Promise.resolve({ ok: true, balance: demoBal(), dup: false });
-  }
-  if (action === 'ack') {
-    demo.requests.forEach(function (q) { if (q.rid === data.rid) q.acked = true; });
-    return Promise.resolve({ ok: true, dup: false });
-  }
-  if (action === 'extwork') { demo.ext[data.date] = 1; return Promise.resolve({ ok: true, dup: false }); }
-  if (action === 'amend') {
-    demo.amended[data.date] = 1;
-    return Promise.resolve({ ok: true, name: '이현아', today: today, nowHms: '14:10:00', plan: { work: true, start: '11:00', end: '15:00', planMin: 240 }, segments: [], open: '11:02:00', late: false, workedMin: 188, leaves: [], balance: demoBal(), amendNeeded: null, missing: demoMissing(today), cards: demoCards(today), rejections: [], deviceOk: true });
-  }
+  if (action === 'cancel') { demoEv(today, '취소', { target: data.rid }); return Promise.resolve({ ok: true }); }
+  if (action === 'ack') { demoEv(today, '반려확인', { target: data.rid }); return Promise.resolve({ ok: true }); }
+  if (action === 'extwork') { demoEv(data.date, '외부근무', {}); return Promise.resolve({ ok: true }); }
   if (action === 'admin_decide') {
-    demo.requests.forEach(function (q) {
-      if (q.rid === data.rid && q.status === '대기') { q.status = data.decision === 'approve' ? '승인' : '반려'; q.memo = data.memo || ''; q.acked = data.decision === 'approve'; q.decidedAt = today; }
-    });
+    demoEv(today, data.decision === 'approve' ? '승인' : '반려', { target: data.rid, memo: data.memo || '' });
     return Promise.resolve({ ok: true, state: data.decision === 'approve' ? '승인' : '반려' });
   }
-  if (action === 'approve_info') {
-    var q1 = demo.requests.filter(function (q) { return q.rid === String(data.t || '').split('.')[0]; })[0];
-    if (!q1 || q1.status !== '대기') return Promise.resolve({ ok: false, error: '처리할 수 없는 신청이에요', code: 'closed' });
-    var b1 = demoBal();
-    return Promise.resolve({ ok: true, state: '대기', name: '이현아', date: q1.date, kd: (+q1.date.slice(5, 7)) + '/' + (+q1.date.slice(8, 10)) + ' (월)', kind: q1.kind, hours: q1.hours, reqAt: q1.reqAt, beforeMin: b1.baseMin + b1.bonusMin + q1.hours * 60, afterMin: b1.baseMin + b1.bonusMin, planStart: '11:00', planEnd: '15:00' });
+  if (action === 'approve_info' || action === 'approve_act') {
+    var rid2 = String(data.t || '').split('.')[0];
+    var item = E.listRequests(demo.events, DEMO_SETTINGS, today, '14:10:00').filter(function (r) { return r.rid === rid2; })[0];
+    if (!item || item.status !== '대기') return Promise.resolve({ ok: false, error: '처리할 수 없는 신청이에요', code: 'closed' });
+    if (action === 'approve_act') return demoApi('admin_decide', { rid: rid2, decision: data.decision, memo: data.memo });
+    var bal = E.balance(demo.events, DEMO_SETTINGS, today);
+    return Promise.resolve({ ok: true, state: '대기', name: '이현아', date: item.date, kd: item.date.slice(5).replace('-', '/'), kind: item.kind, hours: item.hours, reqAt: item.reqAt, beforeMin: bal.baseMin + bal.bonusMin + item.hours * 60, afterMin: bal.baseMin + bal.bonusMin, planStart: '11:00', planEnd: '15:00' });
   }
-  if (action === 'approve_act') {
-    return demoApi('admin_decide', { rid: String(data.t || '').split('.')[0], decision: data.decision, memo: data.memo });
+  if (action === 'admin_summary') {
+    var reqs = E.listRequests(demo.events, DEMO_SETTINGS, today, '14:10:00');
+    var pend = [], hist = [];
+    reqs.forEach(function (r) {
+      var item = { rid: r.rid, name: '이현아', date: r.date, kd: r.date.slice(5).replace('-', '/'), kind: r.kind, hours: r.hours, status: r.status, reqAt: r.reqAt, decidedAt: r.decidedAt, startHm: r.startHm };
+      if (r.status === '대기') pend.push(item); else hist.push(item);
+    });
+    var bal2 = E.balance(demo.events, DEMO_SETTINGS, today);
+    return Promise.resolve({ ok: true, ym: '2026-08', pending: pend, history: hist.slice(0, 8), members: [{ emp: 'hyeona', name: '이현아', anchor: '2025-10-01', schedule: DEMO_SETTINGS.schedule, weekMin: 720, monthMin: 1830, monthPlanMin: 3840, lateCount: 1, overtimeMin: 8, deficitMin: 0, balance: { baseMin: bal2.baseMin, bonusMin: bal2.bonusMin, unpaidMin: bal2.unpaidMin }, devices: [{ id: 'x', label: '사무실 PC', at: '2026-07-14' }] }] });
   }
-  var bal = demoBal();
-  var missing = demoMissing(today);
-  var pendList = demo.requests.filter(function (q) { return q.status === '대기'; }).map(function (q) { return { rid: q.rid, name: '이현아', date: q.date, kd: (+q.date.slice(5, 7)) + '/' + (+q.date.slice(8, 10)) + ' (' + '일월화수목금토'[new Date(+q.date.slice(0, 4), +q.date.slice(5, 7) - 1, +q.date.slice(8, 10)).getDay()] + ')', kind: q.kind, hours: q.hours, status: '대기', reqAt: q.reqAt, startHm: q.startHm }; });
-  var histList = demo.requests.filter(function (q) { return q.status !== '대기'; }).map(function (q) { return { name: '이현아', date: q.date, kd: (+q.date.slice(5, 7)) + '/' + (+q.date.slice(8, 10)) + ' (금)', kind: q.kind, hours: q.hours, status: q.status, decidedAt: q.decidedAt, reqAt: q.reqAt, startHm: q.startHm }; });
-  var fx = {
-    status: { ok: true, name: '이현아', today: today, nowHms: '14:10:00', plan: { work: true, start: '11:00', end: '15:00', planMin: 240 }, segments: [], open: '11:02:00', late: false, workedMin: 188, leaves: [], balance: bal, amendNeeded: null, missing: missing, cards: demoCards(today), rejections: demo.requests.filter(function (q) { return q.status === '반려' && !q.acked; }).map(function (q) { return { rid: q.rid, date: q.date, kind: q.kind, hours: q.hours, memo: q.memo }; }), deviceOk: true },
-    month: { ok: true, today: today, month: { ym: data.ym || '2026-08', days: days, planMin: 3840, workedMin: 1830, lateCount: 1, absentCount: 0, leaveCount: 2, leaveMin: 360, overtimeMin: 8, deficitMin: 0, amendCount: DEMO_SCENE === 'miss' && demo.amended['2026-08-12'] ? 1 : 0, missingOutCount: 0, perfect: true }, balance: bal, monthDedMin: 360, monthUnpaidMin: 0 },
-    punch: { ok: true, recorded: { type: data.kind, at: '15:01:22' }, name: '이현아', today: today, nowHms: '15:01:22', plan: { work: true, start: '11:00', end: '15:00', planMin: 240 }, segments: [['11:02:00', '15:01:22']], open: null, late: false, workedMin: 239, leaves: [], balance: bal, amendNeeded: null, missing: missing, cards: demoCards(today), rejections: [], deviceOk: true },
-    preview: { ok: true, preview: { ok: true, baseMin: bal.baseMin, bonusMin: bal.bonusMin, afterBaseMin: bal.baseMin - (data.hours === 2 ? 120 : 240) + Math.min(bal.bonusMin, data.hours === 2 ? 120 : 240), afterBonusMin: Math.max(0, bal.bonusMin - (data.hours === 2 ? 120 : 240)), unpaidAddMin: 0 } },
-    ledger: { ok: true, balance: bal, rows: [{ at: '2026-08-01', kind: '부여', label: '입사 보너스', deltaMin: 240 }, { at: '2026-09-01', kind: '발생', label: '2026-08 개근', deltaMin: 240 }, { at: '2026-08-10', kind: '차감', label: '2026-08-10 병가 4시간', deltaMin: -240 }] },
-    me: { ok: true, name: '이현아', schedule: { '1': ['11:00', '15:00'], '2': ['11:00', '15:00'], '3': ['11:00', '15:00'], '5': ['12:00', '16:00'] }, graceMin: 3, anchor: '2025-10-01', accrualFrom: '2026-08', devices: [{ id: 'x', label: '사무실 PC', at: '2026-07-14' }] },
-    admin_summary: { ok: true, ym: '2026-08', pending: pendList, history: histList, members: [{ emp: 'hyeona', name: '이현아', anchor: '2025-10-01', schedule: { '1': ['11:00', '15:00'], '2': ['11:00', '15:00'], '3': ['11:00', '15:00'], '5': ['12:00', '16:00'] }, weekMin: 720, monthMin: 1830, monthPlanMin: 3840, lateCount: 1, overtimeMin: 8, deficitMin: 0, balance: bal, devices: [{ id: 'x', label: '사무실 PC', at: '2026-07-14' }] }] },
-    admin_weekly15: { ok: true, rows: [{ name: '김OO', weeksH: [18, 17, 16.5, 17.5], avgH: 17.2, over15: true }, { name: '박OO', weeksH: [14, 12, 11, 13], avgH: 12.5, over15: false }, { name: '이현아', weeksH: [6, 5.5, 6, 6.2], avgH: 5.9, over15: true, dual: true, combinedAvgH: 21.9 }], weeks: [], note: '4주 평균·실 배정 기준 참고치.' },
-    admin_close: { ok: true, row: { ym: '2026-08', name: '이현아', planMin: 3840, workedMin: 3790, lateCount: 1, dedMin: 360, unpaidMin: 0, overtimeMin: 8, perfect: true, grantMin: 240, baseMin: 2640, bonusMin: 0, amendCount: 1, missingOutCount: 1, expiringMin: 0, workDays: 16, attendDays: 16 } },
-    admin_grant: { ok: true, balance: bal },
-    admin_swap: { ok: true }, admin_correct: { ok: true }, admin_schedule_set: { ok: true },
-    admin_device_register: { ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } }
-  };
-  return Promise.resolve(fx[action] || { ok: false, error: 'demo 미지원: ' + action });
+  if (action === 'admin_weekly15') return Promise.resolve({ ok: true, rows: [{ name: '김OO', weeksH: [18, 17, 16.5, 17.5], avgH: 17.2, over15: true }, { name: '이현아', weeksH: [6, 5.5, 6, 6.2], avgH: 5.9, over15: true, dual: true, combinedAvgH: 21.9 }], weeks: [], note: '4주 평균·실 배정 기준 참고치.' });
+  if (action === 'admin_close') return Promise.resolve({ ok: true, row: { ym: '2026-08', name: '이현아', planMin: 3840, workedMin: 3790, lateCount: 1, dedMin: 360, unpaidMin: 0, overtimeMin: 8, perfect: true, grantMin: 240, baseMin: 2640, bonusMin: 0, amendCount: 1, missingOutCount: 1, expiringMin: 0, workDays: 16, attendDays: 16 } });
+  if (action === 'admin_grant') { demoEv(today, '부여', { hours: +data.hours || 4, note: data.note || '관리자 부여' }); var b3 = E.balance(demo.events, DEMO_SETTINGS, today); return Promise.resolve({ ok: true, balance: { baseMin: b3.baseMin, bonusMin: b3.bonusMin, unpaidMin: b3.unpaidMin } }); }
+  if (action === 'admin_swap' || action === 'admin_correct' || action === 'admin_schedule_set') return Promise.resolve({ ok: true });
+  if (action === 'admin_device_register') return Promise.resolve({ ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } });
+  return Promise.resolve({ ok: false, error: 'demo 미지원: ' + action });
 }
 
 /* ── 부팅 ── */
@@ -1595,14 +1839,10 @@ if ('serviceWorker' in navigator && !DEMO) { try { navigator.serviceWorker.regis
   if (DEMO) { store.token || (localStorage.setItem('att_token', 'demo')); }
   if (!store.token) { go('token'); return; }
   go('main');
-  api('status').then(function (r) {
-    if (!r.ok) {
-      if (r.code === 'auth') { localStorage.removeItem('att_token'); go('token'); toast(r.error); return; }
-      toast(r.error); return;
-    }
-    state.status = r; pollKey = pollSnap(r); renderMain(r);
+  syncNow(function (c) {
+    pollKey = pollSnap(c);
     if (DEMO && DEMO_SCENE === 'cal') go('cal'); // 헤드리스 스크린샷용
-  }).catch(function () { toast('연결이 안 돼요. 새로고침해 주세요'); });
+  });
 })();
 </script>
 <script src="install.js"></script>
