@@ -1,0 +1,17 @@
+{
+  "name": "근태",
+  "short_name": "근태",
+  "description": "생각공작소 근태 — 출퇴근·연차",
+  "start_url": "/attend/",
+  "scope": "/attend/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#3a8a5f",
+  "icons": [
+    { "src": "/attend/android-icon-144x144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/attend/android-icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/attend/android-icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/attend/apple-icon-180x180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
