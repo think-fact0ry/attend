@@ -1,8 +1,8 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v2';
+var CACHE = 'tf-attend-v3'; // v6 승인 플로우
 var SHELL = [
-  './', './index.html', './install.js', './manifest.json',
+  './', './index.html', './approve.html', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',
   '/attend/android-icon-192x192.png',
   '/attend/android-icon-512x512.png',

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>근태 승인</title>
+<meta name="theme-color" content="#3a8a5f">
+<meta name="robots" content="noindex">
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+:root{
+/* TOKENS:START — docs/1 §3.1 정본(토큰동기.js) */
+  --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
+  --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968;
+  --g800:#333d4b; --g900:#191f28;
+  --green50:#f8fbf9; --green100:#e9f8ee; --green200:#cef2db; --green300:#a7e7c0; --green400:#7bcb9c;
+  --green500:#57a77a; --green600:#3a8a5f; --green700:#166841; --green800:#01492a; --green900:#002614;
+  --green:var(--green600); --green-dark:var(--green700); --green-bg:var(--green100);
+  --red:#f04452; --ink-on-dark:#F9FBFA;
+  --dark:#525966; --danger:#D25357;
+  --danger-weak-bg:#fdecee; --danger-weak-fg:#c0392b;
+  --p-disabled:#b7e0c8;
+  --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#c07f00;
+/* TOKENS:END */
+  --r-md:clamp(10px,2.6vw,14px);
+  --fs-h1:clamp(23px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px);
+  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --maxw:520px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased}
+#app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
+.hd{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;padding:2px 0 0}
+.body{flex:1;display:flex;flex-direction:column}
+.hero{padding:26px 4px 18px}
+.hero .hl{font-size:var(--fs-sm);color:var(--g500);font-weight:600}
+.hero .hv{font-size:var(--fs-h1);font-weight:800;letter-spacing:-.7px;margin-top:5px;line-height:1.3}
+.rows{background:var(--g50);border-radius:var(--r-md);padding:4px 18px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;font-size:var(--fs-body);gap:12px}
+.row+.row{border-top:1px solid var(--g200)}
+.row .l{color:var(--g600);flex:none}
+.row .v{font-weight:700;color:var(--g900);text-align:right}
+.btn{width:100%;border:0;border-radius:15px;padding:17px;font:inherit;font-size:var(--fs-title);font-weight:700;cursor:pointer;transition:transform .12s}
+.btn:active{transform:scale(.97)}
+.btn.fill{background:var(--green600);color:#fff}
+.btn.fill:active{background:var(--green700)}
+.btn.fill:disabled{background:var(--p-disabled);cursor:default;transform:none}
+.btn.gray{background:var(--g100);color:var(--g600)}
+.cta{margin-top:auto;padding-top:16px;display:flex;flex-direction:column;gap:9px}
+.memo{margin-top:14px;display:none}
+.memo input{width:100%;border:0;background:var(--g100);border-radius:12px;padding:13px 15px;font:inherit;font-size:var(--fs-body);outline:none}
+.memo input:focus{box-shadow:0 0 0 2px var(--green500) inset}
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px}
+.circ{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+.circ svg{width:40px;height:40px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.circ polyline{stroke-dasharray:1;stroke-dashoffset:1;animation:drawchk .4s ease-out .25s forwards}
+@keyframes drawchk{to{stroke-dashoffset:0}}
+@keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+.done .dt{font-size:var(--fs-h2);font-weight:800;letter-spacing:-.5px;text-align:center}
+.done .ds{font-size:var(--fs-title);color:var(--g500);margin-top:-8px;text-align:center;line-height:1.5}
+.loading{flex:1;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:var(--fs-sm)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hd">근태</div>
+  <div class="body" id="body"><div class="loading">불러오는 중이에요</div></div>
+</div>
+<script>
+/* 원탭 승인 랜딩(§10.4) — 정적 페이지가 doPost로 검증·처리(HtmlService 미사용, RPC 표면 0).
+   토큰 = ?t=rid.HMAC — 처리·취소·시작 시각 도달 후엔 서버가 '처리할 수 없는 신청'으로 거절(1회용). */
+var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8SyUuwU-Ma0r3db446Nl56_yGRkFq_dsaXq5gk70FWQ/exec';
+var DEMO = /[?&]demo=1/.test(location.search);
+var T = (location.search.match(/[?&]t=([^&]+)/) || [])[1] || '';
+var $ = function (id) { return document.getElementById(id); };
+function api(action, data, isWrite) { // 읽기=소백오프 재시도 / 쓰기=단발 (gas-webapp-echo-404-retry)
+  if (DEMO) return demoApi(action, data);
+  var body = Object.assign({ action: action, t: decodeURIComponent(T) }, data || {});
+  var attempt = function (n) {
+    return fetch(GAS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(function (err) {
+        if (isWrite || n >= 2) throw err;
+        return new Promise(function (res) { setTimeout(res, n === 0 ? 400 : 900); }).then(function () { return attempt(n + 1); });
+      });
+  };
+  return attempt(0);
+}
+function ampmOf(iso) { // reqAt ISO → '오늘/8월 12일 오후 2:10' 근사 표기(서버 저장은 UTC ISO)
+  var d = new Date(iso);
+  if (isNaN(d)) return '';
+  var h = d.getHours(), m = d.getMinutes();
+  var ap = h < 12 ? '오전' : '오후', hh = h % 12 || 12;
+  var today = new Date();
+  var sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  return (sameDay ? '오늘 ' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ') + ap + ' ' + hh + ':' + (m < 10 ? '0' : '') + m;
+}
+function fmtMin(min) { var h = Math.floor(min / 60), m = min % 60; return h && m ? h + '시간 ' + m + '분' : h ? h + '시간' : m + '분'; }
+function invalid(msg) {
+  $('body').innerHTML = '<div class="done"><div class="circ" style="background:var(--g300)">' +
+    '<svg viewBox="0 0 24 24"><line x1="12" y1="7" x2="12" y2="13" style="stroke:#fff;stroke-width:2.6;stroke-linecap:round"/><circle cx="12" cy="17" r="1.4" style="fill:#fff;stroke:none"/></svg></div>' +
+    '<div class="dt">처리할 수 없는 신청이에요</div><div class="ds">' + (msg || '이미 처리됐거나 취소됐거나\n시작 시각이 지났어요').replace(/\n/g, '<br>') + '</div></div>';
+}
+function done(green, t, s) {
+  $('body').innerHTML = '<div class="done"><div class="circ" style="background:' + (green ? 'var(--green600)' : 'var(--g300)') + '">' +
+    '<svg viewBox="0 0 24 24"><polyline pathLength="1" points="4.5 12.5 9.7 17.7 19.5 8"/></svg></div>' +
+    '<div class="dt">' + t + '</div><div class="ds">' + s + '</div></div>';
+}
+function render(info) {
+  var b = $('body');
+  b.innerHTML =
+    '<div class="hero"><div class="hl">' + info.kind + ' 신청</div><div class="hv">' + info.name + '<br>' + (+info.date.slice(5, 7)) + '월 ' + (+info.date.slice(8, 10)) + '일 (' + '일월화수목금토'[new Date(+info.date.slice(0, 4), +info.date.slice(5, 7) - 1, +info.date.slice(8, 10)).getDay()] + ')</div></div>' +
+    '<div class="rows">' +
+    '<div class="row"><span class="l">신청한 때</span><span class="v">' + ampmOf(info.reqAt) + '</span></div>' +
+    '<div class="row"><span class="l">남은 연차</span><span class="v">' + fmtMin(info.beforeMin) + ' → <span style="color:var(--green-dark)">' + fmtMin(info.afterMin) + '</span></span></div>' +
+    (info.planStart ? '<div class="row"><span class="l">그날 근무</span><span class="v">' + info.planStart + ' ~ ' + info.planEnd + '</span></div>' : '') +
+    '</div>' +
+    '<div class="memo" id="memoFld"><input id="memoIn" placeholder="메모 (선택) 현아쌤에게 보여요"></div>' +
+    '<div class="cta"><button class="btn fill" id="apvGo">승인하기</button><button class="btn gray" id="rejGo">반려하기</button></div>';
+  var busy = false;
+  $('apvGo').addEventListener('click', function () {
+    if (busy) return; busy = true; $('apvGo').disabled = true;
+    api('approve_act', { decision: 'approve', cid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) }, true).then(function (r) {
+      if (!r.ok) { invalid(r.error); return; }
+      done(true, '승인했어요', (info.name === '이현아' ? '현아쌤' : info.name) + ' ' + info.kind + ' 사용이 확정됐어요');
+    }).catch(function () { busy = false; $('apvGo').disabled = false; alert('연결이 안 돼요. 다시 눌러 주세요'); });
+  });
+  $('rejGo').addEventListener('click', function () {
+    var f = $('memoFld');
+    if (f.style.display !== 'block') { f.style.display = 'block'; $('memoIn').focus(); $('rejGo').textContent = '반려 확정'; return; }
+    if (busy) return; busy = true;
+    api('approve_act', { decision: 'reject', memo: $('memoIn').value, cid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) }, true).then(function (r) {
+      if (!r.ok) { invalid(r.error); return; }
+      done(false, '반려했어요', info.kind + ' ' + info.hours + '시간이 돌아가요');
+    }).catch(function () { busy = false; alert('연결이 안 돼요. 다시 눌러 주세요'); });
+  });
+}
+function demoApi(action, data) {
+  if (action === 'approve_info') return Promise.resolve({ ok: true, state: '대기', name: '이현아', date: '2026-08-21', kind: '연차', hours: 4, reqAt: new Date().toISOString(), beforeMin: 2760, afterMin: 2520, planStart: '12:00', planEnd: '16:00' });
+  return Promise.resolve({ ok: true });
+}
+if (!T && !DEMO) invalid('링크가 올바르지 않아요\n카톡의 링크로 다시 열어 주세요');
+else api('approve_info').then(function (r) {
+  if (!r.ok) { invalid(r.error); return; }
+  render(r);
+}).catch(function () { invalid('연결이 안 돼요\n잠시 후 다시 열어 주세요'); });
+</script>
+</body>
+</html>
