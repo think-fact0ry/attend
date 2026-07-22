@@ -28,7 +28,7 @@
   --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,14px); --r-lg:clamp(13px,3.2vw,20px);
   --fs-display:clamp(28px,6vw,42px); --fs-h1:clamp(23px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px); --fs-h3:20px;
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
-  --maxw:480px; /* 07-22(3) 유성 정정: "가로폭"=PWA 창 자체 폭이었음 — 내부는 480 원복, 창은 resizeTo+수동 1회 */
+  --maxw:460px; /* 07-23 유성: "살짝 더" — 480→460, 창 resizeTo도 470으로 세트 */
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -143,7 +143,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .wdrow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;border-bottom:1px solid var(--g200);padding-bottom:8px;margin:2px 0 6px} /* 07-22 유성: 연도월↔요일행 +2px */
 .wdrow .wd{font-size:var(--fs-caption);color:var(--g500);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
-.day{border-radius:10px;padding:8px 0 6px;height:54px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.day{border-radius:10px;padding:8px 0 6px;height:54px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1);border:1.5px solid transparent} /* 보더 자리 상시 확보 — 선택 시 레이아웃 안 흔들리게 */
 .day:active{transform:scale(.88)}
 .day.blank{cursor:default}
 .day.blank:active{transform:none}
@@ -151,7 +151,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day.off .n{color:var(--g300);opacity:.6}
 .day.hol .n{color:var(--red)}
 .day.cur{background:var(--green100)} /* v6: 메인 .today 필 CSS와 충돌(8px 밀림 실측) → .cur로 분리 */
-.day.sel{background:var(--g100)}
+.day.sel{border-color:var(--g600)} /* 07-23 유성: 필 폐지 → 보더 선택(1.5px — 06 선택 보더 관례, g600=숫자·점 안 누르는 진회색) */
 .day .bdg{display:inline-block;font-size:9px;font-weight:700;border-radius:99px;padding:1.5px 6px;margin-top:2px;background:var(--g100);color:var(--g500)}
 .dots{position:absolute;top:33px;left:0;right:0;display:flex;justify-content:center;gap:3px;height:8px} /* §10.11 상단 고정 절대 배치 */
 .dots .d{width:7px;height:7px;border-radius:50%}
@@ -160,6 +160,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .d.lv{background:var(--red)}
 .d.mx{background:var(--g300)}
 .selcard{margin-top:12px;background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.08);padding:14px 18px}
+.selslot-empty{margin-top:12px;border-radius:var(--r-md);border:1.5px dashed var(--g200);min-height:64px;display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);color:var(--g400)} /* 슬롯 상시(07-23 유성 픽) — 카드가 아래를 안 밀게 자리 고정 */
 .selcard .sct{font-size:var(--fs-sm);font-weight:800;margin-bottom:8px}
 .selcard .scr2{display:flex;gap:22px;font-size:var(--fs-sm);flex-wrap:wrap}
 .selcard .scr2 .k{color:var(--g500);display:block;font-size:var(--fs-caption);font-weight:600}
@@ -174,11 +175,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .prog .pl .v small{color:var(--g500);font-weight:600}
 .prog .track{height:8px;border-radius:99px;background:var(--g100);overflow:hidden}
 .prog .fill{height:100%;border-radius:99px;background:var(--green600);transition:width .4s}
-.prog3 .segs{display:flex;gap:3px;margin-top:8px}
-.prog3 .sg{flex:1;height:10px;border-radius:4px;background:var(--g100)}
-.prog3 .sg.f{background:var(--green600)}
-.prog3 .sg.h{background:var(--green300)}
-.prog3 .sg.l{background:var(--green100)}
+/* prog3(일차별 16칸 세그)=07-23 유성 지시로 폐지 — P1 시간 바만 유지 */
 
 /* ── 사이드메뉴 ── */
 .dim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .22s;z-index:600}
@@ -274,7 +271,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 
 /* ── 관리자 ── */
 .abody{padding:20px 20px calc(24px + env(safe-area-inset-bottom));flex:1;overflow-x:auto}
-.asec{margin-bottom:26px}
+/* 07-23 유성: 관리자=회색 배경+흰 카드(§4.7 — 카드 안 행=헤어라인(table.at 기존), 섹션 사이=여백·선 없음) */
+.asec{background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.07);padding:16px 18px;margin-bottom:16px}
 .asec h4{font-size:var(--fs-body);font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .asec h4 .cavt{font-size:var(--fs-caption);color:var(--g400);font-weight:500;margin-left:auto}
 table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
@@ -457,7 +455,6 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
       <div class="prog">
         <div class="pl"><span class="k">이번 달 근무</span><span class="v" id="progTxt">—</span></div>
         <div class="track"><div class="fill" id="progFill" style="width:0%"></div></div>
-        <div class="prog3"><div class="segs" id="progSegs"></div></div>
       </div>
       <div class="rows">
         <div class="row"><span class="l">연차 사용</span><span class="v" id="calUsed">—</span></div>
@@ -807,6 +804,8 @@ function kDateShort(d) { var wd = '일월화수목금토'[new Date(+d.slice(0, 4
 var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin'];
 function go(name) {
   SCREENS.forEach(function (s) { $('s-' + s).classList.toggle('on', s === name); });
+  // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
+  document.body.style.background = (name === 'me' || name === 'my' || name === 'admin') ? 'var(--g50)' : '#fff';
   closeDrawer(); hideSheet();
   if (name === 'cal') loadCal();
   if (name === 'my') loadMy();
@@ -1276,6 +1275,7 @@ function renderCal(r) {
     if (sel.missingOut && state.status && state.status.deviceOk) {
       amendHtml = '<div class="excard" style="margin-top:12px"><div class="xt">퇴근 기록이 없어요</div><div id="selTw"></div><button class="btn fill" style="margin-top:10px;padding:13px;font-size:var(--fs-body)" id="selAmendGo">퇴근 시각 남기기</button></div>';
     }
+    sc.className = 'selcard'; // 슬롯 상시(07-23 유성 픽) — 빈 상태는 아래 else서 placeholder
     sc.innerHTML = '<div class="sct">' + kDate(sel.date) + '</div><div class="scr2">' + parts.join('') + '</div>' + amendHtml;
     sc.style.display = 'block';
     if (sel.missingOut && state.status && state.status.deviceOk) {
@@ -1291,21 +1291,15 @@ function renderCal(r) {
         });
       });
     }
-  } else { sc.style.display = 'none'; }
-  // P1 시간 바 + P3 근무일 칸
+  } else { // 슬롯 상시 — 카드가 없어도 자리를 지켜 아래(범례·요약)가 안 밀림
+    sc.className = 'selslot-empty';
+    sc.textContent = '날짜를 누르면 그날 기록이 보여요';
+    sc.style.display = 'flex';
+  }
+  // P1 시간 바 (P3 일차별 세그=07-23 유성 지시로 폐지)
   var pct = r.month.planMin ? Math.min(100, Math.round(r.month.workedMin / r.month.planMin * 100)) : 0;
   $('progTxt').innerHTML = fmtMin(r.month.workedMin) + ' <small>/ ' + fmtMin(r.month.planMin) + '</small>';
   $('progFill').style.width = pct + '%';
-  var segs = $('progSegs'); segs.innerHTML = '';
-  r.month.days.filter(function (d) { return d.work; }).forEach(function (d) {
-    var cls = 'sg';
-    var passed = d.date < r.today || (d.date === r.today && !d.open && d.workedMin > 0);
-    if (d.leaves.length && d.workedMin > 0) cls += ' l';
-    else if (d.leaves.length) cls += ' h';
-    else if (passed && d.workedMin > 0) cls += ' f';
-    else if (d.date === r.today && d.workedMin > 0) cls += ' l';
-    var s = document.createElement('span'); s.className = cls; segs.appendChild(s);
-  });
   $('calUsed').textContent = fmtMin(r.monthDedMin + (r.monthUnpaidMin || 0)) + (r.monthUnpaidMin ? ' (무급 ' + fmtMin(r.monthUnpaidMin) + ' 포함)' : '');
   $('calLeft').innerHTML = fmtBal(r.balance);
 }
@@ -1671,7 +1665,12 @@ function renderAdmin(r) {
 
   // 기기 등록
   html += '<div class="asec"><h4>도장 기기 등록</h4><div class="arow"><input class="ain" type="text" id="devLabel" placeholder="기기 이름 (예: 사무실 PC)" style="flex:1;min-width:140px"> <button class="abtn" id="devGo">이 기기를 도장 기기로 등록</button></div>' +
-    '<div class="anote">등록된 기기: ' + (m.devices.length ? m.devices.map(function (d) { return d.label + ' (' + d.at + ')'; }).join(', ') : '없음') + '<br>도장·보정은 등록 기기에서만 눌려요. 폰·다른 컴퓨터는 조회·신청만.</div></div>';
+    (m.devices.length
+      ? '<table class="at">' + m.devices.map(function (d) {
+        return '<tr><td>' + d.label + '<span class="sub2">' + d.at + ' 등록</span></td><td class="num"><button class="abtn gray" data-devrm="' + d.id + '">해제</button></td></tr>';
+      }).join('') + '</table>'
+      : '<div class="anote">등록된 기기가 없어요.</div>') +
+    '<div class="anote">도장·보정은 등록 기기에서만 눌려요. 폰·다른 컴퓨터는 조회·신청만.</div></div>';
 
   // 정정
   html += '<div class="asec"><h4>도장 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
@@ -1741,11 +1740,22 @@ function renderAdmin(r) {
     });
   });
   $('devGo').addEventListener('click', function () {
+    // 07-23 유성: 같은 컴퓨터 중복 등록이 3개까지 쌓임 → 이미 등록된 기기는 차단(서버도 이중 방어)
+    var mine = store.dev;
+    if (mine && m.devices.some(function (d) { return d.id === mine.id; })) { toast('이 컴퓨터는 이미 등록돼 있어요'); return; }
     var label = $('devLabel').value.trim() || '회사 PC';
-    adminApi('admin_device_register', { emp: m.emp, label: label }, true).then(function (rr) {
+    adminApi('admin_device_register', { emp: m.emp, label: label, device: mine ? mine.id : '' }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
       store.dev = { id: rr.device.id, token: rr.device.token, label: rr.device.label };
-      toast('이 기기를 도장 기기로 등록했어요'); loadAdmin();
+      toast(rr.dup ? '이 컴퓨터는 이미 등록돼 있어요' : '이 기기를 도장 기기로 등록했어요'); loadAdmin();
+    });
+  });
+  document.querySelectorAll('[data-devrm]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      adminApi('admin_device_remove', { emp: m.emp, id: btn.dataset.devrm }, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); return; }
+        toast('기기를 해제했어요'); loadAdmin();
+      });
     });
   });
   $('corrGo').addEventListener('click', function () {
@@ -1912,6 +1922,7 @@ function demoApi(action, data) {
   if (action === 'admin_grant') { demoEv(today, '부여', { hours: +data.hours || 4, note: data.note || '관리자 부여' }); var b3 = E.balance(demo.events, DEMO_SETTINGS, today); return Promise.resolve({ ok: true, balance: { baseMin: b3.baseMin, bonusMin: b3.bonusMin, unpaidMin: b3.unpaidMin } }); }
   if (action === 'admin_swap' || action === 'admin_correct' || action === 'admin_schedule_set') return Promise.resolve({ ok: true });
   if (action === 'admin_device_register') return Promise.resolve({ ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } });
+  if (action === 'admin_device_remove') return Promise.resolve({ ok: true });
   return Promise.resolve({ ok: false, error: 'demo 미지원: ' + action });
 }
 
@@ -1924,8 +1935,8 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
 (function boot() {
   if (DEMO) { store.token || (localStorage.setItem('att_token', 'demo')); }
   // 07-22(3) 유성: PWA 창 자체 폭 축소(내부 maxw 480 원복과 세트) — 앱 창에서만, 안 먹으면 수동 1회(Chrome이 기억)
-  if (matchMedia('(display-mode: standalone)').matches && window.outerWidth > 540) {
-    try { window.resizeTo(500, window.outerHeight); } catch (e) { }
+  if (matchMedia('(display-mode: standalone)').matches && window.outerWidth > 490) {
+    try { window.resizeTo(470, window.outerHeight); } catch (e) { }
   }
   // 관리자 잠수함 진입 2호(07-22(3)): ?admin=1 → PIN. 롱프레스 불발 대비 — 서버 admin_*는 PIN만 요구라 등록 코드 전에도 가능
   var wantAdmin = /[?&]admin=1/.test(location.search);
