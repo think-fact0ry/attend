@@ -1,6 +1,6 @@
 {
-  "name": "근태",
-  "short_name": "근태",
+  "name": "생각공작소 근태관리",
+  "short_name": "근태관리",
   "description": "생각공작소 근태 — 출퇴근·연차",
   "start_url": "/attend/",
   "scope": "/attend/",

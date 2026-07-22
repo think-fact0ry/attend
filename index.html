@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>근태</title>
+<title>생각공작소 근태관리</title>
 <meta name="theme-color" content="#3a8a5f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="/attend/favicon-32x32.png">
@@ -199,6 +199,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .fld{margin-bottom:12px}
 .fld label{display:block;font-size:var(--fs-caption);color:var(--g500);font-weight:600;margin-bottom:6px}
 .fbox{background:var(--g100);border-radius:14px;padding:16px 17px;font-size:var(--fs-title);font-weight:600;display:flex;justify-content:space-between;align-items:center;color:var(--g900);cursor:pointer;position:relative}
+.fbox .ph{color:var(--g400);font-weight:500} /* 07-23 유성: '날짜를 골라 주세요'=예시 텍스트 — 검정 금지 */
 .fbox svg{width:18px;height:18px;color:var(--g400)}
 .fbox input[type=date]{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .result{margin-top:34px;padding:0 2px;text-align:right}
@@ -239,8 +240,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 /* ── 내 정보(07-22(3) 유성: 회색 배경+흰 박스, 나의 근태 .mybody와 같은 문법) ── */
 #s-me{background:var(--g50)}
 #s-me .rows{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.07)}
-.btn.dangerfill{background:var(--danger);color:#fff;margin-top:16px} /* §4.14 fill-danger — 로그아웃 */
-.btn.dangerfill:active{background:#b9444a}
+/* 로그아웃 = §4.14 danger-weak 소형(07-23 유성 "빨간 풀폭은 부담" — 연빨강 틴트+진빨강 글자·작게) */
+.btn-out-sm{display:block;margin:16px auto 0;background:var(--danger-weak-bg);color:var(--danger-weak-fg);border:0;border-radius:10px;padding:9px 18px;font:inherit;font-size:var(--fs-sm);font-weight:700;cursor:pointer;transition:transform .12s}
+.btn-out-sm:active{transform:scale(.95)}
 
 /* ── 스켈레톤(§5.4 — 첫 로딩 '—' 대체) ── */
 .sk-b{display:inline-block;background:var(--g100);border-radius:8px;animation:skp 1.1s ease-in-out infinite;pointer-events:none}
@@ -259,13 +261,19 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .pinov.on{display:flex}
 .pinov .pt{font-size:var(--fs-h3);font-weight:800;margin-bottom:6px}
 .pinov .ps{font-size:var(--fs-sm);color:var(--g500);margin-bottom:22px}
-.pindots{display:flex;gap:14px;margin-bottom:30px}
-.pindots i{width:14px;height:14px;border-radius:50%;background:var(--g200)}
-.pindots i.f{background:var(--green600)}
-.pinpad{display:grid;grid-template-columns:repeat(3,84px);gap:8px}
-.pinpad button{height:60px;border:0;background:none;font:inherit;font-size:22px;font-weight:700;color:var(--g900);border-radius:14px;cursor:pointer}
-.pinpad button:active{background:var(--g100)}
-.pinpad button.fn{font-size:var(--fs-sm);font-weight:600;color:var(--g500)}
+/* 07-23 유성: 태블릿(상담일지 g-pad) 문법 그대로 이식 — 이중 링 점·투명 키+초록 그라데이션 리플(누른 키+랜덤 1개=숄더서핑 차단)·지움=← 입력 있을 때만 */
+.pindots{display:flex;gap:18px;margin-bottom:30px}
+.pindots i{width:9px;height:9px;border-radius:50%;background:var(--g300);box-shadow:0 0 0 3px rgba(176,184,193,.16);transition:background .22s,box-shadow .3s cubic-bezier(.2,.7,.3,1)}
+.pindots i.f{background:var(--green600);box-shadow:0 0 0 3px rgba(58,138,95,.18)}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(7px,1.3vh,12px) 14px;width:100%;max-width:min(336px,90vw)}
+.pinpad button{position:relative;height:clamp(50px,7.4vh,64px);border-radius:var(--r-md);background:transparent;border:0;font:inherit;font-size:27px;font-weight:500;color:var(--g900);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .18s cubic-bezier(.2,.7,.3,1)}
+.pinpad button:active{transform:scale(.9)}
+.pinpad button .kd{position:relative;z-index:1;display:flex;align-items:center;justify-content:center}
+.pinpad button.fn{color:var(--g700);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.pinpad button.fn.show{opacity:1;pointer-events:auto}
+.pinpad button.empty{pointer-events:none}
+.pinpad .ripple{position:absolute;left:50%;top:50%;width:175%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle, rgba(58,138,95,.42) 0%, rgba(58,138,95,.16) 42%, rgba(58,138,95,0) 70%);transform:translate(-50%,-50%) scale(.2);pointer-events:none;z-index:0;animation:grip .58s ease-out forwards}
+@keyframes grip{0%{transform:translate(-50%,-50%) scale(.2);opacity:.95}100%{transform:translate(-50%,-50%) scale(1.75);opacity:0}}
 .shake{animation:shake .4s}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 
@@ -477,7 +485,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
       </div>
       <div class="fld">
         <label>날짜</label>
-        <div class="fbox" id="applyDateBox"><span id="applyDateTxt">날짜를 골라 주세요</span>
+        <div class="fbox" id="applyDateBox"><span id="applyDateTxt" class="ph">날짜를 골라 주세요</span>
           <svg class="li" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
       </div>
@@ -849,7 +857,7 @@ function heroB(b) { // 잔여 표기 B안(§10.9): "44시간 (+4)" + 아랫줄 =
   return { val: val, sub: sub.length ? sub.join(' + ') : '연차는 한 달 개근하면 다음 달 1일에 4시간씩 생겨요' };
 }
 function renderMain(r) {
-  $('mainTitle').textContent = r.name ? r.name + ' 근태' : '근태'; // 07-22 유성: 이름 한 줄 표기(누구 근태인지 명시)
+  $('mainTitle').textContent = '근태'; // 07-23 유성: 이름 표기 폐지 — '근태'만
   var hb = heroB(r.balance);
   $('heroVal').innerHTML = hb.val;
   $('heroSub').textContent = hb.sub;
@@ -931,7 +939,8 @@ function initSheetDrag(sh, onClose) {
   sh._dragInit = true; sh._dragClose = onClose;
   var startY = null, dy = 0;
   sh.addEventListener('pointerdown', function (e) {
-    if (e.target.closest('.btn') || e.target.closest('input')) return;
+    // ⚠️07-23 실사고: setPointerCapture가 시트 안 모든 탭을 삼켜 .day(날짜 셀)·.mchev(월 이동) 클릭이 죽었음 — 인터랙티브 요소는 캡처 제외
+    if (e.target.closest('.btn') || e.target.closest('input') || e.target.closest('.day') || e.target.closest('.mchev')) return;
     startY = e.clientY; dy = 0; sh.classList.add('grab'); try { sh.setPointerCapture(e.pointerId); } catch (err) { }
   });
   sh.addEventListener('pointermove', function (e) {
@@ -1315,8 +1324,9 @@ function segSync() {
   // v6(§10.1): 연차·반차=미래+당일만 / 병가=당일·과거만(사후 등록) — 범위 밖 선택은 리셋
   var today = applyToday();
   if (apply.date && ((apply.kind === '연차' && apply.date < today) || (apply.kind === '병가' && apply.date > today))) {
-    apply.date = ''; $('applyDateTxt').textContent = '날짜를 골라 주세요';
+    apply.date = '';
   }
+  $('applyDateTxt').classList.toggle('ph', !apply.date);
   $('applySub').textContent = apply.kind === '병가'
     ? '병가는 바로 반영돼요. 남은 연차를 다 쓰면 무급으로 쉬어요.'
     : '신청하면 남은 연차에서 바로 빠지고, 확인 후에 확정돼요';
@@ -1340,9 +1350,18 @@ function halfSync() { $('halfFront').classList.toggle('on', apply.half === 'fron
 function prevYm(ym) { return AttEngine.addMonths(ym + '-01', -1).slice(0, 7); }
 function nextYm(ym) { return AttEngine.addMonths(ym + '-01', 1).slice(0, 7); }
 var ds = { ym: '', open: false };
+function dsHasPick(ym) { // 그 달에 고를 수 있는 날이 있나(근무일+종류별 범위)
+  var db = state.db, today = applyToday();
+  var swaps = AttEngine.swapOverrides(db.events, db.settings);
+  return AttEngine.monthDates(ym).some(function (d) {
+    return AttEngine.dayPlan(d, db.settings, swaps).work && (apply.kind === '연차' ? d >= today : d <= today);
+  });
+}
 function openDateSheet() {
   if (!state.db) { syncNow(function () { openDateSheet(); }); return; }
   ds.ym = (apply.date || applyToday()).slice(0, 7);
+  // 월말·근태 시작 전이면 이번 달에 고를 날이 없음 → 고를 수 있는 첫 달로 열기(연차=앞으로, 병가=뒤로)
+  for (var t = 0; t < 3 && !dsHasPick(ds.ym); t++) ds.ym = apply.kind === '연차' ? nextYm(ds.ym) : prevYm(ds.ym);
   ds.open = true;
   buildDsCal();
   $('dsDim').classList.add('on');
@@ -1366,6 +1385,7 @@ function buildDsCal() {
     if (can) el.addEventListener('click', function () {
       apply.date = d;
       $('applyDateTxt').textContent = kDate(d) + (apply.kind === '병가' && d < today ? ' (지난 날짜)' : '');
+      $('applyDateTxt').classList.remove('ph');
       closeDateSheet(); previewApply();
     });
     g.appendChild(el);
@@ -1479,10 +1499,8 @@ function loadMe() {
   add('연차 시작', '2026년 8월 근무분부터');
   add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>');
   $('pinChangeGo').addEventListener('click', changePinFlow);
-  $('meNote').innerHTML = (db.devices && db.devices.length
-    ? '출퇴근을 찍는 컴퓨터: ' + db.devices.map(function (d) { return d.label; }).join(', ')
-    : '출퇴근을 찍는 컴퓨터가 아직 등록되지 않았어요')
-    + '<button class="btn dangerfill" id="logoutGo">로그아웃 하기</button>'; // §4.14 fill-danger(07-22(3) 유성)
+  // 07-23 유성: 기기 목록은 현아 대면에 노출 금지(관리자만) — meNote=로그아웃만(소형 danger-weak)
+  $('meNote').innerHTML = '<button class="btn-out-sm" id="logoutGo">로그아웃 하기</button>';
   $('logoutGo').addEventListener('click', function () {
     localStorage.removeItem('att_token'); // 기기 등록(att_dev)은 PC 소속이라 유지
     state.db = null; state.status = null;
@@ -1526,17 +1544,29 @@ function pinPrompt(opts) { // {title, sub, digits, onDone(pin, helpers)}
   renderPinDots(); shufflePad();
   $('pinOv').classList.add('on');
 }
-function shufflePad() { // 숫자 재배치 + 셀 구성
+function shufflePad() { // 숫자 재배치(토스 보안 키패드) — 07-23 태블릿 g-pad 레이아웃(9키/빈칸·10번째·←지움)
   var pad = $('pinPad'); pad.innerHTML = '';
   var digits = '0123456789'.split('').sort(function () { return Math.random() - .5; });
-  var cells = digits.slice(0, 9).concat(['del', digits[9], 'okx']);
-  cells.forEach(function (c) {
+  function key(d) {
     var b = document.createElement('button');
-    if (c === 'del') { b.className = 'fn'; b.textContent = '지움'; b.addEventListener('click', function () { pin = pin.slice(0, -1); renderPinDots(); }); }
-    else if (c === 'okx') { b.className = 'fn'; b.textContent = ''; b.disabled = true; }
-    else { b.textContent = c; b.addEventListener('click', function () { pushPin(c); }); }
-    pad.appendChild(b);
-  });
+    b.dataset.k = d; b.innerHTML = '<span class="kd">' + d + '</span>';
+    b.addEventListener('click', function () { pinRipple(b); pinRippleRandom(b); pushPin(d); });
+    return b;
+  }
+  for (var i = 0; i < 9; i++) pad.appendChild(key(digits[i]));
+  var emp = document.createElement('button'); emp.className = 'empty'; pad.appendChild(emp);
+  pad.appendChild(key(digits[9]));
+  var del = document.createElement('button'); del.className = 'fn'; del.id = 'pinDel';
+  del.innerHTML = '<span class="kd"><svg class="li" viewBox="0 0 24 24" style="width:26px;height:26px"><line x1="20" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></span>';
+  del.addEventListener('click', function () { pin = pin.slice(0, -1); renderPinDots(); pinDelShow(); });
+  pad.appendChild(del);
+  pinDelShow();
+}
+function pinDelShow() { var d = $('pinDel'); if (d) d.classList.toggle('show', pin.length > 0); } // 지움=입력 있을 때만
+function pinRipple(b) { var r = document.createElement('span'); r.className = 'ripple'; b.appendChild(r); setTimeout(function () { r.remove(); }, 560); }
+function pinRippleRandom(except) { // 누른 키 외 랜덤 1개 더 퍼짐 — 숄더서핑 차단(태블릿 동일)
+  var ks = [].slice.call(document.querySelectorAll('#pinPad button[data-k]')).filter(function (b) { return b !== except; });
+  if (ks.length) pinRipple(ks[Math.floor(Math.random() * ks.length)]);
 }
 function renderPinDots() {
   var n = pinCtx ? pinCtx.digits : 6;
@@ -1545,7 +1575,7 @@ function renderPinDots() {
 }
 function pushPin(c) {
   if (!pinCtx || pin.length >= pinCtx.digits) return;
-  pin += c; renderPinDots();
+  pin += c; renderPinDots(); pinDelShow();
   if (pin.length === pinCtx.digits) pinCtx.onDone(pin, pinHelpers);
 }
 $('pinCancel').addEventListener('click', function () { pinHelpers.close(); });
@@ -1601,7 +1631,8 @@ function adminApi(action, data, isWrite) { return api(action, Object.assign({ ad
 function loadAdmin() { adminApi('admin_summary').then(function (r) { if (r.ok) renderAdmin(r); else toast(r.error); }); }
 function renderAdmin(r) {
   var b = $('adminBody');
-  var m = r.members[0];
+  var mi = state.admMi || 0; if (mi >= r.members.length) mi = 0; // 07-23 다중 구성원 — 아래 카드들(스케줄·부여·기기·정정)의 대상
+  var m = r.members[mi];
   var html = '';
   // v6: 승인 대기(연차·반차만 — 병가·조퇴는 즉시 확정)
   html += '<div class="asec"><h4>승인 대기 <span class="cavt">연차·반차만, 병가·조퇴는 즉시 확정</span></h4>';
@@ -1624,10 +1655,15 @@ function renderAdmin(r) {
       '<td class="num" style="color:var(--green-dark)">' + fmtBalPlain(mm.balance) + '</td>' +
       '<td class="num"><button class="abtn" data-grant="' + mm.emp + '">+ 연차 부여</button></td></tr>';
   });
-  html += '</table><div class="anote">이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 부족 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div></div>';
+  html += '</table><div class="anote">이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 부족 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div>' +
+    '<div class="arow" style="margin-top:10px"><input class="ain" type="text" id="memKey" placeholder="영문 키 (예: minji)" style="width:130px"> <input class="ain" type="text" id="memName" placeholder="이름" style="width:110px"> <button class="abtn" id="memAddGo">구성원 추가</button></div>' +
+    '<div class="anote">추가하면 기본 스케줄(월화수 11~15·금 12~16)·오늘이 근태 시작일로 만들어져요. 아래 스케줄 카드에서 바로 고치면 돼요.</div><div id="memAddOut"></div></div>';
 
-  // 스케줄 편집(요일별 — 지각·조퇴·개근 판정의 기준값)
-  html += '<div class="asec"><h4>' + m.name + ' — 소정근로 스케줄 <span class="cavt">요일마다 다르게 설정 가능</span></h4><div id="schedEdit">';
+  // 스케줄 편집(요일별 — 지각·조퇴·개근 판정의 기준값). 2인 이상=선택한 구성원 대상
+  var memSel = r.members.length > 1
+    ? '<select class="ain" id="admMemSel" style="font-weight:700;padding:6px 10px">' + r.members.map(function (mm, i) { return '<option value="' + i + '"' + (i === mi ? ' selected' : '') + '>' + mm.name + '</option>'; }).join('') + '</select>'
+    : m.name;
+  html += '<div class="asec"><h4>' + memSel + ' — 소정근로 스케줄 <span class="cavt">요일마다 다르게 설정 가능</span></h4><div id="schedEdit">';
   for (var wd = 1; wd <= 6; wd++) html += schedRowHtml(wd, m.schedule[String(wd)]);
   html += schedRowHtml(0, m.schedule['0']);
   html += '</div><div class="arow" style="margin-top:10px"><span style="color:var(--g500)">근태 시작일</span> <input class="ain" type="date" id="startFrom" value="' + (m.startFrom || '') + '"></div>' +
@@ -1639,9 +1675,13 @@ function renderAdmin(r) {
     '<div class="arow"><input class="ain" type="date" id="swapOff"> <span style="color:var(--g500)">근무일 → 휴무</span> <span style="color:var(--g400)">⇄</span> <input class="ain" type="date" id="swapOn"> <span style="color:var(--g500)">휴무 → 근무일</span> <button class="abtn" id="swapGo">변경</button></div>' +
     '<div class="anote">변경하면 캘린더·도장 가능일·개근 판정이 전부 바뀐 스케줄 기준으로 따라가요. 시간도 함께 옮겨져요(금→목이면 목이 12~16).</div></div>';
 
-  // 연차 부여 (v6 §10.9: 이유 8자 — 현아쌤 잔여 설명 줄에 그대로 보임)
+  // 연차 부여 (v6 §10.9: 이유 8자 — 잔여 설명 줄에 그대로 보임) + 부여 내역·취소(07-23 유성)
   html += '<div class="asec"><h4>연차 부여 (보너스)</h4><div class="arow"><input class="ain" type="number" id="grantH" min="1" max="48" value="4" style="width:80px"> 시간 <input class="ain" type="text" id="grantNote" maxlength="8" placeholder="이유 (예: 입사 보너스)" style="flex:1;min-width:140px"> <button class="abtn" id="grantGo">부여</button></div>' +
-    '<div class="anote">이유는 현아쌤 잔여 설명 줄에 그대로 보여요. 쓸 때 보너스부터 빠져요.</div></div>';
+    ((m.grants || []).length
+      ? '<table class="at">' + m.grants.map(function (g) {
+        return '<tr><td>' + g.date + ': ' + (g.note || '부여') + '<span class="sub2">' + g.hours + '시간</span></td><td class="num">' + (g.cid ? '<button class="abtn gray" data-void="' + g.cid + '">취소</button>' : '') + '</td></tr>';
+      }).join('') + '</table>' : '') +
+    '<div class="anote">이유는 잔여 설명 줄에 그대로 보여요. 쓸 때 보너스부터 빠져요. 취소하면 그 부여만 없던 일이 돼요(이미 쓴 만큼은 잔여에서 다시 계산).</div></div>';
 
   // v6: 처리 내역(§10.17 — 승인·반려·취소·자동 확정·외부 근무·사후 병가 전부)
   html += '<div class="asec"><h4>처리 내역 <span class="cavt">최근 ' + (r.history || []).length + '건</span></h4>';
@@ -1656,32 +1696,35 @@ function renderAdmin(r) {
       else stTxt = h.status;
       var kindTxt = h.kind + (h.past ? ' (지난 날짜)' : '');
       var subTxt = h.kind === '외부 근무' ? '본인 체크' : (h.reqAt ? String(h.reqAt).slice(5, 10).replace('-', '/') + ' 신청' : '');
+      var voidBtn = h.cid ? ' <button class="abtn gray" data-void="' + h.cid + '">취소</button>' : ''; // 병가·외부근무=즉시 확정형이라 여기서만 취소 가능(07-23)
       html += '<tr><td>' + h.kd + '<span class="sub2">' + subTxt + '</span></td><td>' + kindTxt + '</td>' +
-        '<td style="text-align:right;color:' + stColor + ';font-weight:700">' + stTxt + '</td></tr>';
+        '<td style="text-align:right;color:' + stColor + ';font-weight:700">' + stTxt + voidBtn + '</td></tr>';
     });
     html += '</table>';
   } else html += '<div class="anote">아직 처리한 내역이 없어요.</div>';
   html += '</div>';
 
   // 기기 등록
-  html += '<div class="asec"><h4>도장 기기 등록</h4><div class="arow"><input class="ain" type="text" id="devLabel" placeholder="기기 이름 (예: 사무실 PC)" style="flex:1;min-width:140px"> <button class="abtn" id="devGo">이 기기를 도장 기기로 등록</button></div>' +
+  var myDev = store.dev, myDevOn = !!(myDev && m.devices.some(function (d) { return d.id === myDev.id; }));
+  html += '<div class="asec"><h4>출퇴근 찍는 컴퓨터 <span class="cavt">' + (myDevOn ? '지금 이 컴퓨터: 등록됨' : '지금 이 컴퓨터: 등록 안 됨') + '</span></h4>' +
+    '<div class="arow"><input class="ain" type="text" id="devLabel" placeholder="컴퓨터 이름 (예: 사무실 PC)" style="flex:1;min-width:140px"> <button class="abtn" id="devGo">지금 쓰는 이 컴퓨터를 등록</button></div>' +
     (m.devices.length
       ? '<table class="at">' + m.devices.map(function (d) {
-        return '<tr><td>' + d.label + '<span class="sub2">' + d.at + ' 등록</span></td><td class="num"><button class="abtn gray" data-devrm="' + d.id + '">해제</button></td></tr>';
+        return '<tr><td>' + d.label + (myDev && d.id === myDev.id ? ' <span style="color:var(--green-dark);font-weight:700">(이 컴퓨터)</span>' : '') + '<span class="sub2">' + d.at + ' 등록</span></td><td class="num"><button class="abtn gray" data-devrm="' + d.id + '">해제</button></td></tr>';
       }).join('') + '</table>'
-      : '<div class="anote">등록된 기기가 없어요.</div>') +
-    '<div class="anote">도장·보정은 등록 기기에서만 눌려요. 폰·다른 컴퓨터는 조회·신청만.</div></div>';
+      : '<div class="anote">등록된 컴퓨터가 없어요.</div>') +
+    '<div class="anote">출퇴근 찍기는 등록된 컴퓨터에서만 눌려요. 폰·다른 컴퓨터는 조회와 휴가 신청만. ⚠️등록은 반드시 그 컴퓨터 앞에서(원격 등록 안 됨 — 등록 정보가 그 컴퓨터 브라우저에 저장돼요)</div></div>';
 
   // 정정
-  html += '<div class="asec"><h4>도장 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
-    '<div class="anote">원래 기록은 남고 정정 행이 이겨요(감사 추적). 시각을 비우면 그 도장을 지운 것으로 봐요.</div></div>';
+  html += '<div class="asec"><h4>출퇴근 기록 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
+    '<div class="anote">그 날짜의 출퇴근 시각을 통째로 바꿔요. 원래 기록은 남고 정정이 이겨요(감사 추적). 시각을 비우면 그 기록을 지운 것으로 봐요.</div></div>';
 
   // 주휴 15h 보드
   html += '<div class="asec"><h4>주휴 15시간 판정 — 제공인력 <span class="cavt">01 대장 4주 평균 · 참고치</span></h4><div class="arow"><button class="abtn" id="w15Go">불러오기</button></div><div id="w15Out"></div></div>';
 
   // 월마감
-  html += '<div class="asec"><h4>월마감</h4><div class="arow"><input class="ain" type="month" id="closeYm"> <button class="abtn" id="closeGo">마감 실행</button></div>' +
-    '<div class="anote">매월 1일 아침 자동으로 돌고 카톡이 가요 — 여기선 수동 재실행만.</div><div id="closeOut"></div></div>';
+  html += '<div class="asec"><h4>월마감 <span class="cavt">전월 확정 스냅샷</span></h4><div class="arow"><input class="ain" type="month" id="closeYm"> <button class="abtn" id="closeGo">마감 실행</button></div>' +
+    '<div class="anote">한 달 근무·지각·연차·무급을 확정해 시트에 남기는 월급 정산 근거예요. 매월 1일 아침 자동으로 돌고 카톡이 와요. 여기선 정정 후 다시 돌릴 때만 쓰면 돼요.</div><div id="closeOut"></div></div>';
 
   b.innerHTML = html;
 
@@ -1758,6 +1801,26 @@ function renderAdmin(r) {
       });
     });
   });
+  document.querySelectorAll('[data-void]').forEach(function (btn) { // 부여·병가·외부근무 취소 — 원장엔 무효 행으로 남아 복구 가능
+    btn.addEventListener('click', function () {
+      adminApi('admin_void', { emp: m.emp, target: btn.dataset.void, cid: cid() }, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); return; }
+        toast('기록을 취소했어요'); loadAdmin();
+      });
+    });
+  });
+  $('memAddGo').addEventListener('click', function () {
+    var k = $('memKey').value.trim(), nm = $('memName').value.trim();
+    if (!k || !nm) { toast('영문 키와 이름을 둘 다 적어 주세요'); return; }
+    adminApi('admin_member_add', { newEmp: k, name: nm }, true).then(function (rr) {
+      if (!rr.ok) { toast(rr.error); return; }
+      // 등록 코드=이 응답 1회만 — 재렌더(loadAdmin)하면 지워지므로 화면 유지, 목록은 다음 진입 때 반영
+      document.getElementById('memAddOut').innerHTML = '<div class="anote" style="color:var(--green-dark);font-weight:700">' + nm + ' 등록 코드: ' + rr.token + ' (지금 한 번만 보여요. 본인 폰 첫 화면에 입력)</div>';
+      toast('구성원을 추가했어요');
+    });
+  });
+  var memSelEl = document.getElementById('admMemSel');
+  if (memSelEl) memSelEl.addEventListener('change', function () { state.admMi = +this.value; renderAdmin(r); });
   $('corrGo').addEventListener('click', function () {
     var d = $('corrDate').value;
     if (!d) { toast('날짜를 골라 주세요'); return; }
@@ -1923,6 +1986,8 @@ function demoApi(action, data) {
   if (action === 'admin_swap' || action === 'admin_correct' || action === 'admin_schedule_set') return Promise.resolve({ ok: true });
   if (action === 'admin_device_register') return Promise.resolve({ ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } });
   if (action === 'admin_device_remove') return Promise.resolve({ ok: true });
+  if (action === 'admin_void') return Promise.resolve({ ok: true });
+  if (action === 'admin_member_add') return Promise.resolve({ ok: true, emp: data.newEmp, token: 'demo1234' });
   return Promise.resolve({ ok: false, error: 'demo 미지원: ' + action });
 }
 
