@@ -24,7 +24,9 @@
  *   시간 트리거 없음(코어 원칙 — 저장하지 않고 읽을 때 계산).
  *
  * settings: { emp, name, schedule:{'1':['11:00','15:00'],...}(0=일…6=토), graceMin:3,
- *             holidays:['YYYY-MM-DD',…], accrualFrom:'2026-08', anchor:'2025-10-01' }
+ *             holidays:['YYYY-MM-DD',…], accrualFrom:'2026-08', anchor:'2025-10-01',
+ *             startFrom:'YYYY-MM-DD'(옵션 — 근태 시작일, 관리자 설정. 그 전 날짜는 근무일 자체가 아님:
+ *             도입 전 테스트 도장·런치 지연분이 결근·미기록·부족분 차감을 오염시키지 않게. 미설정=기존 동작) }
  *
  * ⚖️ 법리 가드(코드 불변):
  *   - 지각은 어떤 공제·차감도 만들지 않는다(카운트만). "지각 N회=결근/연차차감" 로직 영구 금지(법무 811-4808).
@@ -156,6 +158,7 @@ var AttEngine = (function () {
   // ── 하루 계획: 근무일인가, 몇 시부터 몇 시인가 ──
   //    우선순위: 스왑 > 공휴일(회사 휴무) > 요일 스케줄
   function dayPlan(dateStr, settings, swaps) {
+    if (settings.startFrom && dateStr < settings.startFrom) return { work: false, why: '시작전' }; // 결근·개근·차감·캘린더 전 파생이 이 한 곳으로 일관
     var sw = swaps[dateStr];
     if (sw) {
       if (!sw.work) return { work: false, why: '스왑휴무' };
@@ -262,6 +265,7 @@ var AttEngine = (function () {
     if (!firstPunch) return [];
     var from = settings.accrualFrom + '-01';
     if (firstPunch > from) from = firstPunch;
+    if (settings.startFrom && settings.startFrom > from) from = settings.startFrom; // 시작 전 열린 출근(missingOut은 plan 무관)도 차단
     var out = [];
     for (var d = from; d < todayStr; d = addDays(d, 1)) {
       var st = dayStatus(d, events, settings, swaps, corr, todayStr, null);
@@ -328,6 +332,7 @@ var AttEngine = (function () {
     //   (결근=absent은 차감이 아니라 무급 — 부족분 차감은 "출근은 했는데 4h 미만"만)
     var scanFrom = settings.accrualFrom + '-01';
     if (events.length) { var d0 = events[0].date; if (d0 < scanFrom) scanFrom = d0; }
+    if (settings.startFrom && settings.startFrom > scanFrom) scanFrom = settings.startFrom; // 시작 전 테스트 도장의 부족분 차감 오염 차단
     for (var d = scanFrom; d < todayStr; d = addDays(d, 1)) {
       if (seen[d]) continue; seen[d] = 1;
       var st = dayStatus(d, events, settings, swaps, corr, todayStr, null);

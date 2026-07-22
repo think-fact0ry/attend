@@ -24,11 +24,11 @@
   --p-disabled:#b7e0c8;
   --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#c07f00;
 /* TOKENS:END */
-  /* 앱 전용(마커 밖) — 07-22 유성: "100에서 전체적으로 좀 줄었으면" → 토큰 일괄 축소(~92%) */
-  --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,13px); --r-lg:clamp(13px,3.2vw,18px);
-  --fs-display:clamp(26px,5.5vw,36px); --fs-h1:clamp(21px,3.2vw,27px); --fs-h2:clamp(19px,2.4vw,24px); --fs-h3:19px;
-  --fs-title:16px; --fs-body:14.5px; --fs-sm:13px; --fs-caption:11.5px;
-  --maxw:480px;
+  /* 앱 전용(마커 밖) — 07-22(2) 유성: "크기는 되돌리되 가로폭을 좀 더" → 토큰 축소(~92%) 원복 + maxw만 축소 */
+  --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,14px); --r-lg:clamp(13px,3.2vw,20px);
+  --fs-display:clamp(28px,6vw,42px); --fs-h1:clamp(23px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px); --fs-h3:20px;
+  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --maxw:440px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -41,6 +41,7 @@ body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;backg
 /* ── 헤더 ── */
 .hd{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 20px 0;min-height:52px}
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
+#meTitle{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none} /* 롱프레스 보호 — 선택·콜아웃·스크롤 가로채기가 pointercancel을 만들던 것 차단 */
 .hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .hd .ic:active{transform:scale(.82)}
 .hd .ic svg{width:22px;height:22px}
@@ -54,7 +55,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 
 .scr{display:none;flex-direction:column;flex:1}
 .scr.on{display:flex}
-.body{padding:16px 18px calc(18px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
+.body{padding:18px 20px calc(20px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
 
 /* ── 공통 컴포넌트 ── */
 .rows{background:var(--g50);border-radius:var(--r-md);padding:4px 18px}
@@ -64,7 +65,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .row .v{font-weight:700;color:var(--g900);text-align:right}
 .row .v.gr{color:var(--green-dark)}
 .bplus{color:var(--green600)}
-.btn{width:100%;border:0;border-radius:14px;padding:15px;font:inherit;font-size:var(--fs-title);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;overflow:hidden}
+.btn{width:100%;border:0;border-radius:15px;padding:17px;font:inherit;font-size:var(--fs-title);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;overflow:hidden}
 .btn:active{transform:scale(.97)}
 .btn.fill{background:var(--green600);color:#fff}
 .btn.fill:active{background:var(--green700)}
@@ -85,7 +86,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .bigin:focus{box-shadow:0 0 0 2px var(--green500) inset}
 
 /* ── 메인 ── */
-.hero{padding:20px 4px 18px}
+.hero{padding:26px 4px 22px}
 .hero .hl{font-size:var(--fs-sm);color:var(--g500);font-weight:600}
 .hero .hv{font-size:var(--fs-display);font-weight:800;letter-spacing:-1px;margin-top:4px}
 .hero .hv small{font-size:var(--fs-h3);font-weight:700;color:var(--g700);margin-left:2px}
@@ -97,8 +98,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .today.late .dot{background:var(--warn)}
 .today.gray{background:var(--g50);color:var(--g600)}
 .today.gray .dot{background:var(--g300)}
-.punch{display:flex;gap:10px;margin-top:auto;padding-top:16px}
-.punch .btn{padding:18px 0;font-size:17px}
+.punch{display:flex;gap:10px;margin-top:auto;padding-top:18px}
+.punch .btn{padding:22px 0;font-size:18px}
 .punch .done{background:var(--g100);color:var(--g500);font-weight:600;cursor:default}
 .punch .done b{display:block;color:var(--g700);font-size:var(--fs-body);margin-top:3px}
 .punch .done:active{transform:none}
@@ -141,7 +142,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .wdrow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;border-bottom:1px solid var(--g200);padding-bottom:8px;margin:2px 0 6px} /* 07-22 유성: 연도월↔요일행 +2px */
 .wdrow .wd{font-size:var(--fs-caption);color:var(--g500);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
-.day{border-radius:10px;padding:7px 0 5px;height:50px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.day{border-radius:10px;padding:8px 0 6px;height:54px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .day:active{transform:scale(.88)}
 .day.blank{cursor:default}
 .day.blank:active{transform:none}
@@ -151,7 +152,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day.cur{background:var(--green100)} /* v6: 메인 .today 필 CSS와 충돌(8px 밀림 실측) → .cur로 분리 */
 .day.sel{background:var(--g100)}
 .day .bdg{display:inline-block;font-size:9px;font-weight:700;border-radius:99px;padding:1.5px 6px;margin-top:2px;background:var(--g100);color:var(--g500)}
-.dots{position:absolute;top:30px;left:0;right:0;display:flex;justify-content:center;gap:3px;height:8px} /* §10.11 상단 고정 절대 배치 */
+.dots{position:absolute;top:33px;left:0;right:0;display:flex;justify-content:center;gap:3px;height:8px} /* §10.11 상단 고정 절대 배치 */
 .dots .d{width:7px;height:7px;border-radius:50%}
 .d.ok{background:var(--green500)}
 .d.la{background:var(--warn)}
@@ -318,9 +319,10 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .vsheet .cs2{font-size:var(--fs-sm);color:var(--g500);margin:10px 2px 0;text-align:center}
 
 /* ── v6 시각 입력 위젯 (오전/오후 세그 + OTP식 커서칸 — §4.2-10 차용) ── */
-.tw-ap{display:flex;gap:8px;margin-bottom:12px}
-.tw-ap button{flex:1;border:0;border-radius:12px;padding:12px 0;font:inherit;font-size:var(--fs-body);font-weight:600;background:var(--g100);color:var(--g600);cursor:pointer}
-.tw-ap button.on{background:var(--green500);color:var(--ink-on-dark)}
+/* 오전/오후 = §4.9 탭 세그(09 .seg 문법 — 회색 트랙+선택 흰-필+그림자, 07-22(2) 유성: 큰 채움 버튼 대체) */
+.tw-ap{display:flex;gap:6px;background:var(--g100);border-radius:12px;padding:4px;margin-bottom:12px}
+.tw-ap button{flex:1;border:0;border-radius:9px;padding:8px 0;font:inherit;font-size:var(--fs-sm);font-weight:600;background:transparent;color:var(--g500);cursor:pointer;transition:all .2s}
+.tw-ap button.on{background:#fff;color:var(--green-dark);box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .tw-box{position:relative;display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:4px;cursor:text}
 .tw-cell{width:50px;height:58px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--green-dark);position:relative}
 .tw-cell.filled{background:#fff;box-shadow:0 0 0 1px var(--g200) inset}
@@ -329,14 +331,13 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .tw-cell.pop{animation:twPop .18s ease-out}
 .tw-colon{font-size:22px;font-weight:800;color:var(--g400)}
 .tw-in{position:absolute;inset:0;opacity:0;border:0;font-size:16px;color:transparent;caret-color:transparent}
-.tw-hint{text-align:center;font-size:var(--fs-caption);color:var(--g500);margin-bottom:8px}
 @keyframes twBlink{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes twPop{0%{transform:scale(.8)}100%{transform:scale(1)}}
 
 /* ── v6 캘린더: 확정=회색 날짜+빨간 텍스트, 대기=회색 점, 미체크=링, 점 줄=상단 고정(§10.11) ── */
 .day{position:relative}
 .day.leave .n{color:var(--g300);opacity:.6}
-.lvtxt{position:absolute;top:28px;left:0;right:0;font-size:10px;font-weight:700;color:var(--red);letter-spacing:-.2px;text-align:center}
+.lvtxt{position:absolute;top:31px;left:0;right:0;font-size:10px;font-weight:700;color:var(--red);letter-spacing:-.2px;text-align:center}
 .d.pd{background:var(--g300)}
 .d.ring{background:none;border:1.6px solid var(--g900);width:8px;height:8px}
 .d.ring.rok{border-color:var(--green500)}
@@ -373,7 +374,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
       <div class="q">등록 코드를<br>입력해 주세요</div>
       <input class="bigin" id="tokenIn" type="password" autocomplete="off">
       <div style="margin-top:14px"><button class="btn fill" id="tokenGo">시작하기</button></div>
-      <div class="pnote" style="text-align:center;margin-top:14px">등록 코드는 대표님에게 받아요. 처음 한 번만 입력해요</div>
+      <div class="pnote" style="text-align:center;margin-top:14px">등록 코드는 처음 한 번만 입력해요</div>
     </div></div>
   </section>
 
@@ -517,7 +518,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
         <div class="row"><span class="l">남은 연차</span><span class="v gr" id="ledgerLeft">—</span></div>
       </div>
       <div class="rows" id="ledgerRows"></div>
-      <div class="pnote">연차는 한 달을 다 채우면(개근) 다음 달 1일에 4시간씩 생기고, 생긴 날부터 1년 동안 쓸 수 있어요. (+숫자)는 대표님이 따로 챙겨준 보너스예요. 쓸 때 보너스부터 빠져요.</div>
+      <div class="pnote">연차는 한 달을 다 채우면(개근) 다음 달 1일에 4시간씩 생기고, 생긴 날부터 1년 동안 쓸 수 있어요. (+숫자)는 따로 챙겨드린 연차예요. 쓸 때 여기부터 빠져요.</div>
     </div>
   </section>
 
@@ -611,6 +612,9 @@ var store = {
   set dev(v) { localStorage.setItem('att_dev', JSON.stringify(v)); }
 };
 var state = { status: null, db: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
+// 07-22(2) 유성: 앱 안 우클릭 차단(+안드로이드 롱프레스 메뉴 — 관리자 5초 누름 보호 겸함).
+//   ⚠️소스 완전 차단은 아님(정적 페이지 본질) — 코드에 비밀 0(토큰=localStorage·시크릿=서버)이라 억제용.
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
 /* ── 클라 파생 계층(07-22): sync 한 번 → 근태엔진(서버와 동일 코드)이 로컬에서 전부 계산.
    월 이동·연차 내역·내 정보 = 네트워크 0(유성 "캐시 말고 근본" — 원장을 받아 파생을 옮김). 쓰기 검증은 서버 그대로. ── */
@@ -934,8 +938,7 @@ function twMount(host, defaultHm) {
   var val = '';
   host.innerHTML =
     '<div class="tw-ap"><button type="button" data-ap="am"' + (!pm ? ' class="on"' : '') + '>오전</button><button type="button" data-ap="pm"' + (pm ? ' class="on"' : '') + '>오후</button></div>' +
-    '<div class="tw-box"><span class="tw-cell"></span><span class="tw-cell"></span><span class="tw-colon">:</span><span class="tw-cell"></span><span class="tw-cell"></span><input class="tw-in" inputmode="numeric" autocomplete="off"></div>' +
-    '<div class="tw-hint">숫자를 치면 새 시각으로 바뀌어요</div>';
+    '<div class="tw-box"><span class="tw-cell"></span><span class="tw-cell"></span><span class="tw-colon">:</span><span class="tw-cell"></span><span class="tw-cell"></span><input class="tw-in" inputmode="numeric" autocomplete="off"></div>';
   var cells = [].slice.call(host.querySelectorAll('.tw-cell'));
   var input = host.querySelector('.tw-in');
   function paint() {
@@ -1390,7 +1393,7 @@ function loadLedger() {
     else if (row.kind === '차감') { v = '−' + fmtMin(-row.deltaMin); color = 'var(--g700)'; }
     else if (row.kind === '무급') { v = '무급 ' + fmtMin(row.unpaidMin || 0); color = 'var(--g400)'; }
     else { v = '소멸 ' + fmtMin(-row.deltaMin); color = 'var(--g400)'; }
-    d.innerHTML = '<span class="l">' + row.at + ' - ' + bonusLabel(row.label) + '</span><span class="v" style="color:' + color + '">' + v + '</span>';
+    d.innerHTML = '<span class="l">' + row.at + ': ' + bonusLabel(row.label) + '</span><span class="v" style="color:' + color + '">' + v + '</span>'; // 07-22(2) 유성: 구분자 하이픈→콜론
     wrap.appendChild(d);
   });
 }
@@ -1412,7 +1415,7 @@ function loadMe() {
   $('pinChangeGo').addEventListener('click', changePinFlow);
   $('meNote').innerHTML = (db.devices && db.devices.length
     ? '출퇴근을 찍는 컴퓨터: ' + db.devices.map(function (d) { return d.label; }).join(', ')
-    : '출퇴근을 찍는 컴퓨터가 아직 등록되지 않았어요. 등록은 대표님이 해요')
+    : '출퇴근을 찍는 컴퓨터가 아직 등록되지 않았어요')
     + '<div style="margin-top:16px;text-align:center"><button class="tlink" id="logoutGo">로그아웃 하기</button></div>';
   $('logoutGo').addEventListener('click', function () {
     localStorage.removeItem('att_token'); // 기기 등록(att_dev)은 PC 소속이라 유지
@@ -1420,15 +1423,20 @@ function loadMe() {
     go('token'); toast('로그아웃했어요. 등록 코드를 다시 입력하면 들어와요');
   });
 }
-// 롱프레스 5초 — ⚠️07-22 버그 수정: 마우스 미세 떨림(pointermove)이 타이머를 죽여 데스크탑에서 안 열렸음 → 8px 이상 이동만 취소
+// 롱프레스 5초 — 07-22(2) 강건화: 실기기에서 여전히 불발(유성) → ①setPointerCapture(작은 타이틀 밖으로
+//   1px만 벗어나도 pointerleave가 타이머를 죽이던 오탐 제거 — 캡처 중엔 leave 안 옴) ②텍스트 선택·
+//   롱프레스 콜아웃 차단(#meTitle CSS + 전역 contextmenu 방지)이 pointercancel 유발 자체를 없앰. 8px 이동 취소는 유지.
 (function () {
   var tm = null, sx = 0, sy = 0;
   var el = $('meTitle');
-  el.addEventListener('pointerdown', function (e) { sx = e.clientX; sy = e.clientY; clearTimeout(tm); tm = setTimeout(openAdminPin, 5000); });
+  el.addEventListener('pointerdown', function (e) {
+    sx = e.clientX; sy = e.clientY; clearTimeout(tm); tm = setTimeout(openAdminPin, 5000);
+    try { el.setPointerCapture(e.pointerId); } catch (x) { }
+  });
   el.addEventListener('pointermove', function (e) {
     if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) clearTimeout(tm);
   });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (evn) {
+  ['pointerup', 'pointercancel'].forEach(function (evn) {
     el.addEventListener(evn, function () { clearTimeout(tm); });
   });
 })();
@@ -1556,7 +1564,9 @@ function renderAdmin(r) {
   html += '<div class="asec"><h4>' + m.name + ' — 소정근로 스케줄 <span class="cavt">요일마다 다르게 설정 가능</span></h4><div id="schedEdit">';
   for (var wd = 1; wd <= 6; wd++) html += schedRowHtml(wd, m.schedule[String(wd)]);
   html += schedRowHtml(0, m.schedule['0']);
-  html += '</div><div class="arow" style="margin-top:10px"><button class="abtn" id="schedSave">스케줄 저장</button><span class="anote" style="margin-top:0">저장하면 지각·조퇴·개근·달 소정시간이 전부 새 스케줄 기준으로 바뀌어요</span></div></div>';
+  html += '</div><div class="arow" style="margin-top:10px"><span style="color:var(--g500)">근태 시작일</span> <input class="ain" type="date" id="startFrom" value="' + (m.startFrom || '') + '"></div>' +
+    '<div class="anote">시작일 전 날짜는 근무일로 치지 않아요. 도입 전 시험 기록이 결근·차감으로 잡히는 걸 막아요. 비우면 제한 없음.</div>' +
+    '<div class="arow" style="margin-top:10px"><button class="abtn" id="schedSave">스케줄 저장</button><span class="anote" style="margin-top:0">저장하면 지각·조퇴·개근·달 소정시간이 전부 새 스케줄 기준으로 바뀌어요</span></div></div>';
 
   // 근무일 변경(하루 맞바꾸기)
   html += '<div class="asec"><h4>근무일 변경 (하루 맞바꾸기) <span class="cavt">근로자 요청·상호 합의 시</span></h4>' +
@@ -1638,7 +1648,7 @@ function renderAdmin(r) {
       if (on && on.checked && s.value && e.value) schedule[String(wd)] = [s.value, e.value];
     }
     if (!Object.keys(schedule).length) { toast('근무 요일이 없어요'); return; }
-    adminApi('admin_schedule_set', { emp: m.emp, schedule: schedule }, true).then(function (rr) {
+    adminApi('admin_schedule_set', { emp: m.emp, schedule: schedule, startFrom: document.getElementById('startFrom').value }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
       toast('스케줄을 저장했어요'); loadAdmin();
     });
