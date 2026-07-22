@@ -28,14 +28,15 @@
   --r-sm:clamp(7px,1.8vw,10px); --r-md:clamp(10px,2.6vw,14px); --r-lg:clamp(13px,3.2vw,20px);
   --fs-display:clamp(28px,6vw,42px); --fs-h1:clamp(23px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px); --fs-h3:20px;
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
-  --maxw:440px;
+  --maxw:480px; /* 07-22(3) 유성 정정: "가로폭"=PWA 창 자체 폭이었음 — 내부는 480 원복, 창은 resizeTo+수동 1회 */
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 /* 07-22 유성: 스크롤바가 생겼다 사라지며 폭이 흔들림 → 스크롤바 자체를 안 그림(스크롤은 그대로) */
 html{scrollbar-width:none;-ms-overflow-style:none}
 ::-webkit-scrollbar{display:none;width:0;height:0}
-body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased;overscroll-behavior:none;user-select:none;-webkit-user-select:none;cursor:default} /* 07-22(3) 유성: 복사·드래그 선택·I빔 커서 전면 차단 */
+input,textarea{user-select:text;-webkit-user-select:text} /* 입력칸만 예외 */
 #app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
 /* ── 헤더 ── */
@@ -86,7 +87,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .bigin:focus{box-shadow:0 0 0 2px var(--green500) inset}
 
 /* ── 메인 ── */
-.hero{padding:26px 4px 22px}
+.hero{padding:26px 0 22px} /* 07-22(3) 유성: 좌 4px 제거 — 헤더 타이틀과 라인 정렬 */
 .hero .hl{font-size:var(--fs-sm);color:var(--g500);font-weight:600}
 .hero .hv{font-size:var(--fs-display);font-weight:800;letter-spacing:-1px;margin-top:4px}
 .hero .hv small{font-size:var(--fs-h3);font-weight:700;color:var(--g700);margin-left:2px}
@@ -194,6 +195,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .seg3{display:flex;gap:8px;margin-bottom:18px}
 .seg3 button{flex:1;border:0;border-radius:var(--r-md);padding:15px 0;font:inherit;font-size:var(--fs-body);font-weight:600;background:var(--g100);color:var(--g600);cursor:pointer}
 .seg3 button.on{background:var(--green500);color:var(--ink-on-dark)}
+/* 값 선택 옵션카드(§4.9 면 문법 — 틴트+초록 볼드) = 세그(연차/병가 뷰 전환)와 다른 문법. 07-22(3) 유성: "같은 UI라 불편" 해소 */
+.optrow{display:flex;gap:8px}
+.optrow .opt{flex:1;border:0;border-radius:12px;padding:13px 0;font:inherit;font-size:var(--fs-body);font-weight:600;background:var(--g100);color:var(--g500);cursor:pointer;transition:background .15s,color .15s}
+.optrow .opt.on{background:var(--green100);color:var(--green-dark);font-weight:700}
 .fld{margin-bottom:12px}
 .fld label{display:block;font-size:var(--fs-caption);color:var(--g500);font-weight:600;margin-bottom:6px}
 .fbox{background:var(--g100);border-radius:14px;padding:16px 17px;font-size:var(--fs-title);font-weight:600;display:flex;justify-content:space-between;align-items:center;color:var(--g900);cursor:pointer;position:relative}
@@ -207,6 +212,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .result .new{font-size:26px;font-weight:800;color:var(--green-dark);letter-spacing:-.5px}
 .result .new small{font-size:var(--fs-body);font-weight:700}
 .pnote{font-size:var(--fs-caption);color:var(--g500);line-height:1.6;margin:12px 2px 0}
+.result .rsub{font-size:var(--fs-caption);color:var(--warn-weak-fg);font-weight:600;text-align:right;margin-top:6px} /* 무급 경고 — 미리보기 박스 안(버튼 위 문단 폐지, 07-22(3) 유성) */
 .apply-cta{margin-top:auto;padding-top:16px}
 .apply-cta .sub{text-align:center;font-size:var(--fs-caption);color:var(--g500);margin-top:10px}
 
@@ -232,6 +238,24 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .dcard .io .t2.late{color:var(--warn-weak-fg)}
 .dcard .io .t2.fix{color:var(--g500)}
 .dcard .io .t2.dim2{color:var(--g400)}
+
+/* ── 내 정보(07-22(3) 유성: 회색 배경+흰 박스, 나의 근태 .mybody와 같은 문법) ── */
+#s-me{background:var(--g50)}
+#s-me .rows{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.btn.dangerfill{background:var(--danger);color:#fff;margin-top:16px} /* §4.14 fill-danger — 로그아웃 */
+.btn.dangerfill:active{background:#b9444a}
+
+/* ── 스켈레톤(§5.4 — 첫 로딩 '—' 대체) ── */
+.sk-b{display:inline-block;background:var(--g100);border-radius:8px;animation:skp 1.1s ease-in-out infinite;pointer-events:none}
+@keyframes skp{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── 신청 날짜 선택 시트(07-22(3) 유성: 네이티브 date input 폐지 — 앱 캘린더 문법 재사용) ── */
+.dsheet .dsnav{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
+.dsheet .dsnav .mt2{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;min-width:110px;text-align:center}
+.dsheet .grid .day{height:44px;padding:11px 0}
+.dsheet .day.off .n{color:var(--g300)}
+.dsheet .day.pick{background:var(--green100)}
+.dsheet .day.pick .n{color:var(--green-dark);font-weight:800}
 
 /* ── PIN 키패드 ── */
 .pinov{position:fixed;inset:0;background:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:850;padding:20px}
@@ -456,29 +480,29 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
       </div>
       <div class="fld">
         <label>날짜</label>
-        <div class="fbox"><span id="applyDateTxt">날짜를 골라 주세요</span>
+        <div class="fbox" id="applyDateBox"><span id="applyDateTxt">날짜를 골라 주세요</span>
           <svg class="li" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <input type="date" id="applyDate">
         </div>
       </div>
       <div class="fld">
         <label>시간</label>
-        <div class="fbox" id="applyHours"><span id="applyHoursTxt">하루 (4시간)</span>
-          <svg class="li" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="optrow">
+          <button type="button" class="opt on" id="hoursFull">하루 (4시간)</button>
+          <button type="button" class="opt" id="hoursHalf">반차 (2시간)</button>
         </div>
       </div>
       <div class="fld" id="halfFld" style="display:none">
         <label>반차 시간대</label>
-        <div class="seg3" style="margin-bottom:0">
-          <button id="halfFront" class="on">앞 (처음 2시간)</button>
-          <button id="halfBack">뒤 (나중 2시간)</button>
+        <div class="optrow">
+          <button type="button" class="opt on" id="halfFront">앞 (처음 2시간)</button>
+          <button type="button" class="opt" id="halfBack">뒤 (나중 2시간)</button>
         </div>
       </div>
       <div class="result">
         <div class="rl">남는 연차</div>
         <div class="rv" id="applyResult"><span class="old">—</span></div>
+        <div class="rsub" id="applyWarn" style="display:none"></div>
       </div>
-      <div class="pnote" id="applyNote"></div>
       <div class="apply-cta footbar">
         <button class="btn fill" id="applyGo" disabled>신청하기</button>
         <div class="sub" id="applySub">신청하면 남은 연차에서 바로 빠지고, 확인 후에 확정돼요</div>
@@ -575,6 +599,17 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   <div class="blockdim" id="blockDim"></div>
   <div class="vsheet noclose" id="missSheet"></div>
   <div class="vsheet close" id="rejSheet"></div>
+  <div class="blockdim" id="dsDim"></div>
+  <div class="vsheet close dsheet" id="dateSheet">
+    <div class="handle"></div>
+    <div class="dsnav">
+      <button class="mchev" id="dsPrev"><svg class="li" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="mt2" id="dsTitle"></div>
+      <button class="mchev" id="dsNext"><svg class="li" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="wdrow"><span class="wd">일</span><span class="wd">월</span><span class="wd">화</span><span class="wd">수</span><span class="wd">목</span><span class="wd">금</span><span class="wd">토</span></div>
+    <div class="grid" id="dsGrid"></div>
+  </div>
   <div class="mwheel" id="mWheel">
     <div class="mfade top"></div><div class="mfade bot"></div><div class="msel"></div>
     <div class="mlist" id="mWheelList"></div>
@@ -736,9 +771,9 @@ document.addEventListener('pointerdown', function (e) {
   setTimeout(function () { rip.remove(); }, 600);
 }, true);
 
-/* §4.9 비활성·done 버튼 = 누르면 shake(조용한 무반응 X) */
+/* §4.9 비활성·done 버튼 = 누르면 shake(조용한 무반응 X) — 신청하기(날짜 미선택)도 포함(07-22(3) 유성) */
 document.addEventListener('pointerdown', function (e) {
-  var t = e.target.closest('.punch .btn');
+  var t = e.target.closest('.punch .btn, .apply-cta .btn');
   if (t && (t.disabled || t.classList.contains('done'))) {
     t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
     setTimeout(function () { t.classList.remove('shake'); }, 420);
@@ -1279,43 +1314,78 @@ function renderCal(r) {
 var apply = { kind: '연차', hours: 4, half: 'front', date: '' };
 $('segLeave').addEventListener('click', function () { apply.kind = '연차'; segSync(); });
 $('segSick').addEventListener('click', function () { apply.kind = '병가'; segSync(); });
+function applyToday() { return state.db ? state.db.today : (state.status ? state.status.today : new Date().toISOString().slice(0, 10)); }
 function segSync() {
   $('segLeave').classList.toggle('on', apply.kind === '연차');
   $('segSick').classList.toggle('on', apply.kind === '병가');
-  $('applyNote').textContent = apply.kind === '병가' ? '병가는 남은 연차에서 먼저 쓰고, 연차를 다 쓰면 무급으로 쉬어요.' : '';
-  // v6(§10.1): 연차·반차=미래+당일만 / 병가=당일·과거만(사후 등록)
-  var today = state.status ? state.status.today : new Date().toISOString().slice(0, 10);
-  var di = $('applyDate');
-  if (apply.kind === '연차') { di.min = today; di.removeAttribute('max'); }
-  else { di.max = today; di.removeAttribute('min'); }
+  // v6(§10.1): 연차·반차=미래+당일만 / 병가=당일·과거만(사후 등록) — 범위 밖 선택은 리셋
+  var today = applyToday();
   if (apply.date && ((apply.kind === '연차' && apply.date < today) || (apply.kind === '병가' && apply.date > today))) {
-    apply.date = ''; di.value = ''; $('applyDateTxt').textContent = '날짜를 골라 주세요';
+    apply.date = ''; $('applyDateTxt').textContent = '날짜를 골라 주세요';
   }
   $('applySub').textContent = apply.kind === '병가'
-    ? '병가는 바로 반영돼요'
+    ? '병가는 바로 반영돼요. 남은 연차를 다 쓰면 무급으로 쉬어요.'
     : '신청하면 남은 연차에서 바로 빠지고, 확인 후에 확정돼요';
   $('applyDateTxt').textContent = apply.date ? kDate(apply.date) + (apply.kind === '병가' && apply.date < today ? ' (지난 날짜)' : '') : '날짜를 골라 주세요';
+  if (ds.open) buildDsCal(); // 종류가 바뀌면 고를 수 있는 날짜 범위도 바뀜
   previewApply();
 }
-$('applyHours').addEventListener('click', function (e) {
-  if (e.target.closest('input')) return;
-  apply.hours = apply.hours === 4 ? 2 : 4;
-  $('applyHoursTxt').textContent = apply.hours === 4 ? '하루 (4시간)' : '반차 (2시간)';
+$('hoursFull').addEventListener('click', function () { apply.hours = 4; hoursSync(); });
+$('hoursHalf').addEventListener('click', function () { apply.hours = 2; hoursSync(); });
+function hoursSync() {
+  $('hoursFull').classList.toggle('on', apply.hours === 4);
+  $('hoursHalf').classList.toggle('on', apply.hours === 2);
   $('halfFld').style.display = apply.hours === 2 ? 'block' : 'none';
   previewApply();
-});
+}
 $('halfFront').addEventListener('click', function () { apply.half = 'front'; halfSync(); });
 $('halfBack').addEventListener('click', function () { apply.half = 'back'; halfSync(); });
 function halfSync() { $('halfFront').classList.toggle('on', apply.half === 'front'); $('halfBack').classList.toggle('on', apply.half === 'back'); }
-$('applyDate').addEventListener('change', function () {
-  apply.date = this.value;
-  var today = state.status ? state.status.today : new Date().toISOString().slice(0, 10);
-  $('applyDateTxt').textContent = apply.date ? kDate(apply.date) + (apply.kind === '병가' && apply.date < today ? ' (지난 날짜)' : '') : '날짜를 골라 주세요';
-  previewApply();
-});
+
+/* 날짜 선택 = 앱 캘린더 문법 바텀시트(07-22(3) 유성 — 네이티브 date input 폐지) */
+function prevYm(ym) { return AttEngine.addMonths(ym + '-01', -1).slice(0, 7); }
+function nextYm(ym) { return AttEngine.addMonths(ym + '-01', 1).slice(0, 7); }
+var ds = { ym: '', open: false };
+function openDateSheet() {
+  if (!state.db) { syncNow(function () { openDateSheet(); }); return; }
+  ds.ym = (apply.date || applyToday()).slice(0, 7);
+  ds.open = true;
+  buildDsCal();
+  $('dsDim').classList.add('on');
+  setTimeout(function () { $('dateSheet').classList.add('on'); }, 20);
+}
+function closeDateSheet() { ds.open = false; $('dateSheet').classList.remove('on'); $('dsDim').classList.remove('on'); }
+function buildDsCal() {
+  var db = state.db, today = applyToday();
+  var swaps = AttEngine.swapOverrides(db.events, db.settings);
+  $('dsTitle').textContent = ymTitle(ds.ym);
+  var g = $('dsGrid'); g.innerHTML = '';
+  var first = new Date(+ds.ym.slice(0, 4), +ds.ym.slice(5, 7) - 1, 1).getDay();
+  for (var b = 0; b < first; b++) { var bd = document.createElement('div'); bd.className = 'day blank'; g.appendChild(bd); }
+  AttEngine.monthDates(ds.ym).forEach(function (d) {
+    var plan = AttEngine.dayPlan(d, db.settings, swaps);
+    var inRange = apply.kind === '연차' ? d >= today : d <= today;
+    var can = plan.work && inRange;
+    var el = document.createElement('div');
+    el.className = 'day' + (can ? '' : ' off blank') + (d === apply.date ? ' pick' : '') + (d === today ? ' cur' : '');
+    el.innerHTML = '<span class="n">' + (+d.slice(8, 10)) + '</span>';
+    if (can) el.addEventListener('click', function () {
+      apply.date = d;
+      $('applyDateTxt').textContent = kDate(d) + (apply.kind === '병가' && d < today ? ' (지난 날짜)' : '');
+      closeDateSheet(); previewApply();
+    });
+    g.appendChild(el);
+  });
+}
+$('applyDateBox').addEventListener('click', openDateSheet);
+$('dsPrev').addEventListener('click', function () { ds.ym = prevYm(ds.ym); buildDsCal(); });
+$('dsNext').addEventListener('click', function () { ds.ym = nextYm(ds.ym); buildDsCal(); });
+$('dsDim').addEventListener('click', closeDateSheet);
+initSheetDrag($('dateSheet'), closeDateSheet);
 var pvTimer = null;
 function previewApply() {
   $('applyGo').disabled = true;
+  $('applyWarn').style.display = 'none';
   if (!apply.date) { $('applyResult').innerHTML = '<span class="old">날짜를 고르면 보여드려요</span>'; return; }
   clearTimeout(pvTimer);
   pvTimer = setTimeout(function () {
@@ -1326,8 +1396,10 @@ function previewApply() {
       var oldTxt = fmtBalPlain({ baseMin: pv.baseMin, bonusMin: pv.bonusMin });
       var newTxt = fmtBalPlain({ baseMin: pv.afterBaseMin, bonusMin: pv.afterBonusMin });
       $('applyResult').innerHTML = '<span class="old">' + oldTxt + '</span><span class="arr">→</span><span class="new">' + newTxt.replace(/(시간|분)/g, '<small>$1</small>') + '</span>';
-      if (pv.unpaidAddMin > 0) $('applyNote').textContent = '남은 연차보다 커서 ' + fmtMin(pv.unpaidAddMin) + '은 무급으로 쉬어요.';
-      else if (apply.kind === '병가') $('applyNote').textContent = '병가는 남은 연차에서 먼저 쓰고, 연차를 다 쓰면 무급으로 쉬어요.';
+      // 무급 경고=미리보기 박스 안(버튼 위 문단 폐지 — 07-22(3) 유성. 병가 기본 설명은 버튼 아래 applySub로 이동)
+      var w = $('applyWarn');
+      if (pv.unpaidAddMin > 0) { w.style.display = 'block'; w.textContent = '남은 연차보다 커서 ' + fmtMin(pv.unpaidAddMin) + '은 무급으로 쉬어요'; }
+      else w.style.display = 'none';
       $('applyGo').disabled = false;
     }).catch(function () { toast('미리보기가 안 돼요'); });
   }, 250);
@@ -1416,7 +1488,7 @@ function loadMe() {
   $('meNote').innerHTML = (db.devices && db.devices.length
     ? '출퇴근을 찍는 컴퓨터: ' + db.devices.map(function (d) { return d.label; }).join(', ')
     : '출퇴근을 찍는 컴퓨터가 아직 등록되지 않았어요')
-    + '<div style="margin-top:16px;text-align:center"><button class="tlink" id="logoutGo">로그아웃 하기</button></div>';
+    + '<button class="btn dangerfill" id="logoutGo">로그아웃 하기</button>'; // §4.14 fill-danger(07-22(3) 유성)
   $('logoutGo').addEventListener('click', function () {
     localStorage.removeItem('att_token'); // 기기 등록(att_dev)은 PC 소속이라 유지
     state.db = null; state.status = null;
@@ -1845,13 +1917,26 @@ function demoApi(action, data) {
 
 /* ── 부팅 ── */
 if ('serviceWorker' in navigator && !DEMO) { try { navigator.serviceWorker.register('sw.js'); } catch (e) { } }
+function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보기(같은 위치·크기 회색 바)
+  $('heroVal').innerHTML = '<span class="sk-b" style="width:150px;height:34px"></span>';
+  $('heroSub').innerHTML = '<span class="sk-b" style="width:200px;height:13px"></span>';
+}
 (function boot() {
   if (DEMO) { store.token || (localStorage.setItem('att_token', 'demo')); }
-  if (!store.token) { go('token'); return; }
+  // 07-22(3) 유성: PWA 창 자체 폭 축소(내부 maxw 480 원복과 세트) — 앱 창에서만, 안 먹으면 수동 1회(Chrome이 기억)
+  if (matchMedia('(display-mode: standalone)').matches && window.outerWidth > 540) {
+    try { window.resizeTo(500, window.outerHeight); } catch (e) { }
+  }
+  // 관리자 잠수함 진입 2호(07-22(3)): ?admin=1 → PIN. 롱프레스 불발 대비 — 서버 admin_*는 PIN만 요구라 등록 코드 전에도 가능
+  var wantAdmin = /[?&]admin=1/.test(location.search);
+  if (!store.token) { go('token'); if (wantAdmin) openAdminPin(); return; }
   go('main');
+  mainSkeleton();
+  if (wantAdmin) openAdminPin();
   syncNow(function (c) {
     pollKey = pollSnap(c);
-    if (DEMO && DEMO_SCENE === 'cal') go('cal'); // 헤드리스 스크린샷용
+    if (DEMO && (DEMO_SCENE === 'cal' || DEMO_SCENE === 'apply' || DEMO_SCENE === 'me')) go(DEMO_SCENE); // 헤드리스 스크린샷용
+    if (DEMO && DEMO_SCENE === 'apply' && /[?&]ds=1/.test(location.search)) setTimeout(openDateSheet, 300); // 날짜 시트 촬영용
   });
 })();
 </script>
