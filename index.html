@@ -646,11 +646,6 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="ms2">연차는 바로 돌아와요</div>
     <div class="mbtns"><button class="btn gray" id="mKeep">둘게요</button><button class="btn fill" id="mCancel">취소하기</button></div>
   </div>
-  <div class="cmodal" id="lgModal"><!-- 로그아웃 확인(07-23 유성 — 한 번 물어보기, §4.4 좌=닫기·우=주액션) -->
-    <div class="mt2">로그아웃할까요?</div>
-    <div class="ms2" id="lgSub">다시 들어올 땐 출퇴근 비밀번호만 누르면 돼요</div>
-    <div class="mbtns"><button class="btn gray" id="lgKeep">닫기</button><button class="btn fill" id="lgGo" style="background:var(--danger)">로그아웃</button></div>
-  </div>
 
   <div class="cmodal" id="acModal"><!-- 관리자 확인(구성원 비활성 등, §4.4 좌=닫기·우=주액션) -->
     <div class="mt2" id="acTitle"></div>
@@ -1073,7 +1068,7 @@ function openCancelModal(c) {
   $('mTitle').textContent = (+c.date.slice(5, 7)) + '월 ' + (+c.date.slice(8, 10)) + '일 ' + c.kind + '를 취소할까요?';
   $('mDim').classList.add('on'); $('cModal').classList.add('on');
 }
-function closeCancelModal() { $('mDim').classList.remove('on'); $('cModal').classList.remove('on'); $('lgModal').classList.remove('on'); $('acModal').classList.remove('on'); acFn = null; }
+function closeCancelModal() { $('mDim').classList.remove('on'); $('cModal').classList.remove('on'); $('acModal').classList.remove('on'); acFn = null; }
 $('mKeep').addEventListener('click', closeCancelModal);
 $('mDim').addEventListener('click', closeCancelModal);
 // 2차: 로그아웃 모달 폐기(폰=세션 유지·공용PC=잠그기). lgModal HTML은 잔존하나 미사용.
@@ -1534,12 +1529,16 @@ function loadMe() {
   add('연차 시작', '2026년 8월 근무분부터');
   add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>');
   $('pinChangeGo').addEventListener('click', changePinFlow);
-  // 07-23 유성: 기기 목록은 현아 대면에 노출 금지(관리자만) — meNote=로그아웃만(소형 danger-weak)
-  // 2차: 폰은 로그아웃 없음(세션 영구 유지=토스식). 공용 PC(도장 기기)만 '잠그기'로 세션 종료(+퇴근·유휴 자동).
+  // 2차: 폰(비-출퇴근 PC)=세션 영구 유지·로그아웃 없음. 출퇴근 PC(전사 지정)=여럿이 공용이라 '로그아웃' 있음.
+  //   로그아웃=바로 잠그면 유저가 "내 번호 눌러야 하나" 혼란(유성 07-24) → 확인 모달+완료 인터랙션 후 잠금.
   $('meNote').innerHTML = state.db && state.db.deviceOk
-    ? '<button class="btn-out-sm" id="lockGo">지금 잠그기 (다른 사람이 써요)</button><div class="anote" style="margin-top:8px">퇴근을 찍거나 5분 자리를 비우면 자동으로 잠겨요. 다시 쓰려면 출퇴근 비밀번호를 눌러요.</div>'
+    ? '<button class="btn-out-sm" id="lockGo">로그아웃</button><div class="anote" style="margin-top:8px">이 컴퓨터는 여럿이 함께 써요. 로그아웃하면 다음 분이 비밀번호로 들어와요. 퇴근을 찍거나 5분 자리를 비우면 자동으로 로그아웃돼요.</div>'
     : '<div class="anote" style="margin-top:0">이 기기는 로그인 상태가 계속 유지돼요.</div>';
-  if ($('lockGo')) $('lockGo').addEventListener('click', lockNow);
+  if ($('lockGo')) $('lockGo').addEventListener('click', function () {
+    openConfirm('로그아웃 할까요?', '다음 분은 출퇴근 비밀번호로 들어와요.', '로그아웃', function () {
+      showDone('로그아웃했어요', '다음 분은 비밀번호로 들어와요'); setTimeout(lockNow, 1400);
+    });
+  });
 }
 // 진입/잠금 해제 공용(2차) — PIN 4자리 → login(전 구성원 매치·emp+세션 토큰 발급). 등록코드 폐기. 취소 없음.
 function loginGate() {
@@ -1787,16 +1786,16 @@ function renderAdmin(r) {
   } else html += '<div class="anote">아직 처리한 내역이 없어요.</div>';
   html += '</div>';
 
-  // 기기 등록
+  // 출퇴근 PC 지정(전사 — 사람 소속 아님, 모든 인력 공용. T3-1 유성 07-24)
   var myDev = store.dev, myDevOn = !!(myDev && m.devices.some(function (d) { return d.id === myDev.id; }));
-  html += '<div class="asec"><h4>출퇴근 찍는 컴퓨터 <span class="cavt">' + (myDevOn ? '지금 이 컴퓨터: 등록됨' : '지금 이 컴퓨터: 등록 안 됨') + '</span></h4>' +
-    '<div class="arow"><input class="ain" type="text" id="devLabel" placeholder="컴퓨터 이름 (예: 사무실 PC)" style="flex:1;min-width:140px"> <button class="abtn" id="devGo">지금 쓰는 이 컴퓨터를 등록</button></div>' +
+  html += '<div class="asec"><h4>출퇴근 PC 지정 <span class="cavt">' + (myDevOn ? '지금 이 컴퓨터: 지정됨' : '지금 이 컴퓨터: 지정 안 됨') + '</span></h4>' +
+    '<div class="arow"><input class="ain" type="text" id="devLabel" placeholder="컴퓨터 이름 (예: 사무실 PC)" style="flex:1;min-width:140px"> <button class="abtn" id="devGo">이 컴퓨터를 출퇴근 PC로 지정</button></div>' +
     (m.devices.length
       ? '<table class="at">' + m.devices.map(function (d) {
         return '<tr><td>' + d.label + (myDev && d.id === myDev.id ? ' <span style="color:var(--green-dark);font-weight:700">(이 컴퓨터)</span>' : '') + '<span class="sub2">' + d.at + ' 등록</span></td><td class="num"><button class="abtn gray" data-devrm="' + d.id + '">해제</button></td></tr>';
       }).join('') + '</table>'
-      : '<div class="anote">등록된 컴퓨터가 없어요.</div>') +
-    '<div class="anote">출퇴근 찍기는 등록된 컴퓨터에서만 눌려요. 폰·다른 컴퓨터는 조회와 휴가 신청만. ⚠️등록은 반드시 그 컴퓨터 앞에서(원격 등록 안 됨 — 등록 정보가 그 컴퓨터 브라우저에 저장돼요)</div></div>';
+      : '<div class="anote">지정된 출퇴근 PC가 없어요.</div>') +
+    '<div class="anote">출퇴근 PC로 지정하면 <b>모든 인력</b>이 그 컴퓨터에서 로그인·도장·로그아웃해요(사람마다 따로 지정 안 해도 됨). 폰·다른 컴퓨터는 조회와 휴가 신청만. ⚠️지정은 반드시 그 컴퓨터 앞에서(원격 지정 안 됨 — 지정 정보가 그 컴퓨터 브라우저에 저장돼요)</div></div>';
 
   // 정정
   html += '<div class="asec"><h4>출퇴근 기록 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
