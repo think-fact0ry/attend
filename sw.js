@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v11'; // 07-23 런치 프리플라이트: 관리자 카톡 알림 헬스 배지(notifyLast — 조용한 실패 가시화)
+var CACHE = 'tf-attend-v12'; // 07-23 구성원 비활성/재활성(목록 제외·기록 보존) — 테스트 구성원·퇴사자 정리, 확인 모달
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',

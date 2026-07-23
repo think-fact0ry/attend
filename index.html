@@ -652,6 +652,12 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="mbtns"><button class="btn gray" id="lgKeep">닫기</button><button class="btn fill" id="lgGo" style="background:var(--danger)">로그아웃</button></div>
   </div>
 
+  <div class="cmodal" id="acModal"><!-- 관리자 확인(구성원 비활성 등, §4.4 좌=닫기·우=주액션) -->
+    <div class="mt2" id="acTitle"></div>
+    <div class="ms2" id="acSub"></div>
+    <div class="mbtns"><button class="btn gray" id="acKeep">닫기</button><button class="btn fill" id="acGo" style="background:var(--danger)">확인</button></div>
+  </div>
+
   <div class="pinov" id="pinOv">
     <div class="pt">관리자 비밀번호</div>
     <div class="ps">숫자 6자리를 입력해 주세요</div>
@@ -1075,11 +1081,16 @@ function openCancelModal(c) {
   $('mTitle').textContent = (+c.date.slice(5, 7)) + '월 ' + (+c.date.slice(8, 10)) + '일 ' + c.kind + '를 취소할까요?';
   $('mDim').classList.add('on'); $('cModal').classList.add('on');
 }
-function closeCancelModal() { $('mDim').classList.remove('on'); $('cModal').classList.remove('on'); $('lgModal').classList.remove('on'); }
+function closeCancelModal() { $('mDim').classList.remove('on'); $('cModal').classList.remove('on'); $('lgModal').classList.remove('on'); $('acModal').classList.remove('on'); acFn = null; }
 $('mKeep').addEventListener('click', closeCancelModal);
 $('mDim').addEventListener('click', closeCancelModal);
 $('lgKeep').addEventListener('click', closeCancelModal);
 $('lgGo').addEventListener('click', doLogout);
+// 관리자 범용 확인 모달(구성원 비활성 등) — 우 버튼에 콜백 주입
+var acFn = null;
+function openConfirm(title, sub, btnLabel, fn) { $('acTitle').textContent = title; $('acSub').textContent = sub; $('acGo').textContent = btnLabel; acFn = fn; $('mDim').classList.add('on'); $('acModal').classList.add('on'); }
+$('acKeep').addEventListener('click', closeCancelModal);
+$('acGo').addEventListener('click', function () { var f = acFn; closeCancelModal(); if (f) f(); });
 $('mCancel').addEventListener('click', function () {
   if (!cancelTarget) return;
   var c = cancelTarget; cancelTarget = null;
@@ -1723,17 +1734,23 @@ function renderAdmin(r) {
     html += '</table>';
   } else html += '<div class="anote">기다리는 신청이 없어요.</div>';
   html += '</div>';
-  html += '<div class="asec"><h4>구성원 (행정직)</h4><table class="at"><tr><th>이름</th><th>소정근로</th><th class="num">이번 주</th><th class="num">이번 달</th><th class="num">연차 잔여</th><th></th></tr>';
+  html += '<div class="asec"><h4>구성원 (행정직)</h4><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="at"><tr><th>이름</th><th>소정근로</th><th class="num">이번 주</th><th class="num">이번 달</th><th class="num">연차 잔여</th><th></th></tr>';
   r.members.forEach(function (mm) {
     var sched = summarizeSched(mm.schedule);
     html += '<tr><td>' + mm.name + '<span class="sub2">' + mm.anchor + ' 입사</span></td><td><span class="sub2" style="font-size:var(--fs-sm);color:var(--g700)">' + sched + '</span></td>' +
       '<td class="num">' + Math.round(mm.weekMin / 60 * 10) / 10 + 'h</td><td class="num">' + fmtMin(mm.monthMin) + '</td>' +
       '<td class="num" style="color:var(--green-dark)">' + fmtBalPlain(mm.balance) + '</td>' +
-      '<td class="num"><button class="abtn" data-grant="' + mm.emp + '">+ 연차 부여</button></td></tr>';
+      '<td class="num"><button class="abtn" data-grant="' + mm.emp + '">+ 연차 부여</button> <button class="abtn gray" data-deact="' + mm.emp + '" data-nm="' + mm.name + '">비활성</button></td></tr>';
   });
-  html += '</table><div class="anote">이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 부족 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div>' +
+  html += '</table></div><div class="anote">이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 부족 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div>' +
     '<div class="arow" style="margin-top:10px"><input class="ain" type="text" id="memKey" placeholder="영문 키 (예: minji)" style="width:130px"> <input class="ain" type="text" id="memName" placeholder="이름" style="width:110px"> <button class="abtn" id="memAddGo">구성원 추가</button></div>' +
-    '<div class="anote">추가하면 기본 스케줄(월화수 11~15·금 12~16)·오늘이 근태 시작일로 만들어져요. 아래 스케줄 카드에서 바로 고치면 돼요.</div><div id="memAddOut"></div></div>';
+    '<div class="anote">추가하면 기본 스케줄(월화수 11~15·금 12~16)·오늘이 근태 시작일로 만들어져요. 아래 스케줄 카드에서 바로 고치면 돼요.</div><div id="memAddOut"></div>' +
+    ((r.inactiveMembers || []).length
+      ? '<div class="anote" style="margin-top:12px">비활성 구성원 <span class="cavt" style="margin-left:0;color:var(--g400)">목록에서 빠짐 · 근태 기록은 남아요</span></div>' +
+        '<table class="at">' + r.inactiveMembers.map(function (im) {
+          return '<tr><td style="color:var(--g500)">' + im.name + '</td><td class="num"><button class="abtn gray" data-react="' + im.emp + '">다시 활성화</button></td></tr>';
+        }).join('') + '</table>'
+      : '') + '</div>';
 
   // 스케줄 편집(요일별 — 지각·조퇴·개근 판정의 기준값). 2인 이상=선택한 구성원 대상
   var memSel = r.members.length > 1
@@ -1882,6 +1899,25 @@ function renderAdmin(r) {
       adminApi('admin_void', { emp: m.emp, target: btn.dataset.void, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
         toast('기록을 취소했어요'); loadAdmin();
+      });
+    });
+  });
+  document.querySelectorAll('[data-deact]').forEach(function (btn) { // 구성원 비활성 — 목록서 빼고 로그인 차단, 근태 기록은 보존(재활성 가능)
+    btn.addEventListener('click', function () {
+      var emp = btn.dataset.deact, nm = btn.dataset.nm;
+      openConfirm(nm + '님을 비활성할까요?', '목록에서 빠지고 앱 로그인도 막혀요. 근태 기록은 남고, 언제든 다시 활성화할 수 있어요.', '비활성', function () {
+        adminApi('admin_member_deactivate', { emp: emp }, true).then(function (rr) {
+          if (!rr.ok) { toast(rr.error); return; }
+          toast(nm + '님을 비활성했어요'); state.admMi = 0; loadAdmin();
+        });
+      });
+    });
+  });
+  document.querySelectorAll('[data-react]').forEach(function (btn) { // 비활성 구성원 재활성 — 즉시 목록 복귀
+    btn.addEventListener('click', function () {
+      adminApi('admin_member_reactivate', { emp: btn.dataset.react }, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); return; }
+        toast('다시 활성화했어요'); loadAdmin();
       });
     });
   });
@@ -2057,7 +2093,8 @@ function demoApi(action, data) {
     var demoNL = /[?&]nf=1/.test(location.search) // 촬영용: &nf=1=실패 배지, 기본=정상
       ? { ts: new Date(Date.now() - 1800000).toISOString(), ok: false, sent: 0, code: 401 }
       : { ts: new Date(Date.now() - 1800000).toISOString(), ok: true, sent: 1 };
-    return Promise.resolve({ ok: true, ym: '2026-08', pending: pend, history: hist.slice(0, 8), notifyLast: demoNL, members: [{ emp: 'hyeona', name: '이현아', anchor: '2025-10-01', schedule: DEMO_SETTINGS.schedule, weekMin: 720, monthMin: 1830, monthPlanMin: 3840, lateCount: 1, overtimeMin: 8, deficitMin: 0, balance: { baseMin: bal2.baseMin, bonusMin: bal2.bonusMin, unpaidMin: bal2.unpaidMin }, devices: [{ id: 'x', label: '사무실 PC', at: '2026-07-14' }] }] });
+    var demoInact = /[?&]ia=1/.test(location.search) ? [{ emp: 'yuseong', name: '한유성' }] : []; // 촬영용: &ia=1=비활성 구성원 섹션
+    return Promise.resolve({ ok: true, ym: '2026-08', pending: pend, history: hist.slice(0, 8), notifyLast: demoNL, inactiveMembers: demoInact, members: [{ emp: 'hyeona', name: '이현아', anchor: '2025-10-01', schedule: DEMO_SETTINGS.schedule, weekMin: 720, monthMin: 1830, monthPlanMin: 3840, lateCount: 1, overtimeMin: 8, deficitMin: 0, balance: { baseMin: bal2.baseMin, bonusMin: bal2.bonusMin, unpaidMin: bal2.unpaidMin }, devices: [{ id: 'x', label: '사무실 PC', at: '2026-07-14' }] }] });
   }
   if (action === 'admin_weekly15') return Promise.resolve({ ok: true, rows: [{ name: '김OO', weeksH: [18, 17, 16.5, 17.5], avgH: 17.2, over15: true }, { name: '이현아', weeksH: [6, 5.5, 6, 6.2], avgH: 5.9, over15: true, dual: true, combinedAvgH: 21.9 }], weeks: [], note: '4주 평균·실 배정 기준 참고치.' });
   if (action === 'admin_close') return Promise.resolve({ ok: true, row: { ym: '2026-08', name: '이현아', planMin: 3840, workedMin: 3790, lateCount: 1, dedMin: 360, unpaidMin: 0, overtimeMin: 8, perfect: true, grantMin: 240, baseMin: 2640, bonusMin: 0, amendCount: 1, missingOutCount: 1, expiringMin: 0, workDays: 16, attendDays: 16 } });
@@ -2068,6 +2105,7 @@ function demoApi(action, data) {
   if (action === 'admin_void') return Promise.resolve({ ok: true });
   if (action === 'unlock') return Promise.resolve({ ok: true });
   if (action === 'admin_member_add') return Promise.resolve({ ok: true, emp: data.newEmp, token: 'demo1234' });
+  if (action === 'admin_member_deactivate' || action === 'admin_member_reactivate') return Promise.resolve({ ok: true, emp: data.emp });
   return Promise.resolve({ ok: false, error: 'demo 미지원: ' + action });
 }
 
