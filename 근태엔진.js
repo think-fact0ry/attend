@@ -67,12 +67,19 @@ var AttEngine = (function () {
     return out;
   }
 
-  // ── 정정 반영: 정정 이벤트는 target 날짜의 도장(출근·퇴근·보정퇴근)을 통째 대체 ──
+  // ── 정정 반영: 채운 칸만 그 날짜 도장을 대체(빈 칸=기존 유지). 여러 정정은 누적 merge ──
+  //    T0-1(2026-07-24): 통째 대체였을 때 "퇴근만 고치려 퇴근 칸만 채우면 출근이 사라져 결근→개근 붕괴→연차 증발".
+  //    이제 out만 채우면 출근은 원래 도장 유지. 누적이라 나중 정정이 앞 정정을 덮지 않고 합쳐진다.
   function corrections(events) {
     var map = {};
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
-      if (e.type === '정정' && e.val && e.val.target) map[e.val.target] = e.val; // 뒤 행이 이김(append 순서)
+      if (e.type !== '정정' || !e.val || !e.val.target) continue;
+      var prev = map[e.val.target] || {};
+      map[e.val.target] = {
+        in: (e.val.in != null && e.val.in !== '') ? e.val.in : prev.in,
+        out: (e.val.out != null && e.val.out !== '') ? e.val.out : prev.out
+      };
     }
     return map;
   }
@@ -200,9 +207,9 @@ var AttEngine = (function () {
       };
     }
     var c = corr[dateStr];
-    if (c) { // 정정=그 날 도장 대체 (null이면 삭제)
-      ins = c.in ? [c.in + ':00'] : [];
-      outs = c.out ? [c.out + ':00'] : [];
+    if (c) { // 정정=채운 칸만 대체(빈 칸=원래 도장 유지 — T0-1 출근 실수 삭제 방지)
+      if (c.in) ins = [c.in + ':00'];
+      if (c.out) outs = [c.out + ':00'];
     }
     ins.sort(); outs.sort();
     // 구간 짝짓기: in[i] ↔ 그 뒤 첫 out. 남는 in=열린 구간.

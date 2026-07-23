@@ -188,7 +188,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .drawer{position:fixed;top:0;right:0;bottom:0;width:250px;background:#fff;border-radius:20px 0 0 20px;padding:calc(24px + env(safe-area-inset-top)) 0 24px;display:flex;flex-direction:column;transform:translateX(105%);transition:transform .25s cubic-bezier(.2,1,.3,1);z-index:601}
 .drawer.on{transform:translateX(0)}
 .drawer .dt2{font-size:var(--fs-caption);color:var(--g500);font-weight:700;padding:0 22px 10px}
-.mi{display:flex;align-items:center;gap:12px;padding:15px 22px;font-size:var(--fs-body);font-weight:600;color:var(--g900);cursor:pointer;background:none;border:0;font-family:inherit;width:100%;text-align:left}
+.mi{display:flex;align-items:center;gap:12px;padding:15px 22px;font-size:var(--fs-body);font-weight:600;color:var(--g900);cursor:pointer;background:none;border:0;font-family:inherit;width:100%;text-align:left;-webkit-touch-callout:none;touch-action:manipulation} /* touch-callout:none = 내 정보 항목 5초 롱프레스(관리자) 시 iOS 콜아웃 차단(T1-1) */
 .mi:active{background:var(--g50)}
 .mi svg{width:20px;height:20px;color:var(--g600);flex:none}
 .drawer .div{height:1px;background:var(--g100);margin:8px 22px}
@@ -1581,23 +1581,22 @@ function lockGate() { // 잠금 화면 = 공용 PIN 오버레이(취소 없음) 
     }
   });
 }
-// 롱프레스 5초 — 07-22(2) 강건화: 실기기에서 여전히 불발(유성) → ①setPointerCapture(작은 타이틀 밖으로
-//   1px만 벗어나도 pointerleave가 타이머를 죽이던 오탐 제거 — 캡처 중엔 leave 안 옴) ②텍스트 선택·
-//   롱프레스 콜아웃 차단(#meTitle CSS + 전역 contextmenu 방지)이 pointercancel 유발 자체를 없앰. 8px 이동 취소는 유지.
-(function () {
-  var tm = null, sx = 0, sy = 0;
-  var el = $('meTitle');
+// 관리자 진입 롱프레스(5초) — T1-1(2026-07-24 유성): "메뉴바에서 내 정보를 5초"가 유성 멘탈모델.
+//   기존엔 #meTitle(내 정보 화면 안 타이틀)에만 걸려 있어 메뉴 항목을 눌러선 안 됐다 → 재사용 헬퍼로 만들어
+//   ①메뉴 '내 정보' 항목 ②내 정보 화면 타이틀 둘 다에 건다. setPointerCapture로 pointerleave 오탐 제거·24px 이동만 취소.
+function attachLongPress(el, onLong) {
+  var tm = null, sx = 0, sy = 0, fired = false;
   el.addEventListener('pointerdown', function (e) {
-    sx = e.clientX; sy = e.clientY; clearTimeout(tm); tm = setTimeout(openAdminPin, 5000);
+    fired = false; sx = e.clientX; sy = e.clientY; clearTimeout(tm);
+    tm = setTimeout(function () { fired = true; onLong(); }, 5000);
     try { el.setPointerCapture(e.pointerId); } catch (x) { }
   });
-  el.addEventListener('pointermove', function (e) {
-    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 24) clearTimeout(tm); // 07-23: 8px도 실기기서 오탐 — 스크롤 의도만 거르면 됨
-  });
-  ['pointerup', 'pointercancel'].forEach(function (evn) {
-    el.addEventListener(evn, function () { clearTimeout(tm); });
-  });
-})();
+  el.addEventListener('pointermove', function (e) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 24) clearTimeout(tm); });
+  ['pointerup', 'pointercancel'].forEach(function (evn) { el.addEventListener(evn, function () { clearTimeout(tm); }); });
+  el.addEventListener('click', function (e) { if (fired) { e.preventDefault(); e.stopPropagation(); fired = false; } }, true); // 롱프레스 발동 시 이어지는 클릭(메뉴 이동) 억제
+}
+attachLongPress($('meTitle'), openAdminPin);
+(function () { var mi = document.querySelector('.mi[data-go="me"]'); if (mi) attachLongPress(mi, function () { closeDrawer(); openAdminPin(); }); })();
 
 /* ── PIN 키패드 공용(§4.2-4: 매 진입·오답 재배치, 오답=제목 스왑, 5회=닫힘) — 관리자 6·도장 4·비밀번호 변경 공유 ── */
 var pinCtx = null, pin = '', pinFails = 0;
@@ -1810,7 +1809,7 @@ function renderAdmin(r) {
 
   // 정정
   html += '<div class="asec"><h4>출퇴근 기록 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
-    '<div class="anote">그 날짜의 출퇴근 시각을 통째로 바꿔요. 원래 기록은 남고 정정이 이겨요(감사 추적). 시각을 비우면 그 기록을 지운 것으로 봐요.</div></div>';
+    '<div class="anote">채운 칸만 바뀌어요. 비운 칸은 원래 기록을 그대로 둬요(출근만·퇴근만 고칠 수 있어요). 원래 기록은 남고 정정이 이겨요(감사 추적).</div></div>';
 
   // 주휴 15h 보드
   html += '<div class="asec"><h4>주휴 15시간 판정 — 제공인력 <span class="cavt">01 대장 4주 평균 · 참고치</span></h4><div class="arow"><button class="abtn" id="w15Go">불러오기</button></div><div id="w15Out"></div></div>';
@@ -1855,9 +1854,18 @@ function renderAdmin(r) {
       if (on && on.checked && s.value && e.value) schedule[String(wd)] = [s.value, e.value];
     }
     if (!Object.keys(schedule).length) { toast('근무 요일이 없어요'); return; }
-    adminApi('admin_schedule_set', { emp: m.emp, schedule: schedule, startFrom: document.getElementById('startFrom').value }, true).then(function (rr) {
-      if (!rr.ok) { toast(rr.error); return; }
-      toast('스케줄을 저장했어요'); loadAdmin();
+    var payload = { emp: m.emp, schedule: schedule, startFrom: document.getElementById('startFrom').value };
+    var save = function () {
+      adminApi('admin_schedule_set', payload, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); return; }
+        toast('스케줄을 저장했어요'); loadAdmin();
+      });
+    };
+    // T0-2: 과거 소급 재계산으로 이미 받은 연차가 줄면 저장 전 확인
+    adminApi('admin_schedule_set', Object.assign({ preview: true }, payload)).then(function (pv) {
+      if (!pv.ok) { toast(pv.error); return; }
+      if (pv.lostMin > 0) openConfirm('스케줄을 바꿀까요?', '이 변경으로 과거 개근이 다시 계산돼 남은 연차가 ' + fmtMin(pv.lostMin) + ' 줄어요. 앞으로 받을 연차엔 영향 없어요.', '바꾸기', save);
+      else save();
     });
   });
   $('swapGo').addEventListener('click', function () {
@@ -1936,6 +1944,7 @@ function renderAdmin(r) {
   $('corrGo').addEventListener('click', function () {
     var d = $('corrDate').value;
     if (!d) { toast('날짜를 골라 주세요'); return; }
+    if (!$('corrIn').value && !$('corrOut').value) { toast('바꿀 시각을 하나 이상 적어 주세요'); return; }
     adminApi('admin_correct', { emp: m.emp, target: d, in: $('corrIn').value, out: $('corrOut').value, note: $('corrNote').value, cid: cid() }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
       toast('정정했어요');
@@ -2099,7 +2108,8 @@ function demoApi(action, data) {
   if (action === 'admin_weekly15') return Promise.resolve({ ok: true, rows: [{ name: '김OO', weeksH: [18, 17, 16.5, 17.5], avgH: 17.2, over15: true }, { name: '이현아', weeksH: [6, 5.5, 6, 6.2], avgH: 5.9, over15: true, dual: true, combinedAvgH: 21.9 }], weeks: [], note: '4주 평균·실 배정 기준 참고치.' });
   if (action === 'admin_close') return Promise.resolve({ ok: true, row: { ym: '2026-08', name: '이현아', planMin: 3840, workedMin: 3790, lateCount: 1, dedMin: 360, unpaidMin: 0, overtimeMin: 8, perfect: true, grantMin: 240, baseMin: 2640, bonusMin: 0, amendCount: 1, missingOutCount: 1, expiringMin: 0, workDays: 16, attendDays: 16 } });
   if (action === 'admin_grant') { demoEv(today, '부여', { hours: +data.hours || 4, note: data.note || '관리자 부여' }); var b3 = E.balance(demo.events, DEMO_SETTINGS, today); return Promise.resolve({ ok: true, balance: { baseMin: b3.baseMin, bonusMin: b3.bonusMin, unpaidMin: b3.unpaidMin } }); }
-  if (action === 'admin_swap' || action === 'admin_correct' || action === 'admin_schedule_set') return Promise.resolve({ ok: true });
+  if (action === 'admin_schedule_set') { if (data.preview) return Promise.resolve({ ok: true, preview: true, lostMin: /[?&]sl=1/.test(location.search) ? 240 : 0 }); return Promise.resolve({ ok: true }); } // &sl=1=소급 감소 확인모달 촬영
+  if (action === 'admin_swap' || action === 'admin_correct') return Promise.resolve({ ok: true });
   if (action === 'admin_device_register') return Promise.resolve({ ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } });
   if (action === 'admin_device_remove') return Promise.resolve({ ok: true });
   if (action === 'admin_void') return Promise.resolve({ ok: true });
