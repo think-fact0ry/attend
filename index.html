@@ -734,7 +734,7 @@ function compose() { // 서버 _status_와 같은 모양을 로컬에서
         .map(function (l) { return { label: bonusLabel(l.label), leftMin: l.leftMin }; })
     },
     missing: E.missingDays(evs, s, today), cards: cards, rejections: rejections,
-    deviceOk: db.deviceOk, pinSet: db.pinSet
+    deviceOk: db.deviceOk, pinSet: db.pinSet, anyPinSet: db.anyPinSet
   };
 }
 function calView(ym) { // 서버 _month_와 같은 모양
@@ -765,7 +765,7 @@ function syncNow(cb) {
     }
     state.db = {
       events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms,
-      name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, devices: r.devices || [], atLocal: Date.now()
+      name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now()
     };
     var c = compose();
     state.status = c;
@@ -875,7 +875,7 @@ $('tokenGo').addEventListener('click', function () {
   var old = store.token; store.token = v;
   api('sync').then(function (r) {
     if (!r.ok) { store.token = old || ''; toast(r.error || '코드가 맞지 않아요'); return; }
-    state.db = { events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms, name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, devices: r.devices || [], atLocal: Date.now() };
+    state.db = { events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms, name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now() };
     var c = compose(); state.status = c; pollKey = pollSnap(c);
     go('main'); renderMain(c);
   }).catch(function () { store.token = old || ''; toast('연결이 안 돼요. 잠시 후 다시 눌러 주세요'); });
@@ -912,8 +912,8 @@ function renderMain(r) {
   else { txt.textContent = '오늘 근무는 ' + r.plan.start + ' ~ ' + r.plan.end + '이에요'; }
   renderCards(r);
   renderOverlays(r);
-  // 도장 버튼 — 등록 기기만
-  if (r.deviceOk) {
+  // 도장 버튼 — 등록 기기 + 근무일만(startFrom 전·휴일·주말엔 안 뜸 — 버그: 7/24 도장됨)
+  if (r.deviceOk && r.plan.work) {
     $('punchRow').style.display = 'flex'; $('viewOnly').style.display = 'none';
     var bin = $('btnIn'), bout = $('btnOut');
     if (r.open) { // 근무 중
@@ -926,6 +926,7 @@ function renderMain(r) {
       bin.className = 'btn fill'; bin.textContent = '출근'; bin.disabled = false;
       bout.className = 'btn done'; bout.textContent = '퇴근'; bout.disabled = true;
     }
+  } else if (r.deviceOk) { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'none'; // 회사 PC지만 근무일 아님 — 상태 필이 "근무일이 아니에요" 안내
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
 }
 /* 도장 = 기기 게이트만(2차: PIN 로그인 세션이 곧 찍는 사람 — 도장마다 PIN 재입력 폐지) */
@@ -935,8 +936,8 @@ function doPunch(kind) {
   api('punch', { kind: kind, cid: cid() }, true).then(function (r) {
     if (!r.ok) { toast(r.error); refreshMain(); return; }
     showDone((kind === 'in' ? '출근' : '퇴근') + '을 기록했어요', ampm(r.recorded.at));
-    // 공용 회사 PC(도장 기기): 퇴근을 찍으면 세션 종료→다음 사람 PIN(조회 노출 차단, T2-1)
-    if (kind === 'out' && state.status && state.status.deviceOk) { setTimeout(lockNow, 1600); return; }
+    // 공용 회사 PC(도장 기기): 퇴근을 찍으면 세션 종료→다음 사람 PIN(조회 노출 차단, T2-1). PIN 미설정 전환기=잠금 안 함
+    if (kind === 'out' && state.status && state.status.deviceOk && state.status.anyPinSet) { setTimeout(lockNow, 1600); return; }
     syncNow();
   }).catch(function () { toast('기록이 안 됐어요. 다시 눌러 주세요'); refreshMain(); });
 }
@@ -1547,7 +1548,10 @@ function loginGate() {
     title: '출퇴근 비밀번호', sub: '숫자 4자리를 눌러 주세요', digits: 4, noCancel: true,
     onDone: function (p, h) {
       api('login', { pin: p }, true).then(function (r) {
-        if (!r.ok) { h.fail(r.error); return; }
+        if (!r.ok) {
+          if (r.code === 'nopin') { localStorage.removeItem('att_locked'); h.close(); syncNow(function (c) { if (c) pollKey = pollSnap(c); }); return; } // 전환기 탈출: 아직 아무도 PIN 없음 → 기존 세션으로
+          h.fail(r.error); return;
+        }
         store.token = r.token; store.emp = r.emp;
         localStorage.removeItem('att_locked');
         h.close(); syncNow(function (c) { pollKey = pollSnap(c); });
@@ -1556,12 +1560,13 @@ function loginGate() {
   });
 }
 var idleTimer = null;
-function resetIdle() { // 공용 회사 PC만 5분 무동작 자동 잠금(T2-1 — 조회만 하고 이탈해도 다음 사람이 남의 세션 못 봄). 폰=잠금 없음
+function resetIdle() { // 공용 회사 PC만 5분 무동작 자동 잠금(T2-1). PIN 미설정 전환기=잠금 안 함(진입 불가 방지). 폰=잠금 없음
   clearTimeout(idleTimer);
-  if (state.db && state.db.deviceOk && !DEMO) idleTimer = setTimeout(lockNow, 5 * 60 * 1000);
+  if (state.db && state.db.deviceOk && state.db.anyPinSet && !DEMO) idleTimer = setTimeout(lockNow, 5 * 60 * 1000);
 }
 ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, resetIdle, true); });
 function lockNow() { // 공용 PC 세션 종료(퇴근·유휴·잠그기 버튼) — att_locked 후 PIN 재로그인
+  if (!(state.db && state.db.anyPinSet)) return; // PIN 하나도 없으면 잠그지 않음(login 불가라 갇힘 방지 — 전환기 안전판)
   clearTimeout(idleTimer);
   localStorage.setItem('att_locked', '1');
   state.db = null; state.status = null;
@@ -2041,7 +2046,7 @@ function demoEv(date, type, val, flag) {
   demoEv(today, '출근', '11:02:00'); // 오늘 근무 중
 })();
 function demoSync() {
-  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: true, pinSet: !!demo.pin, devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
+  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: true, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
 }
 function demoApi(action, data) {
   data = data || {};
