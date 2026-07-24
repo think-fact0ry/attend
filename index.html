@@ -37,10 +37,13 @@ html{scrollbar-width:none;-ms-overflow-style:none}
 ::-webkit-scrollbar{display:none;width:0;height:0}
 body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased;overscroll-behavior:none;user-select:none;-webkit-user-select:none;cursor:default} /* 07-22(3) 유성: 복사·드래그 선택·I빔 커서 전면 차단 */
 input,textarea{user-select:text;-webkit-user-select:text} /* 입력칸만 예외 */
-#app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+#app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;overflow:clip} /* clip=클립은 유지하되 스크롤포트가 안 됨 — hidden이면 .hd sticky가 #app 기준이 되어 영영 안 붙는다(10차) */
 
 /* ── 헤더 ── */
-.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 24px 0;min-height:52px} /* §13-12(6): 가로 24·탑 18 */
+/* 10차 유성: 스크롤해도 뒤로가기·메뉴·캘린더 아이콘(캘린더는 연도·월까지)이 nav로 남아야 — §4.10-1 sticky 화살표의 전체 nav 확장.
+   배경=화면색과 동일(흰/회색 화면별 아래 오버라이드) — 투명이면 스크롤 콘텐츠가 비쳐 보인다. z-index는 드로어(600)·시트(500) 아래. */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 24px 6px;min-height:52px;position:sticky;top:0;z-index:120;background:#fff} /* §13-12(6): 가로 24·탑 18. 바텀 6=스크롤 시 콘텐츠와 숨통 */
+#s-me .hd,#s-my .hd,#s-admin .hd{background:var(--g50)} /* 회색 화면(내정보·나의근태·관리자)은 헤더도 회색 */
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
 #meTitle{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;padding:12px 24px;margin:-12px -24px} /* 롱프레스 보호+히트영역 확대(시각 불변 — 07-23 실기기 불발 대응) */
 .hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
@@ -62,7 +65,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rows{background:var(--g50);border-radius:var(--r-md);padding:4px 18px}
 .row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;font-size:var(--fs-body);gap:12px}
 .row+.row{border-top:1px solid var(--g200)}
-.row .l{color:var(--g600);flex:none}
+.row .l{color:var(--g700);flex:none} /* 10차 유성: g600→g700 */
 .row .v{font-weight:700;color:var(--g900);text-align:right}
 .row .v.gr{color:var(--green-dark)}
 .bplus{color:var(--green600)}
@@ -184,7 +187,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 /* prog3(일차별 16칸 세그)=07-23 유성 지시로 폐지 — P1 시간 바만 유지 */
 
 /* ── 사이드메뉴 ── */
-.dim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .22s;z-index:600}
+.dim{position:fixed;inset:0;background:rgba(25,31,40,.55);opacity:0;pointer-events:none;transition:opacity .22s;z-index:600} /* 10차 유성: 메뉴 열릴 때 뒤가 더 어두워야 — .4→.55(드로어 전용 dim) */
 .dim.on{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:250px;background:#fff;border-radius:20px 0 0 20px;padding:calc(24px + env(safe-area-inset-top)) 0 24px;display:flex;flex-direction:column;transform:translateX(105%);transition:transform .25s cubic-bezier(.2,1,.3,1);z-index:601}
 .drawer.on{transform:translateX(0)}
@@ -959,6 +962,7 @@ function renderMain(r) {
       bin.className = 'btn fill'; bin.textContent = '출근'; bin.disabled = false;
       bout.className = 'btn done'; bout.textContent = '퇴근'; bout.disabled = true;
     }
+    if (state.punching) { bin.disabled = true; bout.disabled = true; } // 비행 중=둘 다 잠금(연타 레이스 차단, 응답 오면 재렌더가 풂)
   } else if (r.deviceOk) { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'none'; // 회사 PC지만 근무일 아님 — 상태 필이 "근무일이 아니에요" 안내
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
 }
@@ -968,6 +972,8 @@ function renderMain(r) {
    ①이벤트를 로컬 원장에 먼저 넣고 즉시 재파생·렌더 ②응답이 오면 서버 시각으로 값만 교체(조용히)
    ③실패면 그 이벤트를 빼고 되돌린다. 왕복 대기 0. 타 기기 변경은 60초 폴링이 계속 흡수한다. */
 function doPunch(kind) {
+  if (state.punching) return; // 도장 비행 중 연타 차단(10차) — 출근 POST가 도착하기 전에 퇴근 POST가 먼저 닿으면
+  //   서버가 '출근 기록이 없어요'로 거절 → 롤백이 퇴근 버튼을 되살리고 잠금도 생략되던 레이스(유성 실기기)
   var b = $(kind === 'in' ? 'btnIn' : 'btnOut');
   var db = state.db;
   if (!db) { refreshMain(); return; }
@@ -999,9 +1005,11 @@ function doPunch(kind) {
     if (!r.ok) { rollback(r.error); return; }
     if (state.db !== db) { refreshMain(); return; }        // 대기 중 sync가 원장을 갈아끼웠으면 서버본을 따른다
     optimistic.val = r.recorded.at;                        // 서버 시각이 진실 — 값만 조용히 교체
+    if (r.anyPinSet !== undefined) db.anyPinSet = r.anyPinSet; // 서버 진실로 갱신(관리자 PIN 시딩 직후의 낡은 false 교정)
     var c3 = compose(); state.status = c3; pollKey = pollSnap(c3);
     if (c3 && $('s-main').classList.contains('on')) renderMain(c3); // 응답 대기 중 다른 화면으로 갔으면 렌더 생략
-    if (lockAfter) setTimeout(lockNow, 1600);
+    // 퇴근=공용 PC 로그아웃(T2-1). 판단은 낙관적 시점 값(lockAfter)이 아니라 서버 응답의 anyPinSet 우선(10차)
+    if (kind === 'out' && c && c.deviceOk && (r.anyPinSet !== undefined ? r.anyPinSet : lockAfter)) setTimeout(lockNow, 1600);
   }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요', true); });
 }
 $('btnIn').addEventListener('click', function () {
@@ -1275,6 +1283,8 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 function loadCal() {
   if (!state.db) { syncNow(function () { loadCal(); }); return; }
   if (!state.calYm) state.calYm = state.db.today.slice(0, 7);
+  // 10차 유성: 켰을 때 기본 선택=오늘(무선택 placeholder로 두지 말 것) — 이번 달일 때만
+  if (!state.calSel && state.calYm === state.db.today.slice(0, 7)) state.calSel = state.db.today;
   $('calTitle').textContent = ymTitle(state.calYm);
   var r = calView(state.calYm);
   state.calData = r;
@@ -2080,6 +2090,7 @@ function renderAdmin(r) {
           adminApi('admin_set_pin', { emp: emp, pin: p }, true).then(function (rr) {
             if (!rr.ok) { h.fail(rr.error); return; }
             h.close(); toast(nm + '님 비밀번호를 정했어요 (' + p + ') — 본인에게 알려주면 이 번호로 들어와요');
+            syncNow(); // db.anyPinSet 갱신(10차) — 안 하면 방금 심은 PIN을 클라가 몰라서 퇴근 잠금이 안 걸림
           });
         }
       });
