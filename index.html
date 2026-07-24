@@ -946,12 +946,15 @@ function doPunch(kind) {
   var c = compose(); state.status = c; renderMain(c);
   showDone((kind === 'in' ? '출근' : '퇴근') + '을 기록했어요', ampm(optimistic.val));
   var lockAfter = (kind === 'out' && c && c.deviceOk && c.anyPinSet); // 퇴근=공용 PC 세션 종료(T2-1)
-  function rollback(msg) {
+  // resync=true: 서버 도달 여부가 불확실한 실패(응답 유실) — 서버에 이미 기록됐는데 화면만 되돌아가면
+  //   화면과 원장이 어긋난다 → 서버를 다시 읽는다. 서버가 명시적으로 거절한 경우(!r.ok)는 기록이 없으니 로컬 롤백으로 충분.
+  function rollback(msg, resync) {
     state.punching = false;
     var i = db.events.indexOf(optimistic);
     if (i >= 0) db.events.splice(i, 1);
     $('doneOv').classList.remove('on');
-    if (state.db === db) { var c2 = compose(); state.status = c2; renderMain(c2); } else refreshMain();
+    if (resync || state.db !== db) refreshMain();
+    else { var c2 = compose(); state.status = c2; renderMain(c2); }
     toast(msg);
   }
   api('punch', { kind: kind, cid: myCid }, true).then(function (r) {
@@ -962,7 +965,7 @@ function doPunch(kind) {
     var c3 = compose(); state.status = c3;
     if (c3 && $('s-main').classList.contains('on')) renderMain(c3); // 응답 대기 중 다른 화면으로 갔으면 렌더 생략
     if (lockAfter) setTimeout(lockNow, 1600);
-  }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요'); });
+  }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요', true); });
 }
 $('btnIn').addEventListener('click', function () {
   if ($('btnIn').disabled) return;
