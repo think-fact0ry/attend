@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v26'; // 07-25 11차-2: OTP 번호=인사정보 시트가 진실(수기 카드 폐지) | 캘린더 선택=이중 그림자(시안 3 픽, 보더 폐지)
+var CACHE = 'tf-attend-v27'; // 07-25: approve.html PC 폰목업 §3.8 적용(전파 마지막 조각 — attend 소유권으로 근태 세션 몫)
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',
