@@ -2,7 +2,7 @@
  * 근태엔진 — 순수 파생 계산 (GAS API 0 의존 → node로 단위테스트 가능).
  * 설계 정본 = docs/4_설계_2026-07-14_근태관리_시스템설계.md §4.
  *
- * 원칙: 근태이력(append-only 이벤트)이 단일 진실. 잔여 연차·조퇴 공제·미승인 연장·개근은
+ * 원칙: 근태이력(append-only 이벤트)이 단일 진실. 잔여 연차·소정 미달 차감·미승인 연장·개근은
  *       전부 여기서 "읽을 때" 파생한다(확정 불가 판정을 행으로 박지 않음 — 재출근·익일 보정으로 사후 변동).
  *
  * 이벤트 형태: { at:ISO, emp, date:'YYYY-MM-DD', type, val, src, flag, cid }
@@ -23,15 +23,26 @@
  *   자동 확정 = 파생 판정: now ≥ 휴가 시작(하루·앞반차=시업, 뒤반차=종업−2h) && 미처리 → 확정.
  *   시간 트리거 없음(코어 원칙 — 저장하지 않고 읽을 때 계산).
  *
- * settings: { emp, name, schedule:{'1':['11:00','15:00'],...}(0=일…6=토), graceMin:3,
+ * settings: { emp, name, schedule:{'1':['11:00','15:00'],...}(0=일…6=토), graceMin:5(지각 판정+미달 오차 공통),
  *             holidays:['YYYY-MM-DD',…], accrualFrom:'2026-08', anchor:'2025-10-01',
  *             startFrom:'YYYY-MM-DD'(옵션 — 근태 시작일, 관리자 설정. 그 전 날짜는 근무일 자체가 아님:
  *             도입 전 테스트 도장·런치 지연분이 결근·미기록·부족분 차감을 오염시키지 않게. 미설정=기존 동작) }
  *
+ * ── 하루의 정의 (2026-07-24 유성 확정 — 재론 금지, docs/4 §13-8) ──
+ *   하루의 기준은 "몇 시에 왔는가"가 아니라 **"소정근로 시간을 채웠는가"**다.
+ *   - 채우는 방법은 본인 자유: 늦게 왔으면 늦게까지, 중간에 나갔으면 돌아와서(그날 안에서만).
+ *   - 못 채운 분(=소정 미달)만 연차에서 채운다. 사유는 '지각'이 아니라 '소정 미달'.
+ *   - 연차도 없으면 그 분만 무급.
+ *   - 지각 자체는 어떤 차감도 만들지 않는다(색·카운트만) — 채우면 미달이 0이 되니까.
+ *   - 오차 허용 = graceMin(5분). 지각 판정과 미달 계산에 **같은 숫자**를 쓴다(규칙 하나).
+ *     허용치 이하=0, 초과하면 전체(6분 미달=6분 차감 — 지각 판정과 동일한 임계 방식).
+ *   적법 근거: 취업규칙에 "지각·조퇴·외출 누계를 연차에서 계산"을 두는 것은 노사 특약으로 유효(고용노동부).
+ *     위법한 건 "지각 N회=결근 1일" 쪽. ⚠️이 정의는 취업규칙 문언이 있어야 적법 — 문언 트랙은 별도(백로그).
+ *
  * ⚖️ 법리 가드(코드 불변):
  *   - 지각은 어떤 공제·차감도 만들지 않는다(카운트만). "지각 N회=결근/연차차감" 로직 영구 금지(법무 811-4808).
  *   - 연차 신청은 이미 발생분+보너스 한도 내에서만(미발생 선사용 하드 차단 — §60⑤).
- *   - 병가·조퇴는 잔여 연차까지만 차감, 초과분은 무급(unpaidMin)으로만 집계.
+ *   - 병가·소정 미달은 잔여 연차까지만 차감, 초과분은 무급(unpaidMin)으로만 집계.
  */
 var AttEngine = (function () {
   var DAY_MS = 24 * 60 * 60 * 1000;
@@ -245,9 +256,21 @@ var AttEngine = (function () {
     var missingOut = !!open && closed;                            // 지난 날 열린 구간 = 퇴근 미체크
     var absent = plan.work && closed && !ins.length && !leaves.length;
     var deficitMin = 0, overtimeMin = 0;
+    // 부족분 확정 시점: ①마감된 날 ②'오늘인데 퇴근을 찍어 열린 구간이 없을 때'(2026-07-24 유성 실기기 "일찍 퇴근했는데
+    //   연차가 안 줄어든다" — 그날이 지나야 계산해서 화면에 아무 일도 안 일어났었음). 재출근하면 open이 생겨 다시 0 =
+    //   파생 구조가 곧 복원(유성 "다시 출근하면 돌아와야 하는 것 아닌가" = 맞음).
+    var settled = closed || (isToday && !open && segs.length > 0);
+    if (plan.work && settled && !missingOut && !absent) {
+      // 정의(2026-07-24 유성 확정): 하루 기준 = "몇 시에 왔는가"가 아니라 "소정 N시간을 채웠는가".
+      //   늦게 왔으면 늦게까지 채우면 부족분 0 → 지각은 어떤 차감도 만들지 않는다(위 ⚖️ 불변과 일치).
+      //   오차 허용 = graceMin(지각 판정과 같은 숫자, 규칙 하나). 허용치 이하=0, 초과면 전체(지각 판정과 동일한 임계 방식).
+      var shortMin = Math.max(0, plan.planMin - workedMin - leaveMin);
+      deficitMin = shortMin <= settings.graceMin ? 0 : shortMin;     // 소정 미달분(분) → 연차 차감 후보
+    }
+    // 미승인 연장만은 마감된 날에만 센다 — 당일 집계에 얹으면 '실시간 초과 신호'가 되어 불변(실시간 경고 0)에 닿는다.
     if (plan.work && closed && !missingOut && !absent) {
-      deficitMin = Math.max(0, plan.planMin - workedMin - leaveMin); // 조퇴·중간외출 부족분(분) → 연차 차감 후보
-      overtimeMin = Math.max(0, workedMin - plan.planMin);           // 미승인 연장(플래그·월마감 집계만, 경고 0)
+      var overMin = Math.max(0, workedMin - plan.planMin);
+      overtimeMin = overMin <= settings.graceMin ? 0 : overMin;      // 채우려다 몇 분 넘긴 건 연장 아님(같은 오차)
     }
     return {
       date: dateStr, plan: plan, segments: segs, open: open, firstIn: firstIn,
@@ -284,7 +307,7 @@ var AttEngine = (function () {
   }
 
   // ── 월 개근 판정: 그 달 모든 소정근로일에 결근이 없다 ──
-  //    지각·조퇴=개근 유지(법무 811-4808 결) / 연차·병가(차감)=출근 간주 / 미체크(보정 없음)=출근은 했으므로 개근 유지
+  //    지각·소정 미달=개근 유지(법무 811-4808 결) / 연차·병가(차감)=출근 간주 / 미체크(보정 없음)=출근은 했으므로 개근 유지
   //    ⚠️ 무급 병가(잔여 0 상태의 병가)도 "절차 밟은 병가"라 v1은 개근 유지로 본다 —
   //       행정해석 원문 확인(빌드 체크) 후 달라지면 이 함수만 고침.
   function perfectMonth(ym, events, settings, swaps, corr, todayStr) {
@@ -319,7 +342,9 @@ var AttEngine = (function () {
     return lots;
   }
 
-  // 차감 목록(시간순): 신청형(연차·병가=이벤트 날짜) + 마감된 날의 조퇴 부족분
+  // 차감 목록(시간순): 신청형(연차·병가=이벤트 날짜) + 확정된 날의 소정 미달분
+  //   ⚠️ label에 날짜를 넣지 않는다 — 표시하는 쪽(연차 내역)이 `row.at + ': '`를 앞에 붙이므로
+  //      날짜를 label에도 넣으면 "2026-08-03: 2026-08-03 연차 4시간"으로 두 번 찍힌다(2026-07-24 수정).
   function buildDeductions(events, settings, swaps, corr, todayStr) {
     var ded = [];
     var seen = {};
@@ -327,23 +352,24 @@ var AttEngine = (function () {
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if ((e.type === '연차' || e.type === '병가') && e.val) {
-        ded.push({ at: e.date, min: e.val.hours * 60, type: e.type, label: e.date + ' ' + e.type + ' ' + e.val.hours + '시간' });
+        ded.push({ at: e.date, min: e.val.hours * 60, type: e.type, label: e.type + ' ' + e.val.hours + '시간' });
       }
       // 신청=즉시 차감(§10.3) — 반려·취소면 목록에서 빠져 파생 재계산이 곧 lot 복원
       if (e.type === '신청' && e.val && e.val.rid && reqIdx[e.val.rid] && reqActive(reqIdx[e.val.rid])) {
         var kd = e.val.hours === 2 ? '반차' : '연차';
-        ded.push({ at: e.date, min: e.val.hours * 60, type: kd, label: e.date + ' ' + kd + ' ' + e.val.hours + '시간' });
+        ded.push({ at: e.date, min: e.val.hours * 60, type: kd, label: kd + ' ' + e.val.hours + '시간' });
       }
     }
-    // 마감된 소정근로일의 부족분 — 이벤트가 있는 날만 훑으면 결근일 부족분을 놓치므로 계획일 전체 훑기
-    //   (결근=absent은 차감이 아니라 무급 — 부족분 차감은 "출근은 했는데 4h 미만"만)
+    // 확정된 소정근로일의 미달분 — 이벤트가 있는 날만 훑으면 결근일을 놓치므로 계획일 전체 훑기
+    //   (결근=absent은 차감이 아니라 무급 — 미달분 차감은 "출근은 했는데 소정을 못 채운" 경우만)
+    //   오늘까지 훑는다: dayStatus가 '오늘이지만 퇴근을 찍은' 날을 확정으로 보므로(당일 반영, 재출근=복원).
     var scanFrom = settings.accrualFrom + '-01';
     if (events.length) { var d0 = events[0].date; if (d0 < scanFrom) scanFrom = d0; }
-    if (settings.startFrom && settings.startFrom > scanFrom) scanFrom = settings.startFrom; // 시작 전 테스트 도장의 부족분 차감 오염 차단
-    for (var d = scanFrom; d < todayStr; d = addDays(d, 1)) {
+    if (settings.startFrom && settings.startFrom > scanFrom) scanFrom = settings.startFrom; // 시작 전 테스트 도장의 미달분 차감 오염 차단
+    for (var d = scanFrom; d <= todayStr; d = addDays(d, 1)) {
       if (seen[d]) continue; seen[d] = 1;
       var st = dayStatus(d, events, settings, swaps, corr, todayStr, null);
-      if (st.deficitMin > 0) ded.push({ at: d, min: st.deficitMin, type: '조퇴', label: d + ' 부족 ' + fmtMin(st.deficitMin) });
+      if (st.deficitMin > 0) ded.push({ at: d, min: st.deficitMin, type: '소정 미달', label: '소정 미달 ' + fmtMin(st.deficitMin) });
     }
     ded.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
     return ded;
