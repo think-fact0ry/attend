@@ -212,6 +212,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .result .rl{font-size:var(--fs-caption);color:var(--g500);font-weight:600}
 .result .rv{margin-top:6px;display:flex;align-items:baseline;gap:9px;justify-content:flex-end;flex-wrap:wrap}
 .result .old{font-size:var(--fs-body);color:var(--g400);font-weight:600}
+.result .old .pvsub{display:block;margin-top:4px;font-size:var(--fs-sm);font-weight:500;color:var(--g500)} /* 막힌 이유 아래 = 다음 행동 한 줄 */
 .result .arr{color:var(--g300)}
 .result .new{font-size:26px;font-weight:800;color:var(--green-dark);letter-spacing:-.5px}
 .result .new small{font-size:var(--fs-body);font-weight:700}
@@ -1473,7 +1474,14 @@ function previewApply() {
     api('preview', { kind: apply.kind, date: apply.date, hours: apply.hours }).then(function (r) {
       if (!r.ok) { toast(r.error); return; }
       var pv = r.preview;
-      if (!pv.ok) { $('applyResult').innerHTML = '<span class="old">' + pv.reason + '</span>'; return; }
+      if (!pv.ok) {
+        // T4(2026-07-24 유성 픽): 막힌 채로 끝내지 말고 **다음 행동 하나**만 준다.
+        //   연차가 모자란 경우 병가는 막히지 않는다(잔여 초과분=무급) — 이 앱의 명분이 "아프면 어떡해요?"에 답하는 것이라
+        //   정확히 그 순간에 길이 보여야 한다. 설명을 늘리지는 않는다(유성: "0은 당연히 0, 굳이 설명 X").
+        var extra = (pv.code === 'short' && apply.kind === '연차')
+          ? '<span class="pvsub">아파서 쉬는 거라면 병가로 쉬어요 (무급)</span>' : '';
+        $('applyResult').innerHTML = '<span class="old">' + pv.reason + extra + '</span>'; return;
+      }
       var oldTxt = fmtBalPlain({ baseMin: pv.baseMin, bonusMin: pv.bonusMin });
       var newTxt = fmtBalPlain({ baseMin: pv.afterBaseMin, bonusMin: pv.afterBonusMin });
       $('applyResult').innerHTML = '<span class="old">' + oldTxt + '</span><span class="arr">→</span><span class="new">' + newTxt.replace(/(시간|분)/g, '<small>$1</small>') + '</span>';
@@ -1532,13 +1540,21 @@ function loadMy() {
 $('myPrev').addEventListener('click', function () { state.myYm = shiftYm(state.myYm, -1); loadMy(); });
 $('myNext').addEventListener('click', function () { state.myYm = shiftYm(state.myYm, 1); loadMy(); });
 
+// 연차 발생 시작 = settings.accrualFrom('YYYY-MM') 파생. T3(07-24): '8월'을 문구에 박아두면 2인째·해 넘김에 거짓말이 된다.
+function accrualFromLabel(withYear) {
+  var af = (state.db && state.db.settings && state.db.settings.accrualFrom) || '';
+  if (!/^\d{4}-\d{2}$/.test(af)) return withYear ? '설정 전이에요' : '설정한 달';
+  var mm = +af.slice(5, 7);
+  return (withYear ? af.slice(0, 4) + '년 ' : '') + mm + '월 근무분부터';
+}
+
 /* ── 연차 내역 — 로컬 파생 ── */
 function loadLedger() {
   if (!state.db) { syncNow(function () { loadLedger(); }); return; }
   var bal = AttEngine.balance(state.db.events, state.db.settings, state.db.today);
   $('ledgerLeft').innerHTML = fmtBal(bal);
   var wrap = $('ledgerRows'); wrap.innerHTML = '';
-  if (!bal.rows.length) { wrap.innerHTML = '<div class="row"><span class="l">아직 내역이 없어요</span><span class="v" style="color:var(--g400)">8월부터 쌓여요</span></div>'; return; }
+  if (!bal.rows.length) { wrap.innerHTML = '<div class="row"><span class="l">아직 내역이 없어요</span><span class="v" style="color:var(--g400)">' + accrualFromLabel(false) + ' 쌓여요</span></div>'; return; }
   bal.rows.slice().reverse().forEach(function (row) {
     var d = document.createElement('div'); d.className = 'row';
     var v, color;
@@ -1563,7 +1579,7 @@ function loadMe() {
   add('소정근로', sched, 'sched'); // 07-22 유성: 줄간격 확대
   add('지각 기준', '근무 시작 후 ' + db.settings.graceMin + '분까지 괜찮아요'); // '시업' 표현 폐기(07-22)
   add('연차', '한 달 개근하면 다음 달 1일에 4시간');
-  add('연차 시작', '2026년 8월 근무분부터');
+  add('연차 시작', accrualFromLabel(true));
   add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>');
   $('pinChangeGo').addEventListener('click', changePinFlow);
   // 2차: 폰(비-출퇴근 PC)=세션 영구 유지·로그아웃 없음. 출퇴근 PC(전사 지정)=여럿이 공용이라 '로그아웃' 있음.
@@ -1784,7 +1800,7 @@ function renderAdmin(r) {
   var memSel = r.members.length > 1
     ? '<select class="ain" id="admMemSel" style="font-weight:700;padding:6px 10px">' + r.members.map(function (mm, i) { return '<option value="' + i + '"' + (i === mi ? ' selected' : '') + '>' + mm.name + '</option>'; }).join('') + '</select>'
     : m.name;
-  html += '<div class="asec"><h4>' + memSel + ' — 소정근로 스케줄 <span class="cavt">요일마다 다르게 설정 가능</span></h4><div id="schedEdit">';
+  html += '<div class="asec"><h4>' + memSel + ' 소정근로 스케줄 <span class="cavt">요일마다 다르게 설정 가능</span></h4><div id="schedEdit">';
   for (var wd = 1; wd <= 6; wd++) html += schedRowHtml(wd, m.schedule[String(wd)]);
   html += schedRowHtml(0, m.schedule['0']);
   html += '</div><div class="arow" style="margin-top:10px"><span style="color:var(--g500)">근태 시작일</span> <input class="ain" type="date" id="startFrom" value="' + (m.startFrom || '') + '"></div>' +
@@ -1792,12 +1808,12 @@ function renderAdmin(r) {
     '<div class="arow" style="margin-top:10px"><button class="abtn" id="schedSave">스케줄 저장</button><span class="anote" style="margin-top:0">저장하면 지각·소정 미달·개근·달 소정시간이 전부 새 스케줄 기준으로 바뀌어요</span></div></div>';
 
   // 근무일 변경(하루 맞바꾸기)
-  html += '<div class="asec"><h4>근무일 변경 (하루 맞바꾸기) <span class="cavt">근로자 요청·상호 합의 시</span></h4>' +
+  html += '<div class="asec"><h4>근무일 변경 (하루 맞바꾸기) <span class="cavt">대상: ' + m.name + ' · 근로자 요청·상호 합의 시</span></h4>' +
     '<div class="arow"><input class="ain" type="date" id="swapOff"> <span style="color:var(--g500)">근무일 → 휴무</span> <span style="color:var(--g400)">⇄</span> <input class="ain" type="date" id="swapOn"> <span style="color:var(--g500)">휴무 → 근무일</span> <button class="abtn" id="swapGo">변경</button></div>' +
     '<div class="anote">변경하면 캘린더·도장 가능일·개근 판정이 전부 바뀐 스케줄 기준으로 따라가요. 시간도 함께 옮겨져요(금→목이면 목이 12~16).</div></div>';
 
   // 연차 부여 (v6 §10.9: 이유 8자 — 잔여 설명 줄에 그대로 보임) + 부여 내역·취소(07-23 유성)
-  html += '<div class="asec"><h4>연차 부여 (보너스)</h4><div class="arow"><input class="ain" type="number" id="grantH" min="1" max="48" value="4" style="width:80px"> 시간 <input class="ain" type="text" id="grantNote" maxlength="8" placeholder="이유 (예: 입사 보너스)" style="flex:1;min-width:140px"> <button class="abtn" id="grantGo">부여</button></div>' +
+  html += '<div class="asec"><h4>연차 부여 (보너스) <span class="cavt">대상: ' + m.name + '</span></h4><div class="arow"><input class="ain" type="number" id="grantH" min="1" max="48" value="4" style="width:80px"> 시간 <input class="ain" type="text" id="grantNote" maxlength="8" placeholder="이유 (예: 입사 보너스)" style="flex:1;min-width:140px"> <button class="abtn" id="grantGo">부여</button></div>' +
     ((m.grants || []).length
       ? '<table class="at">' + m.grants.map(function (g) {
         return '<tr><td>' + g.date + ': ' + (g.note || '부여') + '<span class="sub2">' + g.hours + '시간</span></td><td class="num">' + (g.cid ? '<button class="abtn gray" data-void="' + g.cid + '">취소</button>' : '') + '</td></tr>';
@@ -1834,14 +1850,14 @@ function renderAdmin(r) {
         return '<tr><td>' + d.label + (myDev && d.id === myDev.id ? ' <span style="color:var(--green-dark);font-weight:700">(이 컴퓨터)</span>' : '') + '<span class="sub2">' + d.at + ' 등록</span></td><td class="num"><button class="abtn gray" data-devrm="' + d.id + '">해제</button></td></tr>';
       }).join('') + '</table>'
       : '<div class="anote">지정된 출퇴근 PC가 없어요.</div>') +
-    '<div class="anote">출퇴근 PC로 지정하면 <b>모든 인력</b>이 그 컴퓨터에서 로그인·도장·로그아웃해요(사람마다 따로 지정 안 해도 됨). 폰·다른 컴퓨터는 조회와 휴가 신청만. ⚠️지정은 반드시 그 컴퓨터 앞에서(원격 지정 안 됨 — 지정 정보가 그 컴퓨터 브라우저에 저장돼요)</div></div>';
+    '<div class="anote">출퇴근 PC로 지정하면 <b>모든 인력</b>이 그 컴퓨터에서 로그인·도장·로그아웃해요(사람마다 따로 지정 안 해도 됨). 폰·다른 컴퓨터는 조회와 휴가 신청만. ⚠️지정은 반드시 그 컴퓨터 앞에서(원격 지정 안 됨, 지정 정보가 그 컴퓨터 브라우저에 저장돼요)</div></div>';
 
   // 정정
-  html += '<div class="asec"><h4>출퇴근 기록 정정</h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
+  html += '<div class="asec"><h4>출퇴근 기록 정정 <span class="cavt">대상: ' + m.name + '</span></h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
     '<div class="anote">채운 칸만 바뀌어요. 비운 칸은 원래 기록을 그대로 둬요(출근만·퇴근만 고칠 수 있어요). 원래 기록은 남고 정정이 이겨요(감사 추적).</div></div>';
 
   // 주휴 15h 보드
-  html += '<div class="asec"><h4>주휴 15시간 판정 — 제공인력 <span class="cavt">01 대장 4주 평균 · 참고치</span></h4><div class="arow"><button class="abtn" id="w15Go">불러오기</button></div><div id="w15Out"></div></div>';
+  html += '<div class="asec"><h4>주휴 15시간 판정 · 제공인력 <span class="cavt">01 대장 4주 평균 · 참고치</span></h4><div class="arow"><button class="abtn" id="w15Go">불러오기</button></div><div id="w15Out"></div></div>';
 
   // 월마감
   html += '<div class="asec"><h4>월마감 <span class="cavt">전월 확정 스냅샷</span></h4><div class="arow"><input class="ain" type="month" id="closeYm"> <button class="abtn" id="closeGo">마감 실행</button></div>' +
@@ -1874,7 +1890,15 @@ function renderAdmin(r) {
     });
   });
   document.querySelectorAll('[data-grant]').forEach(function (btn) {
-    btn.addEventListener('click', function () { document.getElementById('grantH').focus(); window.scrollTo({ top: document.getElementById('grantH').offsetTop - 100, behavior: 'smooth' }); });
+    // T3(2026-07-24): 구판은 스크롤만 하고 대상을 안 바꿨다 → 2인째부터 "한유성 행"을 눌러도 부여는 선택된 다른 사람에게 갔다.
+    //   행 버튼 = 그 사람을 대상으로 지정하는 행위로 본다(선택 전환 후 다시 그려서 카드 헤더의 '대상: 이름'이 따라온다).
+    btn.addEventListener('click', function () {
+      var idx = -1;
+      for (var i = 0; i < r.members.length; i++) if (r.members[i].emp === this.dataset.grant) idx = i;
+      if (idx >= 0 && idx !== (state.admMi || 0)) { state.admMi = idx; renderAdmin(r); }
+      var g = document.getElementById('grantH');
+      g.focus(); window.scrollTo({ top: g.offsetTop - 100, behavior: 'smooth' });
+    });
   });
   $('schedSave').addEventListener('click', function () {
     var schedule = {};
@@ -1909,7 +1933,7 @@ function renderAdmin(r) {
     var h = +$('grantH').value;
     adminApi('admin_grant', { emp: m.emp, hours: h, note: $('grantNote').value, cid: cid() }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
-      toast('연차 ' + h + '시간을 부여했어요 — 잔여 ' + fmtBalPlain(rr.balance)); loadAdmin();
+      toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요 · 잔여 ' + fmtBalPlain(rr.balance)); loadAdmin();
     });
   });
   $('devGo').addEventListener('click', function () {
@@ -2012,9 +2036,9 @@ function renderAdmin(r) {
     adminApi('admin_close', { ym: ym }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
       var row = rr.row;
-      $('closeOut').innerHTML = '<div class="anote">' + ym + ' ' + row.name + ' — 근무 ' + fmtMin(row.workedMin) + ' / 소정 ' + fmtMin(row.planMin) +
+      $('closeOut').innerHTML = '<div class="anote">' + ym + ' ' + row.name + ' · 근무 ' + fmtMin(row.workedMin) + ' / 소정 ' + fmtMin(row.planMin) +
         ' / 지각 ' + row.lateCount + '회 / 연차차감 ' + fmtMin(row.dedMin) + (row.unpaidMin ? ' / 무급 ' + fmtMin(row.unpaidMin) : '') +
-        ' / 연장 ' + fmtMin(row.overtimeMin) + ' / ' + (row.perfect ? '개근 O (+4시간)' : '개근 X') + ' — 월마감 탭에 적었어요</div>';
+        ' / 연장 ' + fmtMin(row.overtimeMin) + ' / ' + (row.perfect ? '개근 O (+4시간)' : '개근 X') + ' · 월마감 탭에 적었어요</div>';
     });
   });
 }

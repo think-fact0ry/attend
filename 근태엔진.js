@@ -419,11 +419,12 @@ var AttEngine = (function () {
   function previewRequest(events, settings, todayStr, kind, dateStr, hours) {
     var before = balance(events, settings, todayStr);
     var plan = dayPlan(dateStr, settings, swapOverrides(events, settings));
-    if (!plan.work) return { ok: false, reason: '근무일이 아니에요', baseMin: before.baseMin, bonusMin: before.bonusMin };
+    if (!plan.work) return { ok: false, code: 'notwork', reason: '근무일이 아니에요', baseMin: before.baseMin, bonusMin: before.bonusMin };
     var after = balance(events.concat([{ at: '', emp: settings.emp, date: dateStr, type: kind, val: { hours: hours } }]), settings, todayStr);
     var unpaidAdd = Math.max(0, after.unpaidMin - before.unpaidMin);
     if (kind === '연차' && unpaidAdd > 0) { // 미발생 선사용 하드 차단(§60⑤) — 그 날짜 기준 쓸 수 있는 lot으로 판정
-      return { ok: false, reason: '남은 연차가 부족해요 (' + fmtMin(before.baseMin + before.bonusMin) + ')', baseMin: before.baseMin, bonusMin: before.bonusMin };
+      // code='short' — 화면이 "그럼 뭘 할 수 있나"(병가 길)를 붙이는 근거. 문자열 매칭 금지(문구는 바뀐다).
+      return { ok: false, code: 'short', reason: '남은 연차가 부족해요 (' + fmtMin(before.baseMin + before.bonusMin) + ')', baseMin: before.baseMin, bonusMin: before.bonusMin };
     }
     return {
       ok: true, baseMin: before.baseMin, bonusMin: before.bonusMin,
