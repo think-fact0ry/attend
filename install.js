@@ -34,7 +34,9 @@
   '.tfi-card li b{color:#2f6f4d;font-weight:700;}'+
   '.tfi-note{font-size:13px;color:#8b95a1;font-weight:500;line-height:1.5;margin:-8px 0 16px;word-break:keep-all;}'+
   '.tfi-card .done{width:100%;font-size:17px;font-weight:700;padding:17px;border-radius:15px;border:none;background:#3a8a5f;color:#fff;cursor:pointer;}'+
-  '.tfi-card .done:active{background:#2f6f4d;}';
+  '.tfi-card .done:active{background:#2f6f4d;}'+
+  /* PC 폰목업(docs/1 §3.8): 배너는 body 직속이라 #app containing block 밖 — 폭을 폰 화면에 맞춤(양옆 12px 인셋 유지) */
+  '@media (min-width:480px) and (hover:hover) and (pointer:fine){.tfi-bar{left:50%;right:auto;transform:translateX(-50%);width:calc(min(var(--maxw,460px),100vw - 38px) - 24px);}}';
   document.head.appendChild(css);
 
   var bar = document.createElement('div'); bar.className = 'tfi-bar';

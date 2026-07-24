@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v21'; // 07-24 7차: 로그인 왕복 2→1회·시트 중복 읽기 제거 | T5 관리자 흐름(월마감 가드·중립 복귀·원탭 상태별·버튼 로딩·뒤로가기) | 하루의 정의="소정을 채웠는가"(오차 5분·당일 반영·재출근 복원)·출퇴근 낙관적 렌더·유휴 잠금 1시간
+var CACHE = 'tf-attend-v22'; // 07-24 8차(§13-12 디자인 확정 11항): PC 폰 목업(베젤 g200·반경 40·여백 19)·squircle corner-shape(시트·모달·드로어)·가로 패딩 24·퇴근 시트 패딩 12/14·'모자라요' 빨강 700
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',

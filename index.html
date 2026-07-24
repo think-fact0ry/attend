@@ -40,9 +40,9 @@ input,textarea{user-select:text;-webkit-user-select:text} /* 입력칸만 예외
 #app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
 /* ── 헤더 ── */
-.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 20px 0;min-height:52px}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 24px 0;min-height:52px} /* §13-12(6): 가로 24·탑 18 */
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
-#meTitle{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;padding:12px 20px;margin:-12px -20px} /* 롱프레스 보호+히트영역 확대(시각 불변 — 07-23 실기기 불발 대응) */
+#meTitle{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;padding:12px 24px;margin:-12px -24px} /* 롱프레스 보호+히트영역 확대(시각 불변 — 07-23 실기기 불발 대응) */
 .hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .hd .ic:active{transform:scale(.82)}
 .hd .ic svg{width:22px;height:22px}
@@ -56,7 +56,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 
 .scr{display:none;flex-direction:column;flex:1}
 .scr.on{display:flex}
-.body{padding:18px 20px calc(20px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
+.body{padding:18px 24px calc(20px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
 
 /* ── 공통 컴포넌트 ── */
 .rows{background:var(--g50);border-radius:var(--r-md);padding:4px 18px}
@@ -116,7 +116,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .excard .btn{margin-top:10px;padding:13px;font-size:var(--fs-body)}
 
 /* 퇴근 확인 시트(논모달 — dim 없음) */
-.csheet{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));background:#fff;border-radius:24px;padding:10px 22px 22px;box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:500}
+.csheet{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));background:#fff;border-radius:24px;padding:12px 14px 12px;box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:500} /* §13-12(7): 패딩=concentric 공식보다 눈 우선(유성) */
 .csheet.on{transform:translateX(-50%) translateY(0)}
 .csheet.grab{transition:none}
 .csheet:active{}
@@ -129,9 +129,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 @keyframes sheetIn{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
 .csheet .handle{width:40px;height:4px;border-radius:99px;background:var(--g200);margin:4px auto 16px}
 .csheet .ct{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
-.csheet .cs{font-size:var(--fs-sm);color:var(--g500);margin-bottom:6px}
-.csheet .cw{font-size:var(--fs-sm);color:var(--g700);margin-bottom:12px}
-.csheet .cw .cwsub{display:block;color:var(--g500);margin-top:3px} /* 1줄=사실(모자란 분), 2줄=채우는 법·안 채웠을 때 */
+.csheet .cs{font-size:var(--fs-sm);color:var(--g500);margin-bottom:13px} /* §13-12(8) */
+.csheet .cw{font-size:var(--fs-sm);color:var(--red);font-weight:700;margin-bottom:12px} /* §13-12(9): 모자란 분=빨강 700 */
+.csheet .cw .cwsub{display:block;color:var(--g500);font-weight:400;margin-top:3px} /* 1줄=사실(모자란 분), 2줄=채우는 법·안 채웠을 때 — 보조줄은 회색 유지 */
 .csheet .btn{margin-top:8px}
 
 /* 완료 오버레이 */
@@ -264,7 +264,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .dsheet .day.pick .n{color:var(--green-dark);font-weight:800}
 
 /* ── PIN 키패드 ── */
-.pinov{position:fixed;inset:0;background:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:850;padding:20px}
+.pinov{position:fixed;inset:0;background:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:850;padding:20px 24px}
 .pinov.on{display:flex}
 .pinov .pt{font-size:var(--fs-h3);font-weight:800;margin-bottom:6px}
 .pinov .ps{font-size:var(--fs-sm);color:var(--g500);margin-bottom:22px}
@@ -285,7 +285,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 
 /* ── 관리자 ── */
-.abody{padding:20px 20px calc(24px + env(safe-area-inset-bottom));flex:1;overflow-x:auto}
+.abody{padding:20px 24px calc(24px + env(safe-area-inset-bottom));flex:1;overflow-x:auto}
 /* 07-23 유성: 관리자=회색 배경+흰 카드(§4.7 — 카드 안 행=헤어라인(table.at 기존), 섹션 사이=여백·선 없음) */
 .asec{background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.07);padding:16px 18px;margin-bottom:16px}
 .asec h4{font-size:var(--fs-body);font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -400,6 +400,20 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
 /* ── v6.1 내 정보 소정근로 줄간격·PIN 행 ── */
 .row .v.sched{line-height:1.9;font-weight:600}
+
+/* ── §13-12(4·5) squircle: 반경 20px 이상 요소만 corner-shape(크로미움 전용 — 미지원 브라우저=일반 라운드 폴백).
+     전 요소 동일 지수 superellipse(2.3)=애플 n≈5 근사. 버튼 15·상태필 12는 일반 라운드 유지(대상 아님). ── */
+.csheet,.vsheet,.cmodal,.drawer{corner-shape:superellipse(2.3)}
+
+/* ── §13-12(1~3) PC 폰 목업(docs/1 §3.8): 넓은 창+마우스=PC에서만, 폰에선 없음.
+     Chrome 최소 창폭(~500, §13-3.2)의 남는 여백을 폰 베젤로 흡수 — 여백 19px(상·좌·우)·아래 0(창 바닥에서 올라온 모양).
+     #app의 transform이 고정 오버레이(시트·PIN·dim·드로어·토스트 — 전원 #app 자식)의 containing block을 #app으로 만들어
+     전부 폰 화면 안에 갇히고 40px 라운드로 클립됨. 화면 배경(me/my/admin=g50)은 go()가 #app 인라인으로 담당. ── */
+@media (min-width:480px) and (hover:hover) and (pointer:fine){
+  body{background:var(--g200) !important;padding-top:19px} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
+  #app{max-width:min(var(--maxw),calc(100% - 38px));height:100%;min-height:0;background:#fff;border-radius:40px 40px 0 0;corner-shape:superellipse(2.3);box-shadow:0 8px 20px rgba(25,31,40,.15);transform:translateZ(0)}
+  .scr.on{overflow-y:auto;overflow-x:hidden;min-height:0} /* #app 높이 고정 → 창 스크롤 대신 화면 내부 스크롤(폰과 동일 감) */
+}
 </style>
 </head>
 <body>
@@ -856,7 +870,10 @@ var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin'];
 function go(name) {
   SCREENS.forEach(function (s) { $('s-' + s).classList.toggle('on', s === name); });
   // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
-  document.body.style.background = (name === 'me' || name === 'my' || name === 'admin') ? 'var(--g50)' : '#fff';
+  // §13-12 C: 화면 배경은 #app에도 — 폰목업(PC)에선 body=베젤 g200 고정(!important)이라 #app이 화면색을 담당
+  var scrBg = (name === 'me' || name === 'my' || name === 'admin') ? 'var(--g50)' : '#fff';
+  document.body.style.background = scrBg;
+  $('app').style.background = scrBg;
   closeDrawer(); hideSheet();
   if (name === 'cal') loadCal();
   if (name === 'my') loadMy();
@@ -1954,7 +1971,7 @@ function renderAdmin(r) {
       for (var i = 0; i < r.members.length; i++) if (r.members[i].emp === this.dataset.grant) idx = i;
       if (idx >= 0 && idx !== (state.admMi || 0)) { state.admMi = idx; renderAdmin(r); }
       var g = document.getElementById('grantH');
-      g.focus(); window.scrollTo({ top: g.offsetTop - 100, behavior: 'smooth' });
+      g.focus(); g.scrollIntoView({ behavior: 'smooth', block: 'center' }); // 폰목업(PC)선 창이 아니라 .scr가 스크롤 — 컨테이너 무관하게 동작
     });
   });
   $('schedSave').addEventListener('click', function () {
