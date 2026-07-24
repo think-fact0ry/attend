@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v22'; // 07-24 8차(§13-12 디자인 확정 11항): PC 폰 목업(베젤 g200·반경 40·여백 19)·squircle corner-shape(시트·모달·드로어)·가로 패딩 24·퇴근 시트 패딩 12/14·'모자라요' 빨강 700
+var CACHE = 'tf-attend-v23'; // 07-25 9차(버그·최적화 sweep): 잠금 화면 뒤로가기 우회 차단·잠금 중 폴링 차단 | 유령 연차 발생 가드(근무일 0인 달) | 쓰기 응답=결과+갱신 상태(amend·request·cancel·extwork 왕복 2→1) | 유휴 문구 1시간·구성원 추가 안내 PIN 흐름·pollKey 기준선
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',

@@ -103,7 +103,7 @@ function fmtMin(min) { var h = Math.floor(min / 60), m = min % 60; return h && m
 var STATE_MSG = {
   '승인': ['이미 승인한 신청이에요', '더 하실 일은 없어요'],
   '반려': ['이미 반려한 신청이에요', '연차는 돌아갔어요'],
-  '취소': ['현아쌤이 취소한 신청이에요', '연차는 돌아갔어요'],
+  '취소': ['본인이 취소한 신청이에요', '연차는 돌아갔어요'],
   '자동확정': ['시작 시각이 지나 자동으로 확정됐어요', '따로 승인하지 않아도 사용으로 처리돼요']
 };
 function invalid(msg, state) {
@@ -131,7 +131,7 @@ function render(info) {
     '<div class="row"><span class="l">남은 연차</span><span class="v">' + fmtMin(info.beforeMin) + ' → <span style="color:var(--green-dark)">' + fmtMin(info.afterMin) + '</span></span></div>' +
     (info.planStart ? '<div class="row"><span class="l">그날 근무</span><span class="v">' + info.planStart + ' ~ ' + info.planEnd + '</span></div>' : '') +
     '</div>' +
-    '<div class="memo" id="memoFld"><input id="memoIn" placeholder="메모 (선택) 현아쌤에게 보여요"></div>' +
+    '<div class="memo" id="memoFld"><input id="memoIn" placeholder="메모 (선택) 신청한 분에게 보여요"></div>' +
     '<div class="cta"><button class="btn fill" id="apvGo">승인하기</button><button class="btn gray" id="rejGo">반려하기</button></div>';
   var busy = false;
   $('apvGo').addEventListener('click', function () {

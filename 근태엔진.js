@@ -319,6 +319,15 @@ var AttEngine = (function () {
     return true;
   }
 
+  // 그 달에 소정근로일이 하나라도 있는가 — 근무일 0인 달(startFrom을 달 뒤로 미룸·전부 휴무)은
+  //   '개근'의 대상이 아니다. 가드 없으면 perfectMonth가 공허하게 참이 되어 일하지 않은 달에도
+  //   240분이 발생했다(유령 발생 — 2026-07-25 sweep. 예: 런치가 밀려 startFrom을 9/1로 옮긴 경우의 8월).
+  function monthHasWorkday(ym, settings, swaps) {
+    var days = monthDates(ym);
+    for (var i = 0; i < days.length; i++) if (dayPlan(days[i], settings, swaps).work) return true;
+    return false;
+  }
+
   // ── 연차 원장: 발생 lot(월할) + 보너스 lot → 차감 시뮬레이션 ──
   //    발생: accrualFrom부터, 달이 다 지나고 개근이면 다음달 1일에 240분 발생, 발생일+12개월 만료.
   //    차감 순서: 보너스 먼저 → 만료 임박 lot 먼저.
@@ -326,7 +335,7 @@ var AttEngine = (function () {
     var lots = [];
     var ym = settings.accrualFrom;
     while (firstOfNextMonth(ym) <= todayStr) { // 달이 다 지나야 발생 (8월분=9/1)
-      if (perfectMonth(ym, events, settings, swaps, corr, todayStr)) {
+      if (monthHasWorkday(ym, settings, swaps) && perfectMonth(ym, events, settings, swaps, corr, todayStr)) {
         var grantAt = firstOfNextMonth(ym);
         lots.push({ kind: '월차', label: ym + ' 개근', at: grantAt, min: MONTH_GRANT_MIN, expires: addMonths(grantAt, LOT_LIFE_MONTHS) });
       }
@@ -489,7 +498,7 @@ var AttEngine = (function () {
     ymd: ymd, addDays: addDays, toMin: toMin, fmtMin: fmtMin, fmtHm: fmtHm, monthDates: monthDates,
     firstOfNextMonth: firstOfNextMonth, addMonths: addMonths,
     corrections: corrections, swapOverrides: swapOverrides, dayPlan: dayPlan, dayStatus: dayStatus,
-    perfectMonth: perfectMonth, buildLots: buildLots, buildDeductions: buildDeductions,
+    perfectMonth: perfectMonth, monthHasWorkday: monthHasWorkday, buildLots: buildLots, buildDeductions: buildDeductions,
     applyLedger: applyLedger, balance: balance, previewRequest: previewRequest, monthView: monthView,
     requestIndex: requestIndex, reqActive: reqActive, reqStatus: reqStatus, reqHalf: reqHalf,
     leaveStartMin: leaveStartMin, listRequests: listRequests, missingDays: missingDays

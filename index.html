@@ -777,7 +777,12 @@ function adoptSync(r) {
   var c = compose();
   state.status = c;
   renderMain(c);
+  pollKey = pollSnap(c); // 내 변경을 폴링 기준선에 반영 — 안 하면 다음 폴링이 내 변경을 "바뀐 내용"으로 토스트한다(2026-07-25)
   return c;
+}
+function adoptOrSync(r, cb) { // 쓰기 응답에 sync 페이로드가 얹혀 오면(2026-07-25 서버 계약) 추가 왕복 없이 채택, 아니면 예전처럼 sync
+  if (r && r.events && r.settings) { var c = adoptSync(r); if (cb) cb(c); }
+  else syncNow(cb);
 }
 function syncNow(cb) {
   api('sync').then(function (r) {
@@ -894,7 +899,7 @@ document.addEventListener('click', function (e) { // 07-23 전 화면 캘린더�
 ['calBack', 'applyBack', 'myBack', 'ledgerBack', 'meBack'].forEach(function (id) { $(id).addEventListener('click', function () { go('main'); refreshMain(); }); });
 // T5(07-24): 관리자를 닫으면 '내 정보'(현아 개인 화면 — 비밀번호 바꾸기·로그아웃이 있는 곳)로 떨어졌다.
 //   유성이 관리자 보고 나올 때마다 남의 계정 설정 화면에 서게 되는 자리라 중립(메인)으로 복귀하고, 관리자 PIN도 메모리에서 지운다.
-$('adminClose').addEventListener('click', function () { state.adminPin = ''; go('main'); refreshMain(); });
+$('adminClose').addEventListener('click', function () { state.adminPin = ''; sessionStorage.removeItem('att_admin'); go('main'); refreshMain(); }); // sessionStorage도 같이 — 메모리만 지우면 재부팅 시 되살아난다(2026-07-25)
 
 /* ── [구] 등록 코드 — 2차 PIN 단일 진입 이후 `go('token')` 호출부가 없어 도달 불가(제거는 T6 정리 후보).
       state.db 조립만 adoptSync로 묶어 둔다(형태가 갈리면 나중에 조용히 어긋난다). ── */
@@ -975,7 +980,7 @@ function doPunch(kind) {
   };
   db.events.push(optimistic);
   state.punching = true; // 폴링이 이 사이에 state.db를 통째로 갈아끼우면 방금 찍은 도장이 잠깐 사라진다
-  var c = compose(); state.status = c; renderMain(c);
+  var c = compose(); state.status = c; renderMain(c); pollKey = pollSnap(c);
   showDone((kind === 'in' ? '출근' : '퇴근') + '을 기록했어요', ampm(optimistic.val));
   var lockAfter = (kind === 'out' && c && c.deviceOk && c.anyPinSet); // 퇴근=공용 PC 세션 종료(T2-1)
   // resync=true: 서버 도달 여부가 불확실한 실패(응답 유실) — 서버에 이미 기록됐는데 화면만 되돌아가면
@@ -994,7 +999,7 @@ function doPunch(kind) {
     if (!r.ok) { rollback(r.error); return; }
     if (state.db !== db) { refreshMain(); return; }        // 대기 중 sync가 원장을 갈아끼웠으면 서버본을 따른다
     optimistic.val = r.recorded.at;                        // 서버 시각이 진실 — 값만 조용히 교체
-    var c3 = compose(); state.status = c3;
+    var c3 = compose(); state.status = c3; pollKey = pollSnap(c3);
     if (c3 && $('s-main').classList.contains('on')) renderMain(c3); // 응답 대기 중 다른 화면으로 갔으면 렌더 생략
     if (lockAfter) setTimeout(lockNow, 1600);
   }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요', true); });
@@ -1152,7 +1157,7 @@ $('mCancel').addEventListener('click', function () {
   api('cancel', { rid: c.rid, cid: cid() }, true).then(function (r) {
     if (!r.ok) { toast(r.error); refreshMain(); return; }
     toast('신청을 취소했어요. 연차가 돌아왔어요');
-    refreshMain();
+    adoptOrSync(r);
   }).catch(function () { toast('취소가 안 됐어요. 다시 시도해 주세요'); refreshMain(); });
 });
 
@@ -1211,7 +1216,7 @@ function showMissSheet(miss, r) {
       withPin(function (p) {
         api('amend', { date: miss.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
           if (!rr.ok) { toast(rr.error); return; }
-          close(); toast('퇴근 시각을 남겼어요'); syncNow();
+          close(); toast('퇴근 시각을 남겼어요'); adoptOrSync(rr);
         }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
       });
     });
@@ -1227,13 +1232,13 @@ function showMissSheet(miss, r) {
     sh.querySelector('#missHb').addEventListener('click', function () {
       api('extwork', { date: miss.date, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        close(); showDone('외부 근무로 남겼어요', kDateShort(miss.date)); refreshMain();
+        close(); showDone('외부 근무로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
       }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
     });
     sh.querySelector('#missSick').addEventListener('click', function () {
       api('request', { kind: '병가', date: miss.date, hours: 4, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        close(); showDone('병가로 남겼어요', kDateShort(miss.date)); refreshMain();
+        close(); showDone('병가로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
       }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
     });
   }
@@ -1254,6 +1259,7 @@ function pollSnap(r) { return JSON.stringify([(r.cards || []), r.balance, (r.rej
 function pollTick(immediate) {
   if (document.hidden) return;
   if (state.punching) return; // 낙관적 도장 비행 중 — 서버 원장엔 아직 없어 되돌아가 보인다(07-24)
+  if (localStorage.getItem('att_locked') && !DEMO) return; // 잠금 중 폴링이 state.db를 도로 채우면 잠금 화면 뒤에서 앱이 살아난다(2026-07-25 sweep)
   if (!store.token || !$('s-main').classList.contains('on')) return;
   var prev = pollKey;
   syncNow(function (c) {
@@ -1393,7 +1399,7 @@ function renderCal(r) {
         withPin(function (p) {
           api('amend', { date: sel.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
             if (!rr.ok) { toast(rr.error); return; }
-            toast('퇴근 시각을 남겼어요'); syncNow(function () { loadCal(); });
+            toast('퇴근 시각을 남겼어요'); adoptOrSync(rr, function () { loadCal(); });
           }).catch(function () { toast('저장이 안 됐어요'); });
         });
       });
@@ -1416,7 +1422,7 @@ function renderCal(r) {
 var apply = { kind: '연차', hours: 4, half: 'front', date: '' };
 $('segLeave').addEventListener('click', function () { apply.kind = '연차'; segSync(); });
 $('segSick').addEventListener('click', function () { apply.kind = '병가'; segSync(); });
-function applyToday() { return state.db ? state.db.today : (state.status ? state.status.today : new Date().toISOString().slice(0, 10)); }
+function applyToday() { return state.db ? state.db.today : (state.status ? state.status.today : AttEngine.ymd(new Date())); } // 폴백=로컬 날짜(toISOString은 UTC라 자정 전후 9시간 어긋남)
 function segSync() {
   $('segLeave').classList.toggle('on', apply.kind === '연차');
   $('segSick').classList.toggle('on', apply.kind === '병가');
@@ -1531,10 +1537,10 @@ $('applyGo').addEventListener('click', function () {
     if (r.pending) { // 연차·반차 = 승인 대기(주황 시계, §10.8 — 서브 2줄·하이픈)
       var name = apply.hours === 4 ? '연차' : '반차';
       showDone(name + ' 신청을 마쳤어요', kDateShort(apply.date) + ' - ' + (apply.hours === 4 ? '하루' : '반차') + '\n확인 후에 반영돼요', true);
-      setTimeout(function () { go('main'); refreshMain(); }, 1900);
+      setTimeout(function () { go('main'); adoptOrSync(r); }, 1900);
     } else { // 병가 = 즉시 확정(초록 체크)
       showDone('병가로 남겼어요', kDateShort(apply.date) + ' - ' + (apply.hours === 4 ? '하루' : '반차'));
-      setTimeout(function () { go('main'); refreshMain(); }, 1500);
+      setTimeout(function () { go('main'); adoptOrSync(r); }, 1500);
     }
   }).catch(function () { toast('신청이 안 됐어요. 다시 시도해 주세요'); $('applyGo').disabled = false; });
 });
@@ -1616,7 +1622,7 @@ function loadMe() {
   // 2차: 폰(비-출퇴근 PC)=세션 영구 유지·로그아웃 없음. 출퇴근 PC(전사 지정)=여럿이 공용이라 '로그아웃' 있음.
   //   로그아웃=바로 잠그면 유저가 "내 번호 눌러야 하나" 혼란(유성 07-24) → 확인 모달+완료 인터랙션 후 잠금.
   $('meNote').innerHTML = state.db && state.db.deviceOk
-    ? '<button class="btn-out-sm" id="lockGo">로그아웃</button><div class="anote" style="margin-top:8px">이 컴퓨터는 여럿이 함께 써요. 로그아웃하면 다음 분이 비밀번호로 들어와요. 퇴근을 찍거나 5분 자리를 비우면 자동으로 로그아웃돼요.</div>'
+    ? '<button class="btn-out-sm" id="lockGo">로그아웃</button><div class="anote" style="margin-top:8px">이 컴퓨터는 여럿이 함께 써요. 로그아웃하면 다음 분이 비밀번호로 들어와요. 퇴근을 찍으면 바로, 자리를 오래 비우면 1시간 뒤에 자동으로 로그아웃돼요.</div>'
     : '<div class="anote" style="margin-top:0">이 기기는 로그인 상태가 계속 유지돼요.</div>';
   if ($('lockGo')) $('lockGo').addEventListener('click', function () {
     openConfirm('로그아웃 할까요?', '다음 분은 출퇴근 비밀번호로 들어와요.', '로그아웃', function () {
@@ -1632,15 +1638,13 @@ function loginGate() {
     onDone: function (p, h) {
       api('login', { pin: p }, true).then(function (r) {
         if (!r.ok) {
-          if (r.code === 'nopin') { localStorage.removeItem('att_locked'); h.close(); syncNow(function (c) { if (c) pollKey = pollSnap(c); }); return; } // 전환기 탈출: 아직 아무도 PIN 없음 → 기존 세션으로
+          if (r.code === 'nopin') { localStorage.removeItem('att_locked'); h.close(); syncNow(); return; } // 전환기 탈출: 아직 아무도 PIN 없음 → 기존 세션으로
           h.fail(r.error); return;
         }
         store.token = r.token; store.emp = r.emp;
         localStorage.removeItem('att_locked');
         h.close();
-        // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 예전처럼 sync 한 번.
-        if (r.events && r.settings) pollKey = pollSnap(adoptSync(r));
-        else syncNow(function (c) { pollKey = pollSnap(c); });
+        adoptOrSync(r); // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 sync 한 번
       }).catch(function () { toast('연결이 안 돼요'); });
     }
   });
@@ -1655,7 +1659,10 @@ function backGuardPush() { try { history.pushState({ att: 1 }, ''); } catch (e) 
 function closeTopLayer() {
   if ($('missSheet').classList.contains('on')) return true;              // 닫기 불가 — 삼키기만 한다
   if ($('acModal').classList.contains('on') || $('cModal').classList.contains('on')) { closeCancelModal(); return true; }
-  if ($('pinOv').classList.contains('on')) { $('pinOv').classList.remove('on'); return true; }
+  if ($('pinOv').classList.contains('on')) {
+    if (pinCtx && pinCtx.noCancel) return true; // 잠금 화면(공용 PC) — 뒤로가기로 벗겨지면 잠금이 잠금이 아니다(2026-07-25 sweep). 미기록일 시트와 같은 결: 삼키기만
+    pinHelpers.close(); return true;
+  }
   if ($('dateSheet').classList.contains('on')) { closeDateSheet(); return true; }
   if ($('rejSheet').classList.contains('on')) { $('rejSheet').classList.remove('on'); $('blockDim').classList.remove('on'); return true; }
   if ($('outSheet').classList.contains('on')) { hideSheet(); return true; }
@@ -1820,7 +1827,7 @@ function busyBtn(el, fn) {
   if (p && p.then) p.then(restore, restore); else restore();
   return p;
 }
-function loadAdmin() { adminApi('admin_summary').then(function (r) { if (r.ok) renderAdmin(r); else toast(r.error); }); }
+function loadAdmin() { return adminApi('admin_summary').then(function (r) { if (r.ok) renderAdmin(r); else toast(r.error); }); }
 function renderAdmin(r) {
   var b = $('adminBody');
   var mi = state.admMi || 0; if (mi >= r.members.length) mi = 0; // 07-23 다중 구성원 — 아래 카드들(스케줄·부여·기기·정정)의 대상
@@ -1843,7 +1850,7 @@ function renderAdmin(r) {
       html += '<tr><td>' + p.kd + '<span class="sub2">' + String(p.reqAt).slice(5, 10).replace('-', '/') + ' 신청</span></td>' +
         '<td>' + p.kind + '<span class="sub2">이미 차감됨, 반려하면 복원</span></td>' +
         '<td class="num"><button class="abtn" data-apv="' + p.rid + '">승인</button> <button class="abtn gray" data-rej="' + p.rid + '">반려</button></td></tr>' +
-        '<tr id="rejrow-' + p.rid + '" style="display:none"><td colspan="3"><div class="arow" style="margin:4px 0 2px"><input class="ain" id="rejmemo-' + p.rid + '" placeholder="메모 (선택) 현아쌤에게 보여요" style="flex:1;min-width:150px"> <button class="abtn gray" data-rejgo="' + p.rid + '">반려 확정</button></div></td></tr>';
+        '<tr id="rejrow-' + p.rid + '" style="display:none"><td colspan="3"><div class="arow" style="margin:4px 0 2px"><input class="ain" id="rejmemo-' + p.rid + '" placeholder="메모 (선택) 신청한 분에게 보여요" style="flex:1;min-width:150px"> <button class="abtn gray" data-rejgo="' + p.rid + '">반려 확정</button></div></td></tr>';
     });
     html += '</table>';
   } else html += '<div class="anote">기다리는 신청이 없어요.</div>';
@@ -1856,7 +1863,7 @@ function renderAdmin(r) {
       '<td class="num" style="color:var(--green-dark)">' + fmtBalPlain(mm.balance) + '</td>' +
       '<td class="num"><button class="abtn" data-grant="' + mm.emp + '">+ 연차 부여</button> <button class="abtn gray" data-pin="' + mm.emp + '" data-nm="' + mm.name + '">' + (mm.pinSet ? '비밀번호 리셋' : '비밀번호 정하기') + '</button> <button class="abtn gray" data-deact="' + mm.emp + '" data-nm="' + mm.name + '">비활성</button></td></tr>';
   });
-  html += '</table></div><div class="anote">이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 소정 미달 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div>' +
+  html += '</table></div><div class="anote">' + m.name + '님 이번 달 지각 ' + m.lateCount + '회 · 연장 ' + fmtMin(m.overtimeMin) + ' · 소정 미달 ' + fmtMin(m.deficitMin) + (m.balance.unpaidMin ? ' · 무급 누계 ' + fmtMin(m.balance.unpaidMin) : '') + '</div>' +
     '<div class="arow" style="margin-top:10px"><input class="ain" type="text" id="memKey" placeholder="영문 키 (예: minji)" style="width:130px"> <input class="ain" type="text" id="memName" placeholder="이름" style="width:110px"> <button class="abtn" id="memAddGo">구성원 추가</button></div>' +
     '<div class="anote">추가하면 기본 스케줄(월화수 11~15·금 12~16)·오늘이 근태 시작일로 만들어져요. 아래 스케줄 카드에서 바로 고치면 돼요.</div><div id="memAddOut"></div>' +
     ((r.inactiveMembers || []).length
@@ -2083,9 +2090,12 @@ function renderAdmin(r) {
     if (!k || !nm) { toast('영문 키와 이름을 둘 다 적어 주세요'); return; }
     adminApi('admin_member_add', { newEmp: k, name: nm }, true).then(function (rr) {
       if (!rr.ok) { toast(rr.error); return; }
-      // 등록 코드=이 응답 1회만 — 재렌더(loadAdmin)하면 지워지므로 화면 유지, 목록은 다음 진입 때 반영
-      document.getElementById('memAddOut').innerHTML = '<div class="anote" style="color:var(--green-dark);font-weight:700">' + nm + ' 등록 코드: ' + rr.token + ' (지금 한 번만 보여요. 본인 폰 첫 화면에 입력)</div>';
-      toast('구성원을 추가했어요');
+      // 2026-07-25 sweep: 구판은 '등록 코드'를 안내했는데 그 흐름은 2차 PIN 단일 진입에서 폐기됐다(첫 화면 자체가 PIN).
+      //   새 구성원의 진입 = 관리자가 [비밀번호 정하기]로 4자리 시딩 → 본인 폰에서 그 번호로 로그인.
+      loadAdmin().then(function () {
+        var out = document.getElementById('memAddOut');
+        if (out) out.innerHTML = '<div class="anote" style="color:var(--green-dark);font-weight:700">' + nm + '님을 추가했어요. 위 구성원 표의 [비밀번호 정하기]로 4자리를 정한 뒤 본인에게 알려 주세요. 본인 폰은 그 번호로 로그인해요.</div>';
+      });
     });
   });
   var memSelEl = document.getElementById('admMemSel');
@@ -2284,7 +2294,6 @@ function demoApi(action, data) {
   if (action === 'admin_device_register') return Promise.resolve({ ok: true, device: { id: 'demo-dev', token: 'demo-tok', label: data.label || '회사 PC', at: today } });
   if (action === 'admin_device_remove') return Promise.resolve({ ok: true });
   if (action === 'admin_void') return Promise.resolve({ ok: true });
-  if (action === 'unlock') return Promise.resolve({ ok: true });
   if (action === 'admin_member_add') return Promise.resolve({ ok: true, emp: data.newEmp, token: 'demo1234' });
   if (action === 'admin_member_deactivate' || action === 'admin_member_reactivate') return Promise.resolve({ ok: true, emp: data.emp });
   if (action === 'login') return Promise.resolve(Object.assign({ ok: true, emp: 'hyeona', token: 'demo', name: '이현아' }, demoSync()));
