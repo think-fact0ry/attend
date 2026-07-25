@@ -342,6 +342,63 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .pendcard .px svg{width:17px;height:17px}
 .pendcard+.pendcard{margin-top:8px}
 
+/* ── OTP 문자 인증 화면 (§4.2-10 — 12차 2026-07-26: PIN 키패드 재사용 폐지, 상담일지 s-signup2 통이식) ── */
+.otpov{position:fixed;inset:0;background:#fff;display:none;flex-direction:column;z-index:855;padding:calc(64px + env(safe-area-inset-top)) 24px calc(14px + env(safe-area-inset-bottom))}
+.otpov.on{display:flex}
+.otpov .pback{position:absolute;top:calc(14px + env(safe-area-inset-top));left:14px;width:38px;height:38px;border:0;background:none;color:var(--g900);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;border-radius:12px}
+.otpov .pback svg{width:24px;height:24px}
+.otpov h1{font-size:var(--fs-h2);font-weight:800;letter-spacing:-.3px;line-height:1.35;text-align:center}
+.otpov .osub{text-align:center;font-size:var(--fs-sm);font-weight:600;color:var(--g500);margin-top:8px;min-height:20px} /* 타이머 자리 고정(0:00 돼도 유지 — 셀 위치 안 튐) */
+.otpov .obody{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:26px}
+.otp-box{position:relative;display:flex;gap:7px;justify-content:center;width:fit-content;margin:8px auto 4px;transition:transform .45s cubic-bezier(.4,0,.2,1)}
+.otp-cell{width:clamp(40px,12.8vw,50px);height:60px;border-radius:var(--r-md);background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:700;color:var(--green);transition:background .25s ease, box-shadow .25s ease}
+.otp-cell.filled{background:#fff;box-shadow:inset 0 0 0 1px var(--g200)}
+.otp-cell:not(.filled){animation:otpWave 2.2s ease-in-out infinite}
+.otp-cell:not(.filled):nth-child(2){animation-delay:.13s} .otp-cell:not(.filled):nth-child(3){animation-delay:.26s}
+.otp-cell:not(.filled):nth-child(4){animation-delay:.39s} .otp-cell:not(.filled):nth-child(5){animation-delay:.52s} .otp-cell:not(.filled):nth-child(6){animation-delay:.65s}
+@keyframes otpWave{0%{background:var(--g100)}28%{background:#fff}55%,100%{background:var(--g100)}}
+.otp-cell.active::after{content:"";width:2px;height:30px;background:var(--green);border-radius:1px;animation:otpCaret 1.06s step-end infinite}
+@keyframes otpCaret{0%,49%{opacity:1}50%,100%{opacity:0}}
+.otp-cell.pop{animation:otpPop .2s ease-out}
+@keyframes otpPop{0%{transform:scale(.8)}100%{transform:scale(1)}}
+.otp-box.err .otp-cell{background:#fdecee;box-shadow:inset 0 0 0 1.5px var(--red);color:var(--red);animation:none}
+.otp-box.done{transform:scale(.94)}
+.otp-box.done .otp-cell{background:transparent!important;box-shadow:none!important}
+.otp-box.filling .otp-cell{opacity:0;transition:opacity .28s ease}
+.otp-frame{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.otp-frame rect{fill:none;stroke:var(--green);stroke-width:2.5;stroke-dasharray:100;stroke-dashoffset:100;rx:var(--r-sm);transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1)}
+.otp-box.done .otp-frame rect{stroke-dashoffset:0}
+.otp-box.filling .otp-frame{opacity:0;transition:opacity .3s ease}
+.otp-morph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;box-sizing:border-box;border:none;background:transparent;border-radius:var(--r-sm);opacity:0;pointer-events:none;display:flex;align-items:center;justify-content:center;transition:width .45s cubic-bezier(.5,0,.2,1),height .45s cubic-bezier(.5,0,.2,1),border-radius .45s cubic-bezier(.5,0,.2,1),background-color .3s ease,opacity .22s ease}
+.otp-box.done .otp-morph{opacity:1}
+.otp-morph.fill{background:var(--green)}
+.otp-morph.circle{width:64px;height:64px;border-radius:50%}
+.om-check{width:30px;height:30px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1}
+.otp-morph.checked .om-check{stroke-dashoffset:0;transition:stroke-dashoffset .4s cubic-bezier(.5,0,.3,1)}
+.otp-done-text{text-align:center;font-size:19px;font-weight:700;color:var(--g900);margin-top:18px;opacity:0}
+.otpov.suc-done .otp-done-text{animation:odText .45s ease forwards}
+@keyframes odText{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.otpov.suc-textout h1,.otpov.suc-textout .osub,.otpov.suc-textout .pback,.otpov.suc-textout .ofoot,.otpov.suc-textout .onote{opacity:0;transition:opacity .35s ease;pointer-events:none}
+.otpov.suc-slide{transform:translateX(-100%);transition:transform .42s cubic-bezier(.4,0,.2,1)}
+#otpIn{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;background:none;font-size:16px;cursor:pointer;color:transparent;caret-color:transparent}
+.otpov .onote{display:flex;align-items:center;justify-content:center;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--g500);margin-top:12px;min-height:20px;text-align:center}
+.otpov .onote.err{color:var(--red)}
+.otpov .onote .eic{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:800;flex:none}
+.otpov .onote .lk{border:0;background:none;font:inherit;color:var(--green-dark);font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.otpov .ofoot{margin-top:auto;display:flex;flex-direction:column;gap:10px;align-items:center}
+.otpov .ofoot .lk-resend{border:0;background:none;font:inherit;font-size:var(--fs-sm);font-weight:700;color:var(--green-dark);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
+.otpov .ofoot .btn{width:100%}
+/* OTP 만료 모달 — cmodal 문법(§4.4)이되 otpov(855) 위로 */
+.otpov-exdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:858}
+.otpov-exdim.on{opacity:1;pointer-events:auto}
+#otpExModal{z-index:859}
+
+/* ── 성공 토스트 아이콘 (12차 유성: 초록 원 + 체크 — 성공 토스트 전부) ── */
+.toast{display:flex;align-items:center;justify-content:center;gap:8px}
+.toast .tk{display:none;width:18px;height:18px;border-radius:50%;background:var(--green);flex:none;align-items:center;justify-content:center}
+.toast.okk .tk{display:inline-flex}
+.toast .tk svg{width:11px;height:11px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+
 /* ── v6 중앙 모달 (§4.4 — 취소 확인) ── */
 .mdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:640}
 .mdim.on{opacity:1;pointer-events:auto}
@@ -651,6 +708,14 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <button class="btn fill" id="outGo">퇴근하기</button>
   </div>
 
+  <!-- 12차: 내 정보 '바꾸기' 확인 시트(논모달 — 유성 07-26) — 확인하면 문자 인증이 바로 시작된다 -->
+  <div class="csheet" id="pcSheet">
+    <div class="handle"></div>
+    <div class="ct" id="pcTitle">비밀번호를 바꾸시겠어요?</div>
+    <div class="cs">문자로 본인 확인을 하고 새 비밀번호를 정해요</div>
+    <button class="btn fill" id="pcGo">바꾸기</button>
+  </div>
+
   <div class="doneov" id="doneOv">
     <div class="dcirc" id="doneCirc"><svg class="li" viewBox="0 0 24 24" id="doneIcon"><polyline points="4 12 9 17 20 6" pathLength="1"/></svg></div>
     <div class="dt" id="doneTxt">기록했어요</div>
@@ -679,7 +744,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   <div class="mdim" id="mDim"></div>
   <div class="cmodal" id="cModal">
     <div class="mt2" id="mTitle">취소할까요?</div>
-    <div class="ms2">연차는 바로 돌아와요</div>
+    <div class="ms2" id="mSub">사용했던 연차가 바로 돌아와요</div>
     <div class="mbtns"><button class="btn gray" id="mKeep">둘게요</button><button class="btn fill" id="mCancel">취소하기</button></div>
   </div>
 
@@ -687,6 +752,30 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="mt2" id="acTitle"></div>
     <div class="ms2" id="acSub"></div>
     <div class="mbtns"><button class="btn gray" id="acKeep">닫기</button><button class="btn fill" id="acGo" style="background:var(--danger)">확인</button></div>
+  </div>
+
+  <!-- 12차: OTP 문자 인증 화면 (§4.2-10 — 6칸 박스+타이머+재발송, 레퍼런스=상담일지 s-signup2) -->
+  <div class="otpov" id="otpOv">
+    <button class="pback" id="otpBack" aria-label="이전"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <h1>문자로 받은<br>인증번호 6자리를 알려주세요</h1>
+    <div class="osub" id="otpSub"></div>
+    <div class="obody">
+      <div class="otp-box" id="otpBox">
+        <div class="otp-cell"></div><div class="otp-cell"></div><div class="otp-cell"></div><div class="otp-cell"></div><div class="otp-cell"></div><div class="otp-cell"></div>
+        <input id="otpIn" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="인증번호" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <svg class="otp-frame" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100%" height="100%" pathLength="100" vector-effect="non-scaling-stroke"/></svg>
+        <div class="otp-morph" id="otpMorph"><svg class="om-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 12 9 17 20 6" pathLength="1"/></svg></div>
+      </div>
+      <div class="otp-done-text" id="otpDoneText">인증을 마쳤어요!</div>
+      <div class="onote" id="otpNote"></div>
+    </div>
+    <div class="ofoot" id="otpFoot"><button type="button" class="lk-resend" id="otpResend">문자가 안 오나요?</button><button class="btn fill" id="otpGo" disabled>확인</button></div>
+  </div>
+  <div class="otpov-exdim" id="otpExDim"></div>
+  <div class="cmodal" id="otpExModal">
+    <div class="mt2">입력할 수 있는 시간이 지났어요</div>
+    <div class="ms2">인증번호를 다시 받아 주세요</div>
+    <div class="mbtns"><button class="btn gray" id="otpExClose">닫기</button><button class="btn fill" id="otpExResend">다시 받기</button></div>
   </div>
 
   <div class="pinov" id="pinOv">
@@ -843,8 +932,11 @@ function api(action, data, isWrite) {
   };
   return attempt(0);
 }
-function toast(msg) {
-  var t = $('toast'); t.textContent = msg; t.classList.add('on');
+function toast(msg, ok) { // ok=true → 초록 원+체크 아이콘(12차 유성 — 성공 토스트 전부, docs/1 §5.5)
+  var t = $('toast');
+  t.innerHTML = '<span class="tk"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></span><span></span>';
+  t.lastChild.textContent = msg;
+  t.classList.toggle('okk', !!ok); t.classList.add('on');
   clearTimeout(t._tm); t._tm = setTimeout(function () { t.classList.remove('on'); }, 2600);
 }
 
@@ -1163,7 +1255,7 @@ function renderCards(r) {
     var title = (+c.date.slice(5, 7)) + '월 ' + (+c.date.slice(8, 10)) + '일 ' + c.kind + (c.status === '확정' ? ' 확정' : ' 신청');
     el.innerHTML = '<span class="pdot"></span><div class="pt2"><b>' + title + '</b>' +
       (c.status === '확정' ? '' : '<div class="ps">확인을 기다리고 있어요</div>') + '</div>' +
-      (c.cancelable ? '<button class="px"><svg class="li" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '');
+      (c.cancelable && String(c.rid).indexOf('tmp-') !== 0 ? '<button class="px"><svg class="li" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : ''); // tmp=낙관 신청분(서버 rid 확정 전 1~2초)엔 X 없음
     var x = el.querySelector('.px');
     if (x) x.addEventListener('click', function () { openCancelModal(c); });
     wrap.appendChild(el);
@@ -1173,6 +1265,7 @@ var cancelTarget = null;
 function openCancelModal(c) {
   cancelTarget = c;
   $('mTitle').textContent = (+c.date.slice(5, 7)) + '월 ' + (+c.date.slice(8, 10)) + '일 ' + c.kind + '를 취소할까요?';
+  $('mSub').textContent = '사용했던 연차 ' + c.hours + '시간이 바로 돌아와요'; // E3(12차 유성): "연차는 바로 돌아와요"가 모호 — 주어를 명시
   $('mDim').classList.add('on'); $('cModal').classList.add('on');
 }
 function closeCancelModal() { $('mDim').classList.remove('on'); $('cModal').classList.remove('on'); $('acModal').classList.remove('on'); acFn = null; }
@@ -1181,18 +1274,22 @@ $('mDim').addEventListener('click', closeCancelModal);
 // 2차: 로그아웃 모달 폐기(폰=세션 유지·공용PC=잠그기). lgModal HTML은 잔존하나 미사용.
 // 관리자 범용 확인 모달(구성원 비활성 등) — 우 버튼에 콜백 주입
 var acFn = null;
-function openConfirm(title, sub, btnLabel, fn) { $('acTitle').textContent = title; $('acSub').textContent = sub; $('acGo').textContent = btnLabel; acFn = fn; $('mDim').classList.add('on'); $('acModal').classList.add('on'); }
+function openConfirm(title, sub, btnLabel, fn) { $('acTitle').textContent = title; $('acSub').textContent = sub; $('acGo').textContent = btnLabel; $('acGo').style.background = 'var(--danger)'; $('acKeep').style.display = ''; acFn = fn; $('mDim').classList.add('on'); $('acModal').classList.add('on'); } // openAlert(버튼1)와 스타일 공유 — 서로 복원
 $('acKeep').addEventListener('click', closeCancelModal);
 $('acGo').addEventListener('click', function () { var f = acFn; closeCancelModal(); if (f) f(); });
-$('mCancel').addEventListener('click', function () {
+$('mCancel').addEventListener('click', function () { // 12차: 취소=낙관 반영(카드 제거·연차 복원 *즉시*) — cancel은 백그라운드
   if (!cancelTarget) return;
   var c = cancelTarget; cancelTarget = null;
   closeCancelModal();
+  var ev = { at: localStamp(), emp: store.emp, date: c.date, type: '취소', val: { target: c.rid } };
+  var rollback = optimisticEvents([ev]);
+  state.applying = true; // 비행 중 폴링이 서버 원장(취소 없음)으로 되돌리는 레이스 차단(도장 state.punching과 같은 결)
+  toast('신청을 취소했어요. 연차 ' + c.hours + '시간이 돌아왔어요', true);
   api('cancel', { rid: c.rid, cid: cid() }, true).then(function (r) {
-    if (!r.ok) { toast(r.error); refreshMain(); return; }
-    toast('신청을 취소했어요. 연차가 돌아왔어요');
+    state.applying = false;
+    if (!r.ok) { rollback(); openAlert('취소가 되지 않았어요', r.error); return; }
     adoptOrSync(r);
-  }).catch(function () { toast('취소가 안 됐어요. 다시 시도해 주세요'); refreshMain(); });
+  }).catch(function () { state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요. 다시 시도해 주세요'); });
 });
 
 /* ── v6 반려 시트 + 미기록일 닫기 불가 시트(§4.3-1 단서·§10.13-14) ── */
@@ -1245,13 +1342,16 @@ function showMissSheet(miss, r) {
     sh.innerHTML = dateHead + '<div class="ct">퇴근 기록이 없어요</div><div id="missTw"></div><button class="btn fill" id="missGo">퇴근 시각 남기기</button>';
     twMount(sh.querySelector('#missTw'), miss.end || '15:00');
     sh.querySelector('#missGo').addEventListener('click', function () {
+      var b = this;
       var t = sh.querySelector('#missTw').value24();
       if (!t) { toast('시각을 끝까지 적어 주세요'); return; }
+      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F — cid가 매번 새로 생겨 멱등이 안 걸린다)
       withPin(function (p) {
         api('amend', { date: miss.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
+          delete b.dataset.busy;
           if (!rr.ok) { toast(rr.error); return; }
-          close(); toast('퇴근 시각을 남겼어요'); adoptOrSync(rr);
-        }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+          close(); toast('퇴근 시각을 남겼어요', true); adoptOrSync(rr);
+        }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
       });
     });
   } else { // 케이스 B — 둘 다 없음: 행복센터(fill) / 병가(gray) + 무급 3상태 문구(§10.14)
@@ -1264,16 +1364,22 @@ function showMissSheet(miss, r) {
       '<button class="btn gray" id="missSick">아파서 쉬었어요 (병가)</button>' +
       '<div class="cs2">' + subTxt + '</div>';
     sh.querySelector('#missHb').addEventListener('click', function () {
+      var b = this;
+      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
       api('extwork', { date: miss.date, cid: cid() }, true).then(function (rr) {
+        delete b.dataset.busy;
         if (!rr.ok) { toast(rr.error); return; }
         close(); showDone('외부 근무로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
-      }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
     });
     sh.querySelector('#missSick').addEventListener('click', function () {
+      var b = this;
+      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
       api('request', { kind: '병가', date: miss.date, hours: 4, cid: cid() }, true).then(function (rr) {
+        delete b.dataset.busy;
         if (!rr.ok) { toast(rr.error); return; }
         close(); showDone('병가로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
-      }).catch(function () { toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
     });
   }
   $('blockDim').classList.add('on');
@@ -1287,19 +1393,35 @@ function withPin(cb) { // 2차: 세션(PIN 로그인)이 곧 신원 → 보정·
   cb('');
 }
 
-/* ── v6 반영 폴링(§10.12): 창 보이는 동안 60s sync + visibilitychange 즉시, 변경 시 토스트 1회 ── */
+/* ── v6 반영 폴링(§10.12): 창 보이는 동안 60s sync + visibilitychange 즉시, 변경 시 토스트 1회.
+   12차: ①문구=무엇이 어떻게 됐는지("7월 27일 연차가 확정됐어요" — 유성 "'바뀐 내용을 반영했어요'는 뭐가 된 건지 모른다")
+   ②알트탭 복귀(visibilitychange)에도 알림 — 구판은 immediate면 토스트를 삼켜서, 자리 비운 사이 승인이 오면 *조용히* 반영됐다(유성 "안 나왔네?"의 실제 원인)
+   ③놓쳐도 사실은 남는다: 확정·대기 상태는 일정 카드에 지속 표시(토스트는 보조 신호) ── */
 var pollKey = '';
 function pollSnap(r) { return JSON.stringify([(r.cards || []), r.balance, (r.rejections || []).length, (r.missing || []).length]); }
+function describeChange(prevCards, prevRejN, c) { // 파생 diff → 사람 문장. 반려=시트가 직접 뜨므로 토스트 생략(이중 신호 X)
+  if ((c.rejections || []).length > prevRejN) return '';
+  var prev = {}; (prevCards || []).forEach(function (p) { prev[p.rid] = p; });
+  var msg = '';
+  (c.cards || []).forEach(function (n) {
+    var p = prev[n.rid];
+    if (p && p.status !== '확정' && n.status === '확정') msg = kDateShort(n.date) + ' ' + n.kind + '가 확정됐어요';
+    else if (!p && !msg) msg = kDateShort(n.date) + ' ' + n.kind + ' 신청이 등록됐어요';
+  });
+  return msg || '바뀐 내용을 반영했어요';
+}
 function pollTick(immediate) {
   if (document.hidden) return;
-  if (state.punching) return; // 낙관적 도장 비행 중 — 서버 원장엔 아직 없어 되돌아가 보인다(07-24)
+  if (state.punching || state.applying) return; // 낙관 쓰기 비행 중 — 서버 원장엔 아직 없어 되돌아가 보인다(07-24·12차)
   if (localStorage.getItem('att_locked') && !DEMO) return; // 잠금 중 폴링이 state.db를 도로 채우면 잠금 화면 뒤에서 앱이 살아난다(2026-07-25 sweep)
   if (!store.token || !$('s-main').classList.contains('on')) return;
   var prev = pollKey;
+  var prevCards = state.status ? (state.status.cards || []) : [];
+  var prevRejN = state.status ? (state.status.rejections || []).length : 0;
   syncNow(function (c) {
     var k = pollSnap(c);
     pollKey = k;
-    if (prev && k !== prev && !immediate) toast('바뀐 내용을 반영했어요');
+    if (prev && k !== prev) { var m = describeChange(prevCards, prevRejN, c); if (m) toast(m, m !== '바뀐 내용을 반영했어요'); }
   });
 }
 setInterval(function () { pollTick(false); }, 60000);
@@ -1430,13 +1552,16 @@ function renderCal(r) {
     if (sel.missingOut && state.status && state.status.deviceOk) {
       twMount($('selTw'), sel.planEnd || '15:00');
       $('selAmendGo').addEventListener('click', function () {
+        var b = this;
         var t = $('selTw').value24();
         if (!t) { toast('시각을 끝까지 적어 주세요'); return; }
+        if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
         withPin(function (p) {
           api('amend', { date: sel.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
+            delete b.dataset.busy;
             if (!rr.ok) { toast(rr.error); return; }
-            toast('퇴근 시각을 남겼어요'); adoptOrSync(rr, function () { loadCal(); });
-          }).catch(function () { toast('저장이 안 됐어요'); });
+            toast('퇴근 시각을 남겼어요', true); adoptOrSync(rr, function () { loadCal(); });
+          }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요'); });
         });
       });
     }
@@ -1537,48 +1662,82 @@ $('dsPrev').addEventListener('click', function () { ds.ym = prevYm(ds.ym); build
 $('dsNext').addEventListener('click', function () { ds.ym = nextYm(ds.ym); buildDsCal(); });
 $('dsDim').addEventListener('click', closeDateSheet);
 initSheetDrag($('dateSheet'), closeDateSheet);
-var pvTimer = null;
-function previewApply() {
+function previewApply() { // 12차: 미리보기=로컬 엔진(왕복 0 — 클라에 같은 엔진·같은 원장). 날짜 고르면 버튼이 *즉시* 켜진다(유성). 서버 검증은 submit에 그대로
   $('applyGo').disabled = true;
   $('applyWarn').style.display = 'none';
   if (!apply.date) { $('applyResult').innerHTML = '<span class="old">날짜를 고르면 보여드려요</span>'; return; }
-  clearTimeout(pvTimer);
-  pvTimer = setTimeout(function () {
-    api('preview', { kind: apply.kind, date: apply.date, hours: apply.hours }).then(function (r) {
-      if (!r.ok) { toast(r.error); return; }
-      var pv = r.preview;
-      if (!pv.ok) {
-        // T4(2026-07-24 유성 픽): 막힌 채로 끝내지 말고 **다음 행동 하나**만 준다.
-        //   연차가 모자란 경우 병가는 막히지 않는다(잔여 초과분=무급) — 이 앱의 명분이 "아프면 어떡해요?"에 답하는 것이라
-        //   정확히 그 순간에 길이 보여야 한다. 설명을 늘리지는 않는다(유성: "0은 당연히 0, 굳이 설명 X").
-        var extra = (pv.code === 'short' && apply.kind === '연차')
-          ? '<span class="pvsub">아파서 쉬는 거라면 병가로 쉬어요 (무급)</span>' : '';
-        $('applyResult').innerHTML = '<span class="old">' + pv.reason + extra + '</span>'; return;
-      }
-      var oldTxt = fmtBalPlain({ baseMin: pv.baseMin, bonusMin: pv.bonusMin });
-      var newTxt = fmtBalPlain({ baseMin: pv.afterBaseMin, bonusMin: pv.afterBonusMin });
-      $('applyResult').innerHTML = '<span class="old">' + oldTxt + '</span><span class="arr">→</span><span class="new">' + newTxt.replace(/(시간|분)/g, '<small>$1</small>') + '</span>';
-      // 무급 경고=미리보기 박스 안(버튼 위 문단 폐지 — 07-22(3) 유성. 병가 기본 설명은 버튼 아래 applySub로 이동)
-      var w = $('applyWarn');
-      if (pv.unpaidAddMin > 0) { w.style.display = 'block'; w.textContent = '남은 연차보다 커서 ' + fmtMin(pv.unpaidAddMin) + '은 무급으로 쉬어요'; }
-      else w.style.display = 'none';
-      $('applyGo').disabled = false;
-    }).catch(function () { toast('미리보기가 안 돼요'); });
-  }, 250);
+  if (!state.db) { syncNow(function () { previewApply(); }); return; }
+  var db = state.db, E = AttEngine;
+  // 서버 _request_와 같은 사전 검증(같은 날 확정+활성 신청 합산 4h 초과) — 로컬서 안 거르면 낙관 완료가 뒤늦게 롤백된다
+  var reqIdx = E.requestIndex(db.events), usedMin = 0;
+  db.events.forEach(function (e) {
+    if (e.date !== apply.date) return;
+    if (e.type === '연차' || e.type === '병가') usedMin += (e.val.hours || 0) * 60;
+    if (e.type === '신청' && e.val && e.val.rid && reqIdx[e.val.rid] && E.reqActive(reqIdx[e.val.rid])) usedMin += (e.val.hours || 0) * 60;
+  });
+  if (usedMin + apply.hours * 60 > 240) { $('applyResult').innerHTML = '<span class="old">그 날은 이미 ' + (usedMin / 60) + '시간을 신청했어요</span>'; return; }
+  var pv = E.previewRequest(db.events, db.settings, applyToday(), apply.kind, apply.date, apply.hours);
+  if (!pv.ok) {
+    // T4(2026-07-24 유성 픽): 막힌 채로 끝내지 말고 **다음 행동 하나**만 준다.
+    //   연차가 모자란 경우 병가는 막히지 않는다(잔여 초과분=무급) — 이 앱의 명분이 "아프면 어떡해요?"에 답하는 것이라
+    //   정확히 그 순간에 길이 보여야 한다. 설명을 늘리지는 않는다(유성: "0은 당연히 0, 굳이 설명 X").
+    var extra = (pv.code === 'short' && apply.kind === '연차')
+      ? '<span class="pvsub">아파서 쉬는 거라면 병가로 쉬어요 (무급)</span>' : '';
+    $('applyResult').innerHTML = '<span class="old">' + pv.reason + extra + '</span>'; return;
+  }
+  var oldTxt = fmtBalPlain({ baseMin: pv.baseMin, bonusMin: pv.bonusMin });
+  var newTxt = fmtBalPlain({ baseMin: pv.afterBaseMin, bonusMin: pv.afterBonusMin });
+  $('applyResult').innerHTML = '<span class="old">' + oldTxt + '</span><span class="arr">→</span><span class="new">' + newTxt.replace(/(시간|분)/g, '<small>$1</small>') + '</span>';
+  // 무급 경고=미리보기 박스 안(버튼 위 문단 폐지 — 07-22(3) 유성. 병가 기본 설명은 버튼 아래 applySub로 이동)
+  var w = $('applyWarn');
+  if (pv.unpaidAddMin > 0) { w.style.display = 'block'; w.textContent = '남은 연차보다 커서 ' + fmtMin(pv.unpaidAddMin) + '은 무급으로 쉬어요'; }
+  else w.style.display = 'none';
+  $('applyGo').disabled = false;
+}
+/* 낙관 반영 공용(12차): 이벤트를 로컬 원장에 선삽입 → 재파생·재렌더. 반환=롤백 함수.
+   신뢰성 계약(§13-16): ①cid 멱등=중복 실행 차단 ②실패=롤백+다이얼로그 ③무응답=쓰기 재시도 안 함, 다음 sync가 서버 진실로 교정 */
+function localStamp() { return (state.db ? state.db.today : '') + ' ' + (liveNow() || ''); }
+function optimisticEvents(evs) {
+  evs.forEach(function (e) { state.db.events.push(e); });
+  var c = state.status = compose(); renderMain(c); pollKey = pollSnap(c);
+  return function rollback() { // 이미 sync가 원장을 갈아끼웠으면 indexOf=-1 → 자연 no-op(서버 진실 우선)
+    evs.forEach(function (e) { var i = state.db.events.indexOf(e); if (i >= 0) state.db.events.splice(i, 1); });
+    var c2 = state.status = compose(); renderMain(c2); pollKey = pollSnap(c2);
+  };
+}
+function openAlert(title, sub) { // 단순 알림 다이얼로그(버튼 1 — §4.5). 낙관 완료를 이미 본 뒤의 실패는 토스트론 부족
+  $('acTitle').textContent = title; $('acSub').textContent = sub;
+  $('acGo').textContent = '확인'; $('acGo').style.background = 'var(--green600)'; acFn = null;
+  $('acKeep').style.display = 'none';
+  $('mDim').classList.add('on'); $('acModal').classList.add('on');
 }
 $('applyGo').addEventListener('click', function () {
+  if ($('applyGo').disabled || state.applying) return; // 따닥 가드(§4.2-3)
+  state.applying = true;
   $('applyGo').disabled = true;
-  api('request', { kind: apply.kind, date: apply.date, hours: apply.hours, half: apply.hours === 2 ? apply.half : '', cid: cid() }, true).then(function (r) {
-    if (!r.ok) { toast(r.error); $('applyGo').disabled = false; return; }
-    if (r.pending) { // 연차·반차 = 승인 대기(주황 시계, §10.8 — 서브 2줄·하이픈)
-      var name = apply.hours === 4 ? '연차' : '반차';
-      showDone(name + ' 신청을 마쳤어요', kDateShort(apply.date) + ' - ' + (apply.hours === 4 ? '하루' : '반차') + '\n확인 후에 반영돼요', true);
-      setTimeout(function () { go('main'); adoptOrSync(r); }, 1900);
-    } else { // 병가 = 즉시 확정(초록 체크)
-      showDone('병가로 남겼어요', kDateShort(apply.date) + ' - ' + (apply.hours === 4 ? '하루' : '반차'));
-      setTimeout(function () { go('main'); adoptOrSync(r); }, 1500);
-    }
-  }).catch(function () { toast('신청이 안 됐어요. 다시 시도해 주세요'); $('applyGo').disabled = false; });
+  var kind = apply.kind, date = apply.date, hours = apply.hours, half = hours === 2 ? apply.half : '';
+  var lbl = kind === '병가' ? '병가' : (hours === 4 ? '연차' : '반차');
+  var myCid = cid();
+  var ev = kind === '연차'
+    ? { at: localStamp(), emp: store.emp, date: date, type: '신청', val: { rid: 'tmp-' + myCid, kind: '연차', hours: hours, half: half } }
+    : { at: localStamp(), emp: store.emp, date: date, type: '병가', val: { hours: hours, half: half } };
+  var rollback = optimisticEvents([ev]);
+  // 완료 화면 *즉시*(§4.6) — 서버를 기다리지 않는다(12차 유성 "바로 완료 페이지가 나와야지". fill→weak 구간 소멸)
+  if (kind === '연차') {
+    showDone(lbl + ' 신청을 마쳤어요', kDateShort(date) + ' - ' + (hours === 4 ? '하루' : '반차') + '\n확인 후에 반영돼요', true);
+    setTimeout(function () { go('main'); }, 1900);
+  } else {
+    showDone('병가로 남겼어요', kDateShort(date) + ' - ' + (hours === 4 ? '하루' : '반차'));
+    setTimeout(function () { go('main'); }, 1500);
+  }
+  api('request', { kind: kind, date: date, hours: hours, half: half, cid: myCid }, true).then(function (r) {
+    state.applying = false; $('applyGo').disabled = false;
+    if (!r.ok) { rollback(); $('doneOv').classList.remove('on'); openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', r.error + ' - 다시 신청해 주세요'); return; }
+    adoptOrSync(r); // 서버 진실 채택(tmp 이벤트 → 실제 rid)
+  }).catch(function () {
+    state.applying = false; $('applyGo').disabled = false; rollback(); $('doneOv').classList.remove('on');
+    openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', '연결이 안 돼요. 다시 신청해 주세요');
+  });
 });
 
 /* ── 나의 근태 — 로컬 파생 ── */
@@ -1696,6 +1855,12 @@ function loginGate() {
 function backGuardPush() { try { history.pushState({ att: 1 }, ''); } catch (e) { } }
 function closeTopLayer() {
   if ($('missSheet').classList.contains('on')) return true;              // 닫기 불가 — 삼키기만 한다
+  if ($('otpExModal').classList.contains('on')) { closeOtpEx(); return true; } // OTP 만료 모달(859)이 최상단
+  if ($('otpOv').classList.contains('on')) { // OTP 화면(855) — 잠금 중=잠금 화면 복귀(스켈레톤 갇힘 방지, 11차와 같은 결)
+    closeOtpScreen();
+    if (localStorage.getItem('att_locked')) loginGate();
+    return true;
+  }
   if ($('acModal').classList.contains('on') || $('cModal').classList.contains('on')) { closeCancelModal(); return true; }
   if ($('pinOv').classList.contains('on')) {
     if (pinCtx && pinCtx.noCancel) return true; // 잠금 화면(공용 PC) — 뒤로가기로 벗겨지면 잠금이 잠금이 아니다(2026-07-25 sweep). 미기록일 시트와 같은 결: 삼키기만
@@ -1705,6 +1870,7 @@ function closeTopLayer() {
   if ($('dateSheet').classList.contains('on')) { closeDateSheet(); return true; }
   if ($('rejSheet').classList.contains('on')) { $('rejSheet').classList.remove('on'); $('blockDim').classList.remove('on'); return true; }
   if ($('outSheet').classList.contains('on')) { hideSheet(); return true; }
+  if ($('pcSheet').classList.contains('on')) { hidePcSheet(); return true; }
   if ($('drawer').classList.contains('on')) { closeDrawer(); return true; }
   return false;
 }
@@ -1865,36 +2031,130 @@ function openAdminPin() {
     }
   });
 }
-/* ── OTP(문자 인증) 흐름 — 11차 2026-07-25: '비밀번호를 몰라요'(잠금 화면)·내 정보 '바꾸기' 공용(유성 지시).
-   단계: [휴대폰 번호(몰라요만 — 세션 있으면 생략)] → 문자 6자리 → 새 비밀번호 2회 → 서버가 저장+로그인 페이로드 반환. */
+/* ── OTP(문자 인증) 흐름 — 12차 2026-07-26: §4.2-10 6칸 박스 통이식(레퍼런스=상담일지 s-signup2, PIN 키패드 재사용 폐지 — 유성).
+   입구 3=한 길: 잠금 '비밀번호를 몰라요'(전화 신원)·오답 5회 소진·내 정보 '바꾸기'(세션 신원, 확인 시트).
+   낙관 진입: 화면을 먼저 열고 otp_start는 백그라운드 — GAS 왕복(1.5~2초)을 사용자에게 기다리게 하지 않는다(§13-16). */
+var otp = { idBody: null, opts: {}, busy: false, sending: false, err: false, prevLen: 0, timer: null, deadline: 0 };
+var OTP_TTL = 300; // ⚠️서버 attotp 캐시 5분과 동기(클라만 바꾸면 서버가 먼저 만료 — §4.2-10)
 function startOtpReset() { // 잠금 화면 '비밀번호를 몰라요' / 5회 소진
   pinPrompt({
     title: '휴대폰 번호를 눌러주세요', digits: 11, phone: true, back: function () { loginGate(); },
     onDone: function (ph, h) {
       if (!/^01[016789]\d{7,8}$/.test(ph)) { h.fail('번호를 다시 확인해 주세요'); return; }
-      api('otp_start', { phone: ph }, true).then(function (r) {
-        if (!r.ok) { h.fail(r.error); return; }
-        otpCodeStep({ phone: ph }, function (ticket) { otpAskNewPin(ticket, { backFn: startOtpReset, isLogin: true }); });
-      }).catch(function () { toast('연결이 안 돼요'); });
+      openOtpScreen({ phone: ph }, { backFn: startOtpReset, isLogin: true }); // 발송은 화면 뒤에서(낙관 진입)
     }
   });
 }
-function otpCodeStep(idBody, onTicket) { // 문자 6자리 확인(몰라요=전화 신원 / 바꾸기=세션 신원). '다시 받기'=몰라요 슬롯 재사용
-  pinPrompt({
-    title: '문자로 받은 6자리를 눌러주세요', digits: 6,
-    back: function () { if (idBody.phone) startOtpReset(); else pinHelpers.close(); },
-    forgot: {
-      label: '인증번호 다시 받기',
-      fn: function () { api('otp_start', idBody, true).then(function (r) { toast(r.ok ? '다시 보냈어요' : r.error); }).catch(function () { toast('연결이 안 돼요'); }); }
-    },
-    onDone: function (code, h) {
-      api('otp_verify', Object.assign({ code: code }, idBody), true).then(function (r) {
-        if (!r.ok) { h.fail(r.error); return; }
-        onTicket(r.ticket);
-      }).catch(function () { toast('연결이 안 돼요'); });
-    }
-  });
+function openOtpScreen(idBody, opts) {
+  otp.idBody = idBody; otp.opts = opts || {}; otp.busy = false; otp.sending = false;
+  pinHelpers.close();
+  otpScreenReset();
+  $('otpOv').classList.add('on');
+  otpSend(true);
 }
+function closeOtpScreen() { stopOtpTimer(); $('otpOv').classList.remove('on'); }
+function otpScreenReset() {
+  otp.err = false; otp.prevLen = 0;
+  $('otpOv').classList.remove('suc-textout', 'suc-done', 'suc-slide');
+  $('otpBox').classList.remove('done', 'filling', 'err');
+  $('otpMorph').classList.remove('fill', 'circle', 'checked');
+  $('otpIn').value = ''; $('otpIn').disabled = false;
+  $('otpNote').className = 'onote'; $('otpNote').textContent = '';
+  $('otpGo').disabled = true; $('otpSub').textContent = '';
+  renderOtpCells();
+}
+function otpSend(first) { // 성공=타이머 시작 / 실패=인라인 에러+다시 받기(막다른 화면 방지)
+  if (otp.sending) return; otp.sending = true; // 유료 SMS 재진입 가드(§4.2-3)
+  var note = $('otpNote');
+  note.className = 'onote'; note.innerHTML = (first ? '문자를 보내고 있어요' : '다시 보내고 있어요') + '<span class="ldd"><i></i><i></i><i></i></span>';
+  api('otp_start', otp.idBody, true).then(function (r) {
+    otp.sending = false;
+    if (!$('otpOv').classList.contains('on')) return; // 발송 중 뒤로가기로 화면을 닫았으면 무시(닫힌 화면의 타이머·만료 모달 유령 동작 방지)
+    if (!r.ok) {
+      if (r.code === 'cooldown') { // 방금 보낸 문자가 살아 있음 — 그 코드로 계속(첫 진입=재진입 케이스)
+        note.className = 'onote';
+        note.textContent = first ? '조금 전에 보낸 문자가 있어요. 그 번호를 눌러 주세요' : '방금 보냈어요. ' + (r.wait || 60) + '초 후 다시 받을 수 있어요';
+        if (!otp.timer && r.codeLeft) startOtpTimer(r.codeLeft);
+        return;
+      }
+      otpSendFail(r.error || '문자 발송이 안 됐어요. 관리자에게 알려 주세요');
+      return;
+    }
+    note.className = 'onote'; note.textContent = first ? '' : '인증번호를 다시 보냈어요';
+    otpResetInput(); startOtpTimer(); $('otpIn').focus();
+  }).catch(function () { otp.sending = false; if ($('otpOv').classList.contains('on')) otpSendFail('연결이 안 돼요. 인터넷을 확인해 주세요'); });
+}
+function otpSendFail(msg) {
+  var note = $('otpNote');
+  note.className = 'onote err';
+  note.innerHTML = '<span class="eic">!</span><span></span><button class="lk" type="button">다시 받기</button>';
+  note.children[1].textContent = msg;
+  note.querySelector('.lk').addEventListener('click', function () { otpSend(false); });
+}
+function renderOtpCells() {
+  var v = $('otpIn').value, cells = document.querySelectorAll('#otpBox .otp-cell');
+  cells.forEach(function (c, i) {
+    var ch = v[i] || '';
+    c.textContent = ch;
+    c.classList.toggle('filled', !!ch && !otp.err);                       // 입력된 칸만 흰색(나머지 :not(.filled) 물결)
+    c.classList.toggle('active', !otp.err && v.length < 6 && i === v.length); // 커서칸=물결+초록 커서
+  });
+  if (v.length > otp.prevLen) { var nc = cells[v.length - 1]; if (nc) { nc.classList.remove('pop'); void nc.offsetWidth; nc.classList.add('pop'); } }
+  otp.prevLen = v.length;
+}
+function clearOtpErr() { if (!otp.err) return; otp.err = false; $('otpBox').classList.remove('err'); $('otpNote').className = 'onote'; $('otpNote').textContent = ''; renderOtpCells(); }
+function otpResetInput() { otp.err = false; $('otpBox').classList.remove('err'); $('otpIn').value = ''; $('otpIn').disabled = false; renderOtpCells(); $('otpGo').disabled = true; }
+$('otpIn').addEventListener('input', function () {
+  var v = $('otpIn').value.replace(/\D/g, '');
+  if (otp.err) { clearOtpErr(); v = v.slice(-1); } // 오류 후 첫 입력=새로 시작
+  v = v.slice(0, 6); $('otpIn').value = v; renderOtpCells();
+  $('otpGo').disabled = v.length !== 6;
+  if (v.length === 6) { $('otpIn').blur(); otpVerify(); } // §4.1: 다 채우면 키패드 내리고 자동 확인
+});
+$('otpIn').addEventListener('focus', function () { if (otp.err) { clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); $('otpGo').disabled = true; } });
+$('otpGo').addEventListener('click', otpVerify);
+$('otpResend').addEventListener('click', function () { otpSend(false); });
+$('otpBack').addEventListener('click', function () {
+  closeOtpScreen();
+  if (otp.opts.backFn) otp.opts.backFn(); // 몰라요=전화 화면 / 바꾸기=내 정보로
+});
+function otpVerify() {
+  if (otp.busy || $('otpIn').value.length !== 6) return; // 재진입 가드
+  otp.busy = true;
+  $('otpBox').classList.add('done'); // ★6자리 즉시 테두리 draw(서버 응답 전) — 기다림 체감 제거. 초록 채움은 확정 신호(§4.2-10)
+  var note = $('otpNote');
+  api('otp_verify', Object.assign({ code: $('otpIn').value }, otp.idBody), true).then(function (r) {
+    otp.busy = false;
+    if (r.ok) { stopOtpTimer(); otpSuccessFinish(function () { otpAskNewPin(r.ticket, otp.opts); }); return; }
+    $('otpBox').classList.remove('done'); // 불일치=테두리 반대로 사라지며 6칸 복구
+    var expired = !otp.timer || (r.error && r.error.indexOf('지났') >= 0);
+    if (expired) { otpExpired(); return; }
+    note.className = 'onote err'; note.innerHTML = '<span class="eic">!</span><span></span>';
+    note.children[1].textContent = r.error || '인증번호가 달라요';
+    $('otpBox').classList.add('err'); otp.err = true; renderOtpCells(); $('otpGo').disabled = true;
+  }).catch(function () { otp.busy = false; $('otpBox').classList.remove('done'); note.className = 'onote err'; note.textContent = '연결이 안 돼요'; });
+}
+function otpSuccessFinish(next) { // 확정 → 초록 채움→원→체크→'인증을 마쳤어요!'→왼쪽 슬라이드(전부 입력 자리에서)
+  var screen = $('otpOv'), box = $('otpBox'), morph = $('otpMorph');
+  morph.classList.add('fill', 'circle'); box.classList.add('filling'); screen.classList.add('suc-textout');
+  setTimeout(function () { morph.classList.add('checked'); screen.classList.add('suc-done'); }, 460);
+  setTimeout(function () { screen.classList.add('suc-slide'); setTimeout(function () { closeOtpScreen(); otpScreenReset(); next(); }, 440); }, 460 + 1500);
+}
+function stopOtpTimer() { if (otp.timer) { clearInterval(otp.timer); otp.timer = null; } }
+function tickOtp() { // 0:00 돼도 자리 유지(셀 위치 고정 — §4.2-10)
+  var left = Math.max(0, Math.round((otp.deadline - Date.now()) / 1000));
+  $('otpSub').textContent = Math.floor(left / 60) + ':' + (left % 60 < 10 ? '0' : '') + left % 60 + ' 남았어요';
+  if (left <= 0) { stopOtpTimer(); otpExpired(); }
+}
+function startOtpTimer(ttl) { stopOtpTimer(); otp.deadline = Date.now() + (ttl || OTP_TTL) * 1000; tickOtp(); otp.timer = setInterval(tickOtp, 1000); }
+function otpExpired() {
+  clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); $('otpIn').disabled = true; $('otpGo').disabled = true;
+  $('otpExDim').classList.add('on'); $('otpExModal').classList.add('on');
+}
+function closeOtpEx() { $('otpExDim').classList.remove('on'); $('otpExModal').classList.remove('on'); }
+$('otpExClose').addEventListener('click', closeOtpEx);
+$('otpExDim').addEventListener('click', closeOtpEx);
+$('otpExResend').addEventListener('click', function () { closeOtpEx(); otpSend(false); });
 function otpAskNewPin(ticket, opts) { // 새 비밀번호 2회(태블릿 setup 모드 이식: 정해주세요 → 한 번 더 → 불일치=처음부터+에러 제목)
   function phase1(errMsg) {
     pinPrompt({ title: '비밀번호를 정해주세요', digits: 4, back: opts.backFn || true, onDone: function (p1) { phase2(p1); } });
@@ -1911,20 +2171,29 @@ function otpAskNewPin(ticket, opts) { // 새 비밀번호 2회(태블릿 setup �
             toast(r.error); if (opts.backFn) opts.backFn(); else pinHelpers.close(); return; // 티켓 만료 등 → 처음으로
           }
           pinHelpers.close();
-          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); adoptOrSync(r); toast('비밀번호를 새로 정했어요'); }
-          else { toast('비밀번호를 바꿨어요'); syncNow(function () { loadMe(); }); }
+          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); adoptOrSync(r); toast('비밀번호를 새로 정했어요', true); }
+          else { toast('비밀번호를 바꿨어요', true); adoptOrSync(r, function () { loadMe(); }); } // set_pin 응답에 sync 동봉 — 추가 왕복 0
         }).catch(function () { toast('연결이 안 돼요'); });
       }
     });
   }
   phase1();
 }
-function changePinFlow() { // 내 정보 '바꾸기' = OTP 인증으로 통일(현재 비밀번호 단계 대체 — 몰라요와 같은 길, 유성 11차)
-  api('otp_start', {}, true).then(function (r) {
-    if (!r.ok) { toast(r.error); return; }
-    otpCodeStep({}, function (ticket) { otpAskNewPin(ticket, { isLogin: false }); });
-  }).catch(function () { toast('연결이 안 돼요'); });
+function changePinFlow() { // 내 정보 '바꾸기' — 확인 시트(논모달) 즉시 → [바꾸기] → OTP 화면 낙관 진입(12차 유성: 누르면 바로 반응)
+  var make = state.db && state.db.pinSet === false;
+  $('pcTitle').textContent = make ? '비밀번호를 만드시겠어요?' : '비밀번호를 바꾸시겠어요?';
+  $('pcGo').textContent = make ? '만들기' : '바꾸기';
+  $('pcSheet').classList.add('on');
 }
+function hidePcSheet() { $('pcSheet').classList.remove('on'); $('pcSheet').style.transform = ''; }
+document.addEventListener('pointerdown', function (e) { // 시트 밖 탭=닫힘(논모달 — outSheet와 같은 문법)
+  if ($('pcSheet').classList.contains('on') && !e.target.closest('#pcSheet') && !e.target.closest('#pinChangeGo')) hidePcSheet();
+});
+initSheetDrag($('pcSheet'), hidePcSheet);
+$('pcGo').addEventListener('click', function () {
+  hidePcSheet();
+  openOtpScreen({}, { isLogin: false }); // 세션 신원 — 화면 먼저, 발송은 뒤에서
+});
 
 /* ── 관리자 ── */
 function adminApi(action, data, isWrite) { return api(action, Object.assign({ adminPin: state.adminPin }, data || {}), isWrite); }
@@ -2058,15 +2327,17 @@ function renderAdmin(r) {
 
   b.innerHTML = html;
 
-  // 바인딩 — v6 승인·반려
+  // 바인딩 — v6 승인·반려 (12차 낙관: 행 즉시 제거+토스트, 응답에 summary 동봉=재로드 왕복 0. 실패=재로드로 복원)
   document.querySelectorAll('[data-apv]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      busyBtn(this, function () {
-        return adminApi('admin_decide', { rid: btn.dataset.apv, decision: 'approve', cid: cid() }, true).then(function (rr) {
-          if (!rr.ok) { toast(rr.error); loadAdmin(); return; }
-          toast('승인했어요'); loadAdmin();
-        });
-      });
+      if (btn.dataset.busy) return; btn.dataset.busy = '1'; // 따닥=행이 사라져 재탭 불가+플래그(§4.2-3)
+      var tr = btn.closest('tr'), r2 = document.getElementById('rejrow-' + btn.dataset.apv);
+      if (tr) tr.style.display = 'none'; if (r2) r2.style.display = 'none';
+      toast('승인했어요', true);
+      adminApi('admin_decide', { rid: btn.dataset.apv, decision: 'approve', cid: cid() }, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); loadAdmin(); return; }
+        if (rr.summary) renderAdmin(rr.summary); else loadAdmin(); // 구 응답 폴백
+      }).catch(function () { toast('연결이 안 돼요. 목록을 다시 불러올게요'); loadAdmin(); });
     });
   });
   document.querySelectorAll('[data-rej]').forEach(function (btn) {
@@ -2078,12 +2349,16 @@ function renderAdmin(r) {
   document.querySelectorAll('[data-rejgo]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var rid = btn.dataset.rejgo;
-      busyBtn(this, function () {
-        return adminApi('admin_decide', { rid: rid, decision: 'reject', memo: document.getElementById('rejmemo-' + rid).value, cid: cid() }, true).then(function (rr) {
-          if (!rr.ok) { toast(rr.error); loadAdmin(); return; }
-          toast('반려했어요. 연차가 돌아갔어요'); loadAdmin();
-        });
-      });
+      if (btn.dataset.busy) return; btn.dataset.busy = '1';
+      var memo = document.getElementById('rejmemo-' + rid).value;
+      var rejRow = document.getElementById('rejrow-' + rid);
+      var mainRow = rejRow ? rejRow.previousElementSibling : null;
+      if (rejRow) rejRow.style.display = 'none'; if (mainRow) mainRow.style.display = 'none';
+      toast('반려했어요. 연차가 돌아갔어요', true);
+      adminApi('admin_decide', { rid: rid, decision: 'reject', memo: memo, cid: cid() }, true).then(function (rr) {
+        if (!rr.ok) { toast(rr.error); loadAdmin(); return; }
+        if (rr.summary) renderAdmin(rr.summary); else loadAdmin();
+      }).catch(function () { toast('연결이 안 돼요. 목록을 다시 불러올게요'); loadAdmin(); });
     });
   });
   document.querySelectorAll('[data-grant]').forEach(function (btn) {
@@ -2110,7 +2385,7 @@ function renderAdmin(r) {
       busyBtn(btn, function () {
       return adminApi('admin_schedule_set', payload, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast('스케줄을 저장했어요'); loadAdmin();
+        toast('스케줄을 저장했어요', true); loadAdmin();
       }); });
     };
     // T0-2: 과거 소급 재계산으로 이미 받은 연차가 줄면 저장 전 확인
@@ -2126,7 +2401,7 @@ function renderAdmin(r) {
     busyBtn(this, function () {
       return adminApi('admin_swap', { emp: m.emp, off: off, on: on, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast('근무일을 맞바꿨어요'); loadAdmin();
+        toast('근무일을 맞바꿨어요', true); loadAdmin();
       });
     });
   });
@@ -2135,7 +2410,7 @@ function renderAdmin(r) {
     busyBtn(this, function () {
       return adminApi('admin_grant', { emp: m.emp, hours: h, note: $('grantNote').value, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요 · 잔여 ' + fmtBalPlain(rr.balance)); loadAdmin();
+        toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요 · 잔여 ' + fmtBalPlain(rr.balance), true); loadAdmin();
       });
     });
   });
@@ -2148,23 +2423,25 @@ function renderAdmin(r) {
       return adminApi('admin_device_register', { emp: m.emp, label: label, device: mine ? mine.id : '' }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
         store.dev = { id: rr.device.id, token: rr.device.token, label: rr.device.label };
-        toast(rr.dup ? '이 컴퓨터는 이미 등록돼 있어요' : '이 기기를 출퇴근 PC로 지정했어요'); loadAdmin();
+        toast(rr.dup ? '이 컴퓨터는 이미 등록돼 있어요' : '이 기기를 출퇴근 PC로 지정했어요', !rr.dup); loadAdmin();
       });
     });
   });
   document.querySelectorAll('[data-devrm]').forEach(function (btn) {
     btn.addEventListener('click', function () {
+      if (btn.dataset.busy) return; btn.dataset.busy = '1'; // 따닥 가드(12차 F)
       adminApi('admin_device_remove', { emp: m.emp, id: btn.dataset.devrm }, true).then(function (rr) {
+        delete btn.dataset.busy;
         if (!rr.ok) { toast(rr.error); return; }
-        toast('기기를 해제했어요'); loadAdmin();
-      });
+        toast('기기를 해제했어요', true); loadAdmin();
+      }).catch(function () { delete btn.dataset.busy; toast('연결이 안 돼요'); });
     });
   });
   document.querySelectorAll('[data-void]').forEach(function (btn) { // 부여·병가·외부근무 취소 — 원장엔 무효 행으로 남아 복구 가능
     btn.addEventListener('click', function () {
       adminApi('admin_void', { emp: m.emp, target: btn.dataset.void, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast('기록을 취소했어요'); loadAdmin();
+        toast('기록을 취소했어요', true); loadAdmin();
       });
     });
   });
@@ -2174,7 +2451,7 @@ function renderAdmin(r) {
       openConfirm(nm + '님을 비활성할까요?', '목록에서 빠지고 앱 로그인도 막혀요. 근태 기록은 남고, 언제든 다시 활성화할 수 있어요.', '비활성', function () {
         adminApi('admin_member_deactivate', { emp: emp }, true).then(function (rr) {
           if (!rr.ok) { toast(rr.error); return; }
-          toast(nm + '님을 비활성했어요'); state.admMi = 0; loadAdmin();
+          toast(nm + '님을 비활성했어요', true); state.admMi = 0; loadAdmin();
         });
       });
     });
@@ -2183,7 +2460,7 @@ function renderAdmin(r) {
     btn.addEventListener('click', function () {
       adminApi('admin_member_reactivate', { emp: btn.dataset.react }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast('다시 활성화했어요'); loadAdmin();
+        toast('다시 활성화했어요', true); loadAdmin();
       });
     });
   });
@@ -2195,7 +2472,7 @@ function renderAdmin(r) {
         onDone: function (p, h) {
           adminApi('admin_set_pin', { emp: emp, pin: p }, true).then(function (rr) {
             if (!rr.ok) { h.fail(rr.error); return; }
-            h.close(); toast(nm + '님 비밀번호를 정했어요 (' + p + ') — 본인에게 알려주면 이 번호로 들어와요');
+            h.close(); toast(nm + '님 비밀번호를 정했어요 (' + p + ') — 본인에게 알려주면 이 번호로 들어와요', true);
             syncNow(); // db.anyPinSet 갱신(10차) — 안 하면 방금 심은 PIN을 클라가 몰라서 퇴근 잠금이 안 걸림
           });
         }
@@ -2224,7 +2501,7 @@ function renderAdmin(r) {
     busyBtn(this, function () {
       return adminApi('admin_correct', { emp: m.emp, target: d, in: $('corrIn').value, out: $('corrOut').value, note: $('corrNote').value, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast('정정했어요'); loadAdmin();
+        toast('정정했어요', true); loadAdmin();
       });
     });
   });
@@ -2334,6 +2611,7 @@ function demoEv(date, type, val, flag) {
   demoEv(today, '출근', '11:02:00'); // 오늘 근무 중
 })();
 function demoSync() {
+  // ⚠️events=state.db와 참조 공유(도장 낙관 렌더가 이 공유에 의존, 07-24) — 낙관 쓰기 액션(request·cancel)은 아래서 tmp 이벤트를 '채택'하지 append 금지(12차)
   return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: true, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
 }
 function demoApi(action, data) {
@@ -2361,21 +2639,25 @@ function demoApi(action, data) {
     var pv = E.previewRequest(demo.events, DEMO_SETTINGS, today, data.kind, data.date, data.hours);
     return Promise.resolve({ ok: true, preview: pv });
   }
-  if (action === 'request') {
+  if (action === 'request') { // 12차: 낙관 tmp 이벤트가 이미 공유 원장에 있음 → append 말고 rid만 서버식으로 '채택'(중복 차감 방지)
     if (data.kind === '연차') {
       var rid = 'demo-r' + (++demo.n);
-      demoEv(data.date, '신청', { rid: rid, kind: '연차', hours: data.hours, half: data.half || '' });
+      var tmpEv = demo.events.filter(function (e) { return e.type === '신청' && e.val && String(e.val.rid).indexOf('tmp-') === 0 && e.date === data.date; }).pop();
+      if (tmpEv) tmpEv.val.rid = rid; else demoEv(data.date, '신청', { rid: rid, kind: '연차', hours: data.hours, half: data.half || '' });
       return Promise.resolve({ ok: true, pending: true, rid: rid });
     }
-    demoEv(data.date, '병가', { hours: data.hours, half: data.half || '' });
+    if (!demo.events.some(function (e) { return e.type === '병가' && e.date === data.date; })) demoEv(data.date, '병가', { hours: data.hours, half: data.half || '' });
     return Promise.resolve({ ok: true, pending: false });
   }
-  if (action === 'cancel') { demoEv(today, '취소', { target: data.rid }); return Promise.resolve({ ok: true }); }
+  if (action === 'cancel') {
+    if (!demo.events.some(function (e) { return e.type === '취소' && e.val && e.val.target === data.rid; })) demoEv(today, '취소', { target: data.rid });
+    return Promise.resolve({ ok: true });
+  }
   if (action === 'ack') { demoEv(today, '반려확인', { target: data.rid }); return Promise.resolve({ ok: true }); }
   if (action === 'extwork') { demoEv(data.date, '외부근무', {}); return Promise.resolve({ ok: true }); }
-  if (action === 'admin_decide') {
+  if (action === 'admin_decide') { // 12차: 실서버처럼 summary 동봉(재로드 왕복 0 경로 검증)
     demoEv(today, data.decision === 'approve' ? '승인' : '반려', { target: data.rid, memo: data.memo || '' });
-    return Promise.resolve({ ok: true, state: data.decision === 'approve' ? '승인' : '반려' });
+    return demoApi('admin_summary', {}).then(function (s) { return { ok: true, state: data.decision === 'approve' ? '승인' : '반려', summary: s }; });
   }
   if (action === 'approve_info' || action === 'approve_act') {
     var rid2 = String(data.t || '').split('.')[0];
