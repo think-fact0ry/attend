@@ -171,14 +171,15 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .d.mx{background:var(--g300)}
 .selcard{margin-top:12px;background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.08);padding:14px 18px;border:1.5px solid transparent} /* 투명 보더=빈 슬롯(dashed)과 총높이 일치 */
 .selcard.slot-empty{box-shadow:none;border:1.5px dashed var(--g200);background:none} /* 빈 슬롯=실카드와 같은 마크업·같은 높이, 신호만 점선(07-23 유성 "크기 정확히 같아야") */
-.selcard .sct{font-size:var(--fs-sm);font-weight:800;margin-bottom:8px}
+.selcard .sct{font-size:var(--fs-sm);font-weight:800;margin-bottom:14px} /* 16차 유성: 8→14 */
 .selcard .scr2{display:flex;gap:22px;font-size:var(--fs-sm);flex-wrap:wrap}
 .selcard .scr2 .k{color:var(--g500);display:block;font-size:var(--fs-caption);font-weight:600}
 .selcard .scr2 b{font-size:var(--fs-body)}
-.legend{display:flex;gap:12px;justify-content:center;margin:10px 0 14px;font-size:var(--fs-caption);color:var(--g500);border-top:1px solid var(--g100);padding-top:12px}
+.legend{display:flex;gap:9px;justify-content:flex-end;margin:6px 2px 0;font-size:var(--fs-caption);color:var(--g500)} /* 16차 픽 O3: 미니 범례 — 그리드 바로 아래 우측 정렬(선·중앙 배치 폐지) */
 .legend i{font-style:normal;display:flex;align-items:center;gap:4px}
 .legend .dt3{width:7px;height:7px;border-radius:50%;display:inline-block}
 .prog{margin:2px 2px 14px}
+.prog{border-top:1px solid var(--g100);padding-top:12px;margin-top:14px} /* 16차 O3: 캘린더+카드 묶음과 근무 요약 사이 선(구 범례 border-top 이사) */
 .prog .pl{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:8px}
 .prog .pl .k{color:var(--g600);font-weight:600}
 .prog .pl .v{font-weight:800}
@@ -566,14 +567,14 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="body">
       <div class="wdrow"><span class="wd">일</span><span class="wd">월</span><span class="wd">화</span><span class="wd">수</span><span class="wd">목</span><span class="wd">금</span><span class="wd">토</span></div>
       <div class="grid" id="calGrid"></div>
-      <div class="selcard" id="selCard" style="display:none"></div>
-      <div class="legend"><!-- v6 범례 5개 순서 고정(§10.11) -->
+      <div class="legend"><!-- 16차 픽 O3: 미니 범례를 그리드 바로 아래(범례=캘린더 소속·근접성, 축소로 카드 밀림 최소화). 5종 순서는 §10.11 유지 -->
         <i><span class="dt3" style="background:var(--green500)"></span>정상</i>
         <i><span class="dt3" style="background:var(--warn)"></span>지각</i>
         <i><span class="dt3" style="background:var(--red)"></span>휴가·병가</i>
-        <i><span class="dt3 ring"></span>퇴근미체크</i>
+        <i><span class="dt3 ring"></span>미체크</i>
         <i><span class="dt3" style="background:var(--g300)"></span>대기</i>
       </div>
+      <div class="selcard" id="selCard" style="display:none"></div>
       <div class="prog">
         <div class="pl"><span class="k">이번 달 근무</span><span class="v" id="progTxt">—</span></div>
         <div class="track"><div class="fill" id="progFill" style="width:0%"></div></div>
@@ -1574,7 +1575,7 @@ function renderCal(r) {
     });
     if (sel.external) parts.push('<div><span class="k">외부 근무</span><b style="color:var(--green-dark)">행복센터</b></div>');
     (sel.requests || []).forEach(function (q) {
-      if (q.status === '대기') parts.push('<div><span class="k">' + q.kind + ' 신청</span><b style="color:var(--g500)">확인 기다리는 중</b></div>');
+      if (q.status === '대기') parts.push('<div><span class="k">' + q.kind + ' 신청</span><b style="color:var(--g500)">확인 기다리는 중<span class="ldd" style="margin-left:4px"><i></i><i></i><i></i></span></b></div>'); // 16차 픽 A2: 회색+출렁 점(§5.2 — 정적 '…' 금지, 초록=확정 신호라 회색 유지)
     });
     var amendHtml = '';
     if (sel.missingOut && state.status && state.status.deviceOk) {
