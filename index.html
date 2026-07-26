@@ -264,8 +264,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .dsheet .dsnav .mt2{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;min-width:110px;text-align:center}
 .dsheet .grid .day{height:44px;padding:11px 0}
 .dsheet .day.off .n{color:var(--g300)}
-.dsheet .day.pick{background:var(--green100)}
-.dsheet .day.pick .n{color:var(--green-dark);font-weight:800}
+.dsheet .day.pick{background:#fff;box-shadow:0 1px 3px rgba(25,31,40,.08),0 8px 20px rgba(25,31,40,.10)} /* 13차 유성: 오늘(연두)과 색이 겹침 → 메인 캘린더 .day.sel 이중 그림자 문법 그대로 */
+.dsheet .day.cur.pick{background:var(--green100)} /* 오늘+선택=연두 유지 위에 같은 그림자(메인 .day.cur.sel과 동일) */
+.dsheet .day.pick .n{font-weight:800}
 
 /* ── PIN 키패드 (11차 2026-07-25: 태블릿 상담일지 #s-gate 구조 통이식 — 유성 "태블릿에서 쓰던 것과 다르다") ──
    구조: 제목·점=가운데 유동 공간(.g-head flex:1) / 키패드=아래 고정 / '몰라요'=키패드 밑.
@@ -282,8 +283,6 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .g-titles h1.err{color:var(--red)}
 .g-titles h1.shake{animation:gshake .35s}
 @keyframes gshake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
-.g-phone{font-size:26px;font-weight:700;letter-spacing:.5px;color:var(--green-dark);margin:28px 0 8px;min-height:34px}
-.g-phone .ph2{color:var(--g300);font-weight:500}
 .g-forgot-wrap{margin-top:14px;width:100%;max-width:min(336px,90vw)}
 .g-forgot{width:100%;background:none;border:none;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--g500);opacity:.4;cursor:pointer;padding:15px;border-radius:var(--r-md);transition:background .45s ease,opacity .45s ease,transform .3s cubic-bezier(.2,.7,.3,1)}
 .g-forgot.as-btn{background:rgba(58,138,95,.06);opacity:1;color:var(--green700)}
@@ -347,8 +346,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .otpov.on{display:flex}
 .otpov .pback{position:absolute;top:calc(14px + env(safe-area-inset-top));left:14px;width:38px;height:38px;border:0;background:none;color:var(--g900);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;border-radius:12px}
 .otpov .pback svg{width:24px;height:24px}
-.otpov h1{font-size:var(--fs-h2);font-weight:800;letter-spacing:-.3px;line-height:1.35;text-align:center}
-.otpov .osub{text-align:center;font-size:var(--fs-sm);font-weight:600;color:var(--g500);margin-top:8px;min-height:20px} /* 타이머 자리 고정(0:00 돼도 유지 — 셀 위치 안 튐) */
+.otpov h1{font-size:24px;font-weight:700;letter-spacing:-.6px;line-height:1.35;text-align:left} /* 태블릿 s-signup1·2 원본=좌측 정렬(14차 대조 정정 — 가운데는 게이트(g-titles)만) */
+.otpov .osub{text-align:center;font-size:var(--fs-sm);font-weight:600;color:var(--g500);margin-top:8px;min-height:20px} /* 타이머=중앙(§4.2-10)·자리 고정(0:00 돼도 유지 — 셀 위치 안 튐) */
 .otpov .obody{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:26px}
 .otp-box{position:relative;display:flex;gap:7px;justify-content:center;width:fit-content;margin:8px auto 4px;transition:transform .45s cubic-bezier(.4,0,.2,1)}
 .otp-cell{width:clamp(40px,12.8vw,50px);height:60px;border-radius:var(--r-md);background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:700;color:var(--green);transition:background .25s ease, box-shadow .25s ease}
@@ -393,6 +392,18 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .otpov-exdim.on{opacity:1;pointer-events:auto}
 #otpExModal{z-index:859}
 
+/* ── 본인 확인 화면 (14차 — 몰라요=태블릿 s-signup1 통이식: 밑줄형 tfield·OS 키보드. 게이트 키패드 전화 모드 폐기) ── */
+.tfield{margin:26px 0 0}
+.tfield label{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--g500);margin:0 0 6px;transition:color .15s}
+.tfield.focus label{color:var(--green)}
+.tin-wrap{position:relative;border-bottom:2px solid var(--g200);transition:border-color .15s}
+.tfield.focus .tin-wrap{border-color:var(--green)}
+.tin-wrap input{width:100%;border:none;background:none;outline:none;font-family:inherit;font-size:22px;font-weight:600;color:var(--g900);padding:2px 40px 5px 0;caret-color:var(--green)}
+.tin-wrap input::placeholder{color:var(--g300);font-weight:500}
+.tin-wrap .clr{position:absolute;right:0;top:11px;width:15px;height:15px;border-radius:50%;background:var(--g300);border:none;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.tfield.has-val .clr{display:flex}
+.tin-wrap .clr svg{width:7px;height:7px;color:#fff;display:block}
+
 /* ── 성공 토스트 아이콘 (12차 유성: 초록 원 + 체크 — 성공 토스트 전부) ── */
 .toast{display:flex;align-items:center;justify-content:center;gap:8px}
 .toast .tk{display:none;width:18px;height:18px;border-radius:50%;background:var(--green);flex:none;align-items:center;justify-content:center}
@@ -405,8 +416,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .cmodal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 84px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:641;box-shadow:0 12px 40px rgba(0,0,0,.2)}
 .cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 .cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4}
-.cmodal .ms2{font-size:var(--fs-sm);color:var(--g500);margin-top:6px}
-.cmodal .mbtns{display:flex;gap:8px;margin-top:18px}
+.cmodal .ms2{font-size:var(--fs-sm);color:var(--g500);margin-top:8px} /* 13차 유성: 6→8 (공용 클래스 — 취소·관리자 확인·OTP 만료 모달 셋 다) */
+.cmodal .mbtns{display:flex;gap:8px;margin-top:16px} /* 13차 유성: 18→16 */
 .cmodal .mbtns .btn{padding:14px;font-size:var(--fs-body)}
 .btn.gray{background:var(--g100);color:var(--g600)}
 
@@ -754,6 +765,24 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="mbtns"><button class="btn gray" id="acKeep">닫기</button><button class="btn fill" id="acGo" style="background:var(--danger)">확인</button></div>
   </div>
 
+  <!-- 14차: 본인 확인 화면 (몰라요 입구 — 레퍼런스=상담일지 s-signup1, 필드=전화 1개(근태 신원=인사시트 전화)) -->
+  <div class="otpov" id="idOv">
+    <button class="pback" id="idBack" aria-label="이전"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <h1>본인 확인을 할게요</h1>
+    <div class="osub"></div>
+    <div class="obody">
+      <div class="tfield" id="idTf">
+        <label for="idPhone">휴대폰 번호</label>
+        <div class="tin-wrap">
+          <input id="idPhone" type="text" inputmode="numeric" placeholder="010-0000-0000" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other">
+          <button class="clr" type="button" tabindex="-1" aria-label="지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+      </div>
+      <div class="onote" id="idNote"></div>
+    </div>
+    <div class="ofoot"><button class="btn fill" id="idGo" disabled>다음</button></div>
+  </div>
+
   <!-- 12차: OTP 문자 인증 화면 (§4.2-10 — 6칸 박스+타이머+재발송, 레퍼런스=상담일지 s-signup2) -->
   <div class="otpov" id="otpOv">
     <button class="pback" id="otpBack" aria-label="이전"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
@@ -769,7 +798,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
       <div class="otp-done-text" id="otpDoneText">인증을 마쳤어요!</div>
       <div class="onote" id="otpNote"></div>
     </div>
-    <div class="ofoot" id="otpFoot"><button type="button" class="lk-resend" id="otpResend">문자가 안 오나요?</button><button class="btn fill" id="otpGo" disabled>확인</button></div>
+    <div class="ofoot" id="otpFoot"><button type="button" class="lk-resend" id="otpResend">문자가 안 오나요?</button></div><!-- 확인 버튼=폐지(13차 유성 — 6자리=자동 확인이라 중복) -->
   </div>
   <div class="otpov-exdim" id="otpExDim"></div>
   <div class="cmodal" id="otpExModal">
@@ -783,7 +812,6 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="g-head">
       <div class="g-titles" id="pinTitles"><h1 id="pinTitle">비밀번호를 눌러주세요</h1></div>
       <div class="pindots" id="pinDots"></div>
-      <div class="g-phone" id="pinPhone" style="display:none"></div>
     </div>
     <div class="pinpad" id="pinPad"></div>
     <div class="g-forgot-wrap"><button class="g-forgot" id="pinForgot" style="display:none"></button></div>
@@ -1284,12 +1312,13 @@ $('mCancel').addEventListener('click', function () { // 12차: 취소=낙관 반
   var ev = { at: localStamp(), emp: store.emp, date: c.date, type: '취소', val: { target: c.rid } };
   var rollback = optimisticEvents([ev]);
   state.applying = true; // 비행 중 폴링이 서버 원장(취소 없음)으로 되돌리는 레이스 차단(도장 state.punching과 같은 결)
-  toast('신청을 취소했어요. 연차 ' + c.hours + '시간이 돌아왔어요', true);
+  // 토스트=눈에 보이는 변화(모달·딤 fade, 카드 제거가 드러남)가 정리된 *다음*(13차 유성 — §5.5. 시스템 완료가 아니라 시각 정리 기준)
+  var toastTm = setTimeout(function () { toast('신청을 취소했어요. 연차 ' + c.hours + '시간이 돌아왔어요', true); }, 400);
   api('cancel', { rid: c.rid, cid: cid() }, true).then(function (r) {
     state.applying = false;
-    if (!r.ok) { rollback(); openAlert('취소가 되지 않았어요', r.error); return; }
+    if (!r.ok) { clearTimeout(toastTm); rollback(); openAlert('취소가 되지 않았어요', r.error); return; }
     adoptOrSync(r);
-  }).catch(function () { state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요. 다시 시도해 주세요'); });
+  }).catch(function () { clearTimeout(toastTm); state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요. 다시 시도해 주세요'); });
 });
 
 /* ── v6 반려 시트 + 미기록일 닫기 불가 시트(§4.3-1 단서·§10.13-14) ── */
@@ -1861,6 +1890,7 @@ function closeTopLayer() {
     if (localStorage.getItem('att_locked')) loginGate();
     return true;
   }
+  if ($('idOv').classList.contains('on')) { closeIdScreen(); if (localStorage.getItem('att_locked')) loginGate(); return true; } // 본인 확인 화면(14차)
   if ($('acModal').classList.contains('on') || $('cModal').classList.contains('on')) { closeCancelModal(); return true; }
   if ($('pinOv').classList.contains('on')) {
     if (pinCtx && pinCtx.noCancel) return true; // 잠금 화면(공용 PC) — 뒤로가기로 벗겨지면 잠금이 잠금이 아니다(2026-07-25 sweep). 미기록일 시트와 같은 결: 삼키기만
@@ -1959,9 +1989,7 @@ function pinPrompt(opts) {
   fg.style.display = opts.forgot ? '' : 'none';
   fg.classList.remove('as-btn');
   if (opts.forgot) fg.textContent = opts.forgot.label;
-  $('pinPhone').style.display = opts.phone ? '' : 'none';
-  $('pinDots').style.display = opts.phone ? 'none' : '';
-  renderPinEntry(); shufflePad();
+  renderPinEntry(); shufflePad(); // 전화 모드=폐기(14차 — 몰라요는 idOv 본인 확인 화면으로, 태블릿 규약)
   var gt = $('pinTitles'); gt.classList.add('hide'); // 진입 애니메이션 시작점 — 제목 부드럽게 등장
   $('pinOv').classList.add('on');
   requestAnimationFrame(function () { requestAnimationFrame(function () { if (!pin.length) gt.classList.remove('hide'); }); });
@@ -1991,17 +2019,8 @@ function pinRippleRandom(except) { // 누른 키 외 랜덤 1개 더 퍼짐 — 
   var ks = [].slice.call(document.querySelectorAll('#pinPad button[data-k]')).filter(function (b) { return b !== except; });
   if (ks.length) pinRipple(ks[Math.floor(Math.random() * ks.length)]);
 }
-function fmtPhoneEntry(d) { // 010-1234-5678 진행형 표기(빈 자리는 연회색 자리표)
-  var out = '';
-  for (var i = 0; i < 11; i++) {
-    if (i === 3 || i === 7) out += '-';
-    out += i < d.length ? d[i] : '<span class="ph2">·</span>';
-  }
-  return out;
-}
 function renderPinEntry() {
   pinDelShow();
-  if (pinCtx && pinCtx.phone) { $('pinPhone').innerHTML = fmtPhoneEntry(pin); return; }
   var n = pinCtx ? pinCtx.digits : 6;
   var d = $('pinDots'); d.innerHTML = '';
   for (var i = 0; i < n; i++) { var s = document.createElement('i'); if (i < pin.length) s.className = 'f'; d.appendChild(s); }
@@ -2036,15 +2055,35 @@ function openAdminPin() {
    낙관 진입: 화면을 먼저 열고 otp_start는 백그라운드 — GAS 왕복(1.5~2초)을 사용자에게 기다리게 하지 않는다(§13-16). */
 var otp = { idBody: null, opts: {}, busy: false, sending: false, err: false, prevLen: 0, timer: null, deadline: 0 };
 var OTP_TTL = 300; // ⚠️서버 attotp 캐시 5분과 동기(클라만 바꾸면 서버가 먼저 만료 — §4.2-10)
-function startOtpReset() { // 잠금 화면 '비밀번호를 몰라요' / 5회 소진
-  pinPrompt({
-    title: '휴대폰 번호를 눌러주세요', digits: 11, phone: true, back: function () { loginGate(); },
-    onDone: function (ph, h) {
-      if (!/^01[016789]\d{7,8}$/.test(ph)) { h.fail('번호를 다시 확인해 주세요'); return; }
-      openOtpScreen({ phone: ph }, { backFn: startOtpReset, isLogin: true }); // 발송은 화면 뒤에서(낙관 진입)
-    }
-  });
+function startOtpReset() { // 잠금 화면 '비밀번호를 몰라요' / 5회 소진 — 14차: 태블릿 s-signup1 '본인 확인을 할게요' 통이식(게이트 키패드 전화 모드 폐기)
+  pinHelpers.close();
+  $('idPhone').value = ''; $('idTf').classList.remove('has-val', 'focus'); $('idPhone').setAttribute('readonly', '');
+  $('idNote').className = 'onote'; $('idNote').textContent = ''; $('idGo').disabled = true;
+  $('idOv').classList.add('on');
+  setTimeout(function () { $('idPhone').focus(); }, 100); // 태블릿과 동일 — 웹은 자동 키패드 한계, PC=물리 키보드라 즉시
 }
+function closeIdScreen() { $('idOv').classList.remove('on'); $('idPhone').blur(); }
+function idPhoneDigits() { return $('idPhone').value.replace(/\D/g, ''); }
+function idGoNext() {
+  var ph = idPhoneDigits();
+  if (!/^01[016789]\d{7,8}$/.test(ph)) { $('idNote').className = 'onote err'; $('idNote').innerHTML = '<span class="eic">!</span>번호를 다시 확인해 주세요'; return; }
+  closeIdScreen();
+  openOtpScreen({ phone: ph }, { backFn: startOtpReset, isLogin: true }); // 발송은 화면 뒤에서(낙관 진입)
+}
+$('idBack').addEventListener('click', function () { closeIdScreen(); loginGate(); });
+$('idGo').addEventListener('click', idGoNext);
+// 태블릿 bindPhone 이식: 하이픈 진행형 + 11자리=키패드 내리고 자동 진행(§4.1 — 10자리 구번호는 [다음] 버튼)
+$('idPhone').addEventListener('focus', function () { this.removeAttribute('readonly'); $('idTf').classList.add('focus'); }); // readonly-until-focus=자동완성 차단(§4.2-6)
+$('idPhone').addEventListener('blur', function () { $('idTf').classList.remove('focus'); });
+$('idPhone').addEventListener('input', function () {
+  var el = this, d = el.value.replace(/\D/g, '').slice(0, 11);
+  if (d.length < 4) el.value = d; else if (d.length < 8) el.value = d.slice(0, 3) + '-' + d.slice(3); else el.value = d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+  $('idTf').classList.toggle('has-val', el.value.length > 0);
+  $('idNote').className = 'onote'; $('idNote').textContent = '';
+  $('idGo').disabled = !/^01[016789]\d{7,8}$/.test(d);
+  if (d.length === 11) { el.blur(); idGoNext(); }
+});
+$('idTf').querySelector('.clr').addEventListener('click', function () { $('idPhone').value = ''; $('idTf').classList.remove('has-val'); $('idGo').disabled = true; $('idPhone').focus(); });
 function openOtpScreen(idBody, opts) {
   otp.idBody = idBody; otp.opts = opts || {}; otp.busy = false; otp.sending = false;
   pinHelpers.close();
@@ -2060,7 +2099,7 @@ function otpScreenReset() {
   $('otpMorph').classList.remove('fill', 'circle', 'checked');
   $('otpIn').value = ''; $('otpIn').disabled = false;
   $('otpNote').className = 'onote'; $('otpNote').textContent = '';
-  $('otpGo').disabled = true; $('otpSub').textContent = '';
+  $('otpSub').textContent = '';
   renderOtpCells();
 }
 function otpSend(first) { // 성공=타이머 시작 / 실패=인라인 에러+다시 받기(막다른 화면 방지)
@@ -2103,16 +2142,14 @@ function renderOtpCells() {
   otp.prevLen = v.length;
 }
 function clearOtpErr() { if (!otp.err) return; otp.err = false; $('otpBox').classList.remove('err'); $('otpNote').className = 'onote'; $('otpNote').textContent = ''; renderOtpCells(); }
-function otpResetInput() { otp.err = false; $('otpBox').classList.remove('err'); $('otpIn').value = ''; $('otpIn').disabled = false; renderOtpCells(); $('otpGo').disabled = true; }
+function otpResetInput() { otp.err = false; $('otpBox').classList.remove('err'); $('otpIn').value = ''; $('otpIn').disabled = false; renderOtpCells(); }
 $('otpIn').addEventListener('input', function () {
   var v = $('otpIn').value.replace(/\D/g, '');
   if (otp.err) { clearOtpErr(); v = v.slice(-1); } // 오류 후 첫 입력=새로 시작
   v = v.slice(0, 6); $('otpIn').value = v; renderOtpCells();
-  $('otpGo').disabled = v.length !== 6;
-  if (v.length === 6) { $('otpIn').blur(); otpVerify(); } // §4.1: 다 채우면 키패드 내리고 자동 확인
+  if (v.length === 6) { $('otpIn').blur(); otpVerify(); } // §4.1: 다 채우면 키패드 내리고 자동 확인(확인 버튼=폐지, 13차)
 });
-$('otpIn').addEventListener('focus', function () { if (otp.err) { clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); $('otpGo').disabled = true; } });
-$('otpGo').addEventListener('click', otpVerify);
+$('otpIn').addEventListener('focus', function () { if (otp.err) { clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); } });
 $('otpResend').addEventListener('click', function () { otpSend(false); });
 $('otpBack').addEventListener('click', function () {
   closeOtpScreen();
@@ -2123,22 +2160,28 @@ function otpVerify() {
   otp.busy = true;
   $('otpBox').classList.add('done'); // ★6자리 즉시 테두리 draw(서버 응답 전) — 기다림 체감 제거. 초록 채움은 확정 신호(§4.2-10)
   var note = $('otpNote');
+  note.className = 'onote'; note.innerHTML = '확인하고 있어요<span class="ldd"><i></i><i></i><i></i></span>'; // 서버 검증 왕복(1.5~2초) 동안 침묵 금지(13차 — §5.2 점)
   api('otp_verify', Object.assign({ code: $('otpIn').value }, otp.idBody), true).then(function (r) {
     otp.busy = false;
-    if (r.ok) { stopOtpTimer(); otpSuccessFinish(function () { otpAskNewPin(r.ticket, otp.opts); }); return; }
+    if (r.ok) { stopOtpTimer(); note.textContent = ''; otpSuccessFinish(function () { otpAskNewPin(r.ticket, otp.opts); }); return; }
     $('otpBox').classList.remove('done'); // 불일치=테두리 반대로 사라지며 6칸 복구
     var expired = !otp.timer || (r.error && r.error.indexOf('지났') >= 0);
-    if (expired) { otpExpired(); return; }
+    if (expired) { note.textContent = ''; otpExpired(); return; }
     note.className = 'onote err'; note.innerHTML = '<span class="eic">!</span><span></span>';
     note.children[1].textContent = r.error || '인증번호가 달라요';
-    $('otpBox').classList.add('err'); otp.err = true; renderOtpCells(); $('otpGo').disabled = true;
-  }).catch(function () { otp.busy = false; $('otpBox').classList.remove('done'); note.className = 'onote err'; note.textContent = '연결이 안 돼요'; });
+    $('otpBox').classList.add('err'); otp.err = true; renderOtpCells();
+  }).catch(function () { // 네트워크 실패 — 6자리는 남아 있으니 재시도 링크(확인 버튼 폐지 후의 재시도 길)
+    otp.busy = false; $('otpBox').classList.remove('done');
+    note.className = 'onote err';
+    note.innerHTML = '<span class="eic">!</span><span>연결이 안 돼요</span><button class="lk" type="button">다시 시도</button>';
+    note.querySelector('.lk').addEventListener('click', otpVerify);
+  });
 }
-function otpSuccessFinish(next) { // 확정 → 초록 채움→원→체크→'인증을 마쳤어요!'→왼쪽 슬라이드(전부 입력 자리에서)
+function otpSuccessFinish(next) { // 확정 → 초록 채움→원→체크→'인증을 마쳤어요!'→왼쪽 슬라이드(전부 입력 자리에서. 13차: 홀드 1500→600 단축 — 유성 "완료까지 오래 걸림")
   var screen = $('otpOv'), box = $('otpBox'), morph = $('otpMorph');
   morph.classList.add('fill', 'circle'); box.classList.add('filling'); screen.classList.add('suc-textout');
-  setTimeout(function () { morph.classList.add('checked'); screen.classList.add('suc-done'); }, 460);
-  setTimeout(function () { screen.classList.add('suc-slide'); setTimeout(function () { closeOtpScreen(); otpScreenReset(); next(); }, 440); }, 460 + 1500);
+  setTimeout(function () { morph.classList.add('checked'); screen.classList.add('suc-done'); }, 400);
+  setTimeout(function () { screen.classList.add('suc-slide'); setTimeout(function () { closeOtpScreen(); otpScreenReset(); next(); }, 400); }, 400 + 600);
 }
 function stopOtpTimer() { if (otp.timer) { clearInterval(otp.timer); otp.timer = null; } }
 function tickOtp() { // 0:00 돼도 자리 유지(셀 위치 고정 — §4.2-10)
@@ -2148,7 +2191,7 @@ function tickOtp() { // 0:00 돼도 자리 유지(셀 위치 고정 — §4.2-10
 }
 function startOtpTimer(ttl) { stopOtpTimer(); otp.deadline = Date.now() + (ttl || OTP_TTL) * 1000; tickOtp(); otp.timer = setInterval(tickOtp, 1000); }
 function otpExpired() {
-  clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); $('otpIn').disabled = true; $('otpGo').disabled = true;
+  clearOtpErr(); $('otpIn').value = ''; renderOtpCells(); $('otpIn').disabled = true;
   $('otpExDim').classList.add('on'); $('otpExModal').classList.add('on');
 }
 function closeOtpEx() { $('otpExDim').classList.remove('on'); $('otpExModal').classList.remove('on'); }
@@ -2216,14 +2259,14 @@ function renderAdmin(r) {
   var mi = state.admMi || 0; if (mi >= r.members.length) mi = 0; // 07-23 다중 구성원 — 아래 카드들(스케줄·부여·기기·정정)의 대상
   var m = r.members[mi];
   var html = '';
-  // 카톡 알림 경로 헬스 배지 — _notify_가 남긴 마지막 결과(조용한 실패를 앱 안에서 가시화, 07-23)
+  // 알림 문자 경로 헬스 배지 — _notify_가 남긴 마지막 결과(조용한 실패를 앱 안에서 가시화, 07-23. 14차: 카톡→SMS)
   var nl = r.notifyLast;
   if (nl) {
     var mins = Math.round((Date.now() - new Date(nl.ts).getTime()) / 60000);
     var agoTxt = mins < 1 ? '방금' : mins < 60 ? mins + '분 전' : mins < 1440 ? Math.round(mins / 60) + '시간 전' : Math.round(mins / 1440) + '일 전';
     html += (nl.ok && nl.sent)
-      ? '<div style="margin-bottom:12px"><span class="abadge ok">카톡 알림 정상</span> <span class="anote" style="margin-top:0">마지막 발송 ' + agoTxt + '</span></div>'
-      : '<div style="margin-bottom:12px"><span class="abadge warn">카톡 알림 실패</span> <span class="anote" style="margin-top:0">안 나갔어요 (' + agoTxt + ') · NOTIFY_KEY가 10과 같은지 확인</span></div>';
+      ? '<div style="margin-bottom:12px"><span class="abadge ok">알림 문자 정상</span> <span class="anote" style="margin-top:0">마지막 발송 ' + agoTxt + '</span></div>'
+      : '<div style="margin-bottom:12px"><span class="abadge warn">알림 문자 실패</span> <span class="anote" style="margin-top:0">안 나갔어요 (' + agoTxt + ') · ATT_NOTIFY_PHONE·솔라피 속성 확인</span></div>';
   }
   // v6: 승인 대기(연차·반차만 — 병가는 즉시 확정. 조퇴는 신청 개념이 아니라 그날 소정 미달로 파생, 07-24 정의)
   html += '<div class="asec"><h4>승인 대기 <span class="cavt">연차·반차만, 병가는 즉시 확정</span></h4>';
@@ -2323,7 +2366,7 @@ function renderAdmin(r) {
 
   // 월마감
   html += '<div class="asec"><h4>월마감 <span class="cavt">전월 확정 스냅샷</span></h4><div class="arow"><input class="ain" type="month" id="closeYm"> <button class="abtn" id="closeGo">마감 실행</button></div>' +
-    '<div class="anote">한 달 근무·지각·연차·무급을 확정해 시트에 남기는 월급 정산 근거예요. 매월 1일 아침 자동으로 돌고 카톡이 와요. 여기선 정정 후 다시 돌릴 때만 쓰면 돼요.</div><div id="closeOut"></div></div>';
+    '<div class="anote">한 달 근무·지각·연차·무급을 확정해 시트에 남기는 월급 정산 근거예요. 매월 1일 아침 자동으로 돌고 문자가 와요. 여기선 정정 후 다시 돌릴 때만 쓰면 돼요.</div><div id="closeOut"></div></div>';
 
   b.innerHTML = html;
 
