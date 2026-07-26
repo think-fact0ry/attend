@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v34'; // 07-27 19차: 취소 칩=점에서 커지는 등장·메뉴 항목=인셋 라운드 선택칸+내용 축소·드로어=바깥(body)도 어둡게
+var CACHE = 'tf-attend-v35'; // 07-27 20차: 창 높이 경계 레이아웃 점프(hd flex-shrink 압축)·딤 모서리 크레센트(corner-shape 클립 격차) 수정
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',

@@ -42,7 +42,7 @@ input,textarea{user-select:text;-webkit-user-select:text} /* 입력칸만 예외
 /* ── 헤더 ── */
 /* 10차 유성: 스크롤해도 뒤로가기·메뉴·캘린더 아이콘(캘린더는 연도·월까지)이 nav로 남아야 — §4.10-1 sticky 화살표의 전체 nav 확장.
    배경=화면색과 동일(흰/회색 화면별 아래 오버라이드) — 투명이면 스크롤 콘텐츠가 비쳐 보인다. z-index는 드로어(600)·시트(500) 아래. */
-.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 24px 6px;min-height:52px;position:sticky;top:0;z-index:120;background:#fff} /* §13-12(6): 가로 24·탑 18. 바텀 6=스크롤 시 콘텐츠와 숨통 */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 24px 6px;min-height:52px;position:sticky;top:0;z-index:120;background:#fff;flex-shrink:0} /* §13-12(6): 가로 24·탑 18. 바텀 6=스크롤 시 콘텐츠와 숨통. flex-shrink:0(20차)=콘텐츠가 넘쳐 스크롤로 바뀌는 순간 flex가 헤더를 62→52로 쥐어짜 줄간격이 점프하던 버그 — 창 높이와 무관하게 자연 높이 고정 */
 #s-me .hd,#s-my .hd,#s-admin .hd{background:var(--g50)} /* 회색 화면(내정보·나의근태·관리자)은 헤더도 회색 */
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
 #meTitle{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;padding:12px 24px;margin:-12px -24px} /* 롱프레스 보호+히트영역 확대(시각 불변 — 07-23 실기기 불발 대응) */
@@ -517,6 +517,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   body{background:var(--g200) !important;padding-top:19px} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
   #app{max-width:min(var(--maxw),calc(100% - 38px));height:100%;min-height:0;background:#fff;border-radius:40px 40px 0 0;corner-shape:superellipse(2.3);box-shadow:0 8px 20px rgba(25,31,40,.15);transform:translateZ(0)}
   .scr.on{overflow-y:auto;overflow-x:hidden;min-height:0} /* #app 높이 고정 → 창 스크롤 대신 화면 내부 스크롤(폰과 동일 감) */
+  /* 20차: 어두운 딤이 떠 있는 동안만 모서리=일반 원호 — Chrome이 #app 배경은 스퀘어클로 칠하면서 자식 클립은 원호로 잘라
+     그 차이 조각(좌상단 초승달)에 딤이 못 닿아 밝게 남는 구현 격차(실측 확정). 딤 중엔 곡률 차이가 안 보여 무손실 */
+  #app:has(> .dim.on, > .blockdim.on, > .mdim.on, > .otpov-exdim.on){corner-shape:round}
 }
 </style>
 </head>
