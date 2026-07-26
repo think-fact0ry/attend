@@ -339,6 +339,10 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .pendcard .ps{font-size:var(--fs-sm);color:var(--g500);margin-top:3px}
 .pendcard .px{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:0;background:none;color:var(--g400);cursor:pointer;border-radius:9px;display:flex;align-items:center;justify-content:center}
 .pendcard .px svg{width:17px;height:17px}
+/* 15차 유성 픽 C: X 아이콘 → '취소' 칩(novice가 X를 취소로 못 읽음 — 4안 프리뷰 비교 후 확정) */
+.pendcard .cchip{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:var(--g200);color:var(--g600);font:inherit;font-size:var(--fs-caption);font-weight:700;border-radius:99px;padding:7px 12px;cursor:pointer}
+.pendcard .cchip:active{transform:translateY(-50%) scale(.95)}
+.pendcard.haschip{padding-right:70px}
 .pendcard+.pendcard{margin-top:8px}
 
 /* ── OTP 문자 인증 화면 (§4.2-10 — 12차 2026-07-26: PIN 키패드 재사용 폐지, 상담일지 s-signup2 통이식) ── */
@@ -1278,13 +1282,14 @@ function twMount(host, defaultHm) {
 function renderCards(r) {
   var wrap = $('cardsWrap'); wrap.innerHTML = '';
   (r.cards || []).forEach(function (c) {
+    var canCancel = c.cancelable && String(c.rid).indexOf('tmp-') !== 0; // tmp=낙관 신청분(서버 rid 확정 전 1~2초)엔 취소 없음
     var el = document.createElement('div');
-    el.className = 'pendcard' + (c.status === '확정' ? ' ok' : '');
+    el.className = 'pendcard' + (c.status === '확정' ? ' ok' : '') + (canCancel ? ' haschip' : '');
     var title = (+c.date.slice(5, 7)) + '월 ' + (+c.date.slice(8, 10)) + '일 ' + c.kind + (c.status === '확정' ? ' 확정' : ' 신청');
     el.innerHTML = '<span class="pdot"></span><div class="pt2"><b>' + title + '</b>' +
       (c.status === '확정' ? '' : '<div class="ps">확인을 기다리고 있어요</div>') + '</div>' +
-      (c.cancelable && String(c.rid).indexOf('tmp-') !== 0 ? '<button class="px"><svg class="li" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : ''); // tmp=낙관 신청분(서버 rid 확정 전 1~2초)엔 X 없음
-    var x = el.querySelector('.px');
+      (canCancel ? '<button class="cchip">취소</button>' : ''); // 15차 유성 픽 C: X → '취소' 칩
+    var x = el.querySelector('.cchip');
     if (x) x.addEventListener('click', function () { openCancelModal(c); });
     wrap.appendChild(el);
   });
@@ -1594,9 +1599,14 @@ function renderCal(r) {
         });
       });
     }
-  } else { // 슬롯 상시 — 실제 카드와 같은 마크업(§5.4 결)이라 높이가 정확히 동일(07-23 유성 "크기 정확히 같아야")
+  } else if (sel) { // 휴무·근무 없는 날 탭(15차 유성 — placeholder 대신 날짜+왜 쉬는 날인지)
+    sc.className = 'selcard';
+    sc.innerHTML = '<div class="sct">' + kDate(sel.date) + '</div>' +
+      '<div class="scr2"><div><span class="k">휴무</span><b style="color:var(--g500)">' + (sel.hol ? '공휴일이에요' : '회사 휴무일이에요') + '</b></div></div>';
+    sc.style.display = 'block';
+  } else { // 무선택(다른 달 이동 직후) — 슬롯 상시: 실제 카드와 같은 마크업(§5.4 결)이라 높이가 정확히 동일(07-23 유성 "크기 정확히 같아야")
     sc.className = 'selcard slot-empty';
-    sc.innerHTML = '<div class="sct" style="color:var(--g400)">날짜를 누르면 그날 기록이 보여요</div>' +
+    sc.innerHTML = '<div class="sct" style="color:var(--g500);font-weight:700">날짜를 누르면 그날 기록이 보여요</div>' + // 15차 유성 "뿌얘": g400→g500
       '<div class="scr2"><div><span class="k">출근~퇴근</span><b style="color:var(--g300)">—</b></div><div><span class="k">근무</span><b style="color:var(--g300)">—</b></div></div>';
     sc.style.display = 'block';
   }
