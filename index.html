@@ -179,6 +179,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .selcard .cic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .selcard .cv{font-size:var(--fs-body);font-weight:700;min-width:0}
 .selcard .cl{margin-left:auto;font-size:var(--fs-sm);color:var(--g500);font-weight:600;flex:none;padding-left:10px}
+/* 21차 B안(유성 픽): 회사 밖에서 남긴 퇴근 = 시각 옆 뱃지. §4.15 weak(테두리 없는 연채움·알약·caption 볼드)+§4.14 weak-dark 색.
+   ⚠️취소 칩(§4.17 .cchip)과 다른 스타일인 게 맞다 — 저건 누르는 버튼(흰+보더+그림자), 이건 상태 라벨(뱃지). */
+.selcard .rchip{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:4px 10px;border-radius:999px;background:var(--g100);color:var(--dark);font-size:var(--fs-caption);font-weight:700;vertical-align:middle}
+.selcard .rchip svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .legend{display:flex;gap:9px;justify-content:flex-end;margin:6px 2px 0;font-size:var(--fs-caption);color:var(--g500)} /* 16차 픽 O3: 미니 범례 — 그리드 바로 아래 우측 정렬(선·중앙 배치 폐지) */
 .legend i{font-style:normal;display:flex;align-items:center;gap:4px}
 .legend .dt3{width:7px;height:7px;border-radius:50%;display:inline-block}
@@ -1645,17 +1649,17 @@ function renderCal(r) {
       clock: '<span class="cic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>',
       leaf: '<span class="cic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4"/><polyline points="9 14 11.5 16.5 15.5 12"/></svg></span>',
       pin: '<span class="cic"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span>',
-      phone: '<span class="cic"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.8 18.4h2.4"/></svg></span>', // 21차 자체 제작 라인(토스 자산 복사 금지, 3-E)
+      phone: '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.8 18.4h2.4"/></svg>', // 21차 자체 제작 라인(토스 자산 복사 금지, 3-E) — 뱃지 안에 들어가므로 .cic 래퍼 없음
       none: '<span class="cic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span>'
     };
     function calRow(ic, val, label, style) { return '<div class="crow">' + ic + '<b class="cv"' + (style ? ' style="' + style + '"' : '') + '>' + val + '</b>' + (label ? '<span class="cl">' + label + '</span>' : '') + '</div>'; }
     var parts = [];
     if (sel.segs.length || sel.open) {
       var segTxt = sel.segs.map(function (s) { return hm(s[0]) + '~' + hm(s[1]); }).join(' - ') + (sel.open ? (sel.segs.length ? ' - ' : '') + hm(sel.open) + '~' : '');
-      parts.push(calRow(IC.inout, segTxt, '출퇴근', sel.late ? 'color:var(--warn-weak-fg)' : '')); // 라벨 '출근~퇴근'→'출퇴근'(17차 유성)
+      // 21차 B안(유성 픽): 회사 PC 밖에서 남긴 퇴근은 **그 시각 옆에** 뱃지로 — 카드 높이가 그대로고 어느 기록인지 위치로 안다
+      var rchip = sel.remoteOut ? '<span class="rchip">' + IC.phone + '직접 입력</span>' : '';
+      parts.push(calRow(IC.inout, segTxt + rchip, '출퇴근', sel.late ? 'color:var(--warn-weak-fg)' : '')); // 라벨 '출근~퇴근'→'출퇴근'(17차 유성)
       parts.push(calRow(IC.clock, fmtMin(sel.workedMin), '근무'));
-      // 21차(유성 07-28): 회사 PC 밖에서 남긴 퇴근은 어디서 남겼는지가 보인다. 잠정안 — 최종 모양·문구는 프리뷰 픽.
-      if (sel.remoteOut) parts.push(calRow(IC.phone, '직접 입력', '퇴근', 'color:var(--g500)'));
     } else if (!sel.leaves.length) {
       parts.push(calRow(IC.none, '기록이 없어요', '', 'color:var(--g400);font-weight:600'));
     }
