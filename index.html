@@ -551,6 +551,12 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
      ⚠️본문이 이중으로 어두워지지 않는 이유 = `.scr`이 자기 배경을 갖고 이 배경을 덮기 때문(21차-4). 그 배경을 지우면 이중이 된다. */
   #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-color:rgb(163,165,169)}
   #app:has(> .dim.on){background-color:rgb(117,121,126)}
+  /* 21차-7 A안(유성 지시): 경계 픽셀의 밝은 잔여를 **그 자리에서 덮는다** — 안쪽 1px을 딤 색으로 그리는 inset 그림자.
+     겹치는 레이어 구조상 밝은 잔여 자체는 못 없애므로(21차-6 수학), 남은 방법은 그 1px을 가리는 것뿐.
+     ⚠️유성 우려 "오히려 더 이상해질 것 같은데" — 테두리처럼 보이면 **이 두 줄만 지우면 원복**(다른 데 영향 0).
+     바깥 그림자(0 8px 20px)를 같이 적어야 한다 — box-shadow는 덮어쓰기라 빠뜨리면 앱이 붕 뜬 느낌을 잃는다. */
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){box-shadow:inset 0 0 0 1px rgb(163,165,169),0 8px 20px rgba(25,31,40,.15)}
+  #app:has(> .dim.on){box-shadow:inset 0 0 0 1px rgb(117,121,126),0 8px 20px rgba(25,31,40,.15)}
   /* 21차-5(유성 적발: "scr background fff 이거 끄니까 사라진다"): 흰 조각의 실제 정체 =
      **화면 레이어(.scr)의 흰 배경이 모서리 밖으로 새는 것**. `#app{overflow:clip}`이 자를 때 Chrome이
      corner-shape를 안 따라 곡선 바깥에 흰 띠가 남는다(7배 확대 실측 — 곡선을 따라 밝은 초승달).
