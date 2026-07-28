@@ -81,7 +81,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .btn.weak{background:var(--green-bg);color:var(--green-dark)}
 .tlink{background:none;border:0;font:inherit;font-size:var(--fs-sm);color:var(--g500);cursor:pointer;transition:transform .12s}
 .tlink:active{transform:scale(.93)}
-.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;white-space:pre-line;line-height:1.5;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) / pre-line=두 문장 줄바꿈(21차-8 유성) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
 .toast.on{opacity:1}
 
 /* ── 등록 코드 ── */
@@ -251,6 +251,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .stat3 .sv.gr{color:var(--green-dark)}
 .dcard{background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.07);padding:16px 18px;margin-bottom:12px}
 .dcard .dh{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);font-weight:700;margin-bottom:15px}
+.dcard.nio .dh{margin-bottom:0} /* 21차-8: 출퇴근 행이 없는 날(휴가·병가·외부근무)=날짜+뱃지 한 줄 카드 */
 .dcard .dh .bdg2{display:inline-block;font-size:var(--fs-caption);font-weight:700;border-radius:99px;padding:2px 8px}
 .bdg2.leave{background:var(--green-bg);color:var(--green-dark)}
 .bdg2.sick{background:var(--danger-weak-bg);color:var(--danger-weak-fg)}
@@ -1027,7 +1028,10 @@ function api(action, data, isWrite) {
 function toast(msg, ok) { // ok=true → 초록 원+체크 아이콘(12차 유성 — 성공 토스트 전부, docs/1 §5.5)
   var t = $('toast');
   t.innerHTML = '<span class="tk"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></span><span></span>';
-  t.lastChild.textContent = msg;
+  // 21차-8 유성: **두 문장이면 줄을 띄운다**("신청을 취소했어요 / 연차 4시간이 돌아왔어요").
+  //   호출부마다 \n을 넣으면 새 토스트가 생길 때 또 놓치므로 여기서 한 번에 — '문장. 문장'을 줄바꿈으로.
+  //   (CSS `white-space:pre-line`이 이 \n을 실제 줄로 그린다.)
+  t.lastChild.textContent = String(msg).replace(/\.\s+/g, '\n');
   t.classList.toggle('okk', !!ok); t.classList.add('on');
   clearTimeout(t._tm); t._tm = setTimeout(function () { t.classList.remove('on'); }, 2600);
 }
@@ -1935,10 +1939,15 @@ function loadMy() {
       if (d.late) badges += '<span class="wdot"></span>'; // "(보정)" 문구는 표시하지 않음(§10.13 — 내부 플래그로만)
       var inT = d.segs.length ? hm(d.segs[0][0]) : (d.open ? hm(d.open) : '—');
       var outT = d.segs.length ? hm(d.segs[d.segs.length - 1][1]) : '—';
-      var card = document.createElement('div'); card.className = 'dcard';
-      card.innerHTML = '<div class="dh">' + kDateShort(d.date) + ' ' + badges + '</div>' +
-        '<div class="io"><div><span class="k">IN</span><span class="t2' + (d.late ? ' late' : '') + (inT === '—' ? ' dim2' : '') + '">' + inT + '</span></div>' +
-        '<div><span class="k">OUT</span><span class="t2' + (outT === '—' ? ' dim2' : '') + '">' + outT + '</span></div></div>';
+      // 21차-8: 도장이 하나도 없는데 뱃지가 이미 이유를 말하는 날(휴가·병가·외부근무)은 **출퇴근 행을 안 그린다**
+      //   — '출근 — 퇴근 —'은 정보가 0인 줄이고 뱃지와 중복(§2.1-7). 결근은 뱃지가 없으므로 그대로 그린다(그게 유일한 신호).
+      var hasStamp = !!(d.segs.length || d.open);
+      var io = (hasStamp || !(d.leaves.length || d.external))
+        ? '<div class="io"><div><span class="k">출근</span><span class="t2' + (d.late ? ' late' : '') + (inT === '—' ? ' dim2' : '') + '">' + inT + '</span></div>' +
+          '<div><span class="k">퇴근</span><span class="t2' + (outT === '—' ? ' dim2' : '') + '">' + outT + '</span></div></div>' // 유성: IN/OUT 영문 라벨 폐기
+        : '';
+      var card = document.createElement('div'); card.className = 'dcard' + (io ? '' : ' nio');
+      card.innerHTML = '<div class="dh">' + kDateShort(d.date) + ' ' + badges + '</div>' + io;
       wrap.appendChild(card);
     });
     if (!wrap.children.length) wrap.innerHTML = '<div class="pnote" style="text-align:center">이 달에는 기록이 없어요</div>';
