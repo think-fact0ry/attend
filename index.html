@@ -564,7 +564,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
         <button class="btn weak" id="btnIn">출근</button>
         <button class="btn fill" id="btnOut">퇴근</button>
       </div>
-      <div class="viewonly" id="viewOnly" style="display:none">출퇴근 도장은 회사 컴퓨터에서 찍어요<br>여기서는 캘린더 확인과 휴가 신청을 할 수 있어요</div>
+      <div class="viewonly" id="viewOnly" style="display:none">출근은 회사 컴퓨터에서 찍어요<br>퇴근과 휴가 신청은 여기서도 할 수 있어요</div>
     </div>
   </section>
 
@@ -733,8 +733,10 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
   <div class="csheet" id="outSheet">
     <div class="handle"></div>
-    <div class="ct">지금 퇴근할까요?</div>
+    <div class="ct" id="outTitle">지금 퇴근할까요?</div>
     <div class="cs" id="outInfo">—</div>
+    <!-- 21차: 종업을 지난 뒤 폰에서 남길 때만 뜨는 시각 칸(빈칸 — 기본값을 종업으로 채우면 가만히 있는 게 유리해진다, 유성 07-28) -->
+    <div id="outTw" style="display:none;margin-bottom:14px"></div>
     <div class="cw" id="outWarn" style="display:none"></div>
     <button class="btn fill" id="outGo">퇴근하기</button>
   </div>
@@ -1110,7 +1112,10 @@ function renderMain(r) {
   renderCards(r);
   renderOverlays(r);
   // 도장 버튼 — 등록 기기 + 근무일만(startFrom 전·휴일·주말엔 안 뜸 — 버그: 7/24 도장됨)
-  if (r.deviceOk && r.plan.work) {
+  //   21차(유성 07-28): 폰에서도 **퇴근만** 열린다. 출근은 회사 PC 전용 유지 — 출근 버튼은 '근무 중'과 같은
+  //   done 모양(시각 표시·disabled)이라 새 상태를 만들지 않는다. 열린 출근이 없는 폰은 기존 viewOnly.
+  var phoneOut = !r.deviceOk && r.plan.work && !!r.open;
+  if ((r.deviceOk && r.plan.work) || phoneOut) {
     $('punchRow').style.display = 'flex'; $('viewOnly').style.display = 'none';
     var bin = $('btnIn'), bout = $('btnOut');
     if (r.open) { // 근무 중
@@ -1132,7 +1137,7 @@ function renderMain(r) {
    **GAS를 한 번 더 왕복**해 그제야 메인이 갱신됐다(왕복 2회). 클라에 근태엔진 전체가 있으니
    ①이벤트를 로컬 원장에 먼저 넣고 즉시 재파생·렌더 ②응답이 오면 서버 시각으로 값만 교체(조용히)
    ③실패면 그 이벤트를 빼고 되돌린다. 왕복 대기 0. 타 기기 변경은 60초 폴링이 계속 흡수한다. */
-function doPunch(kind) {
+function doPunch(kind, timeHm) {
   if (state.punching) return; // 도장 비행 중 연타 차단(10차) — 출근 POST가 도착하기 전에 퇴근 POST가 먼저 닿으면
   //   서버가 '출근 기록이 없어요'로 거절 → 롤백이 퇴근 버튼을 되살리고 잠금도 생략되던 레이스(유성 실기기)
   var b = $(kind === 'in' ? 'btnIn' : 'btnOut');
@@ -1141,9 +1146,11 @@ function doPunch(kind) {
   b.disabled = true;
   var myCid = cid();
   // 시각=서버시각+경과(liveNow — 클라 시계 자체는 불신). 서버가 찍는 값과 사실상 같고, 응답 오면 교체된다.
+  //   21차: 종업 지난 뒤 폰에서 남기면 사용자가 적은 시각(timeHm)이 값이 된다.
+  //   src: 등록 PC가 아니면 'phone' — 낙관 렌더 단계부터 캘린더 구분 표시가 맞게(서버 규약과 같은 문자열)
   var optimistic = {
     at: '', emp: store.emp, date: db.today, type: (kind === 'in' ? '출근' : '퇴근'),
-    val: liveNow(), src: 'opt', flag: '', cid: myCid
+    val: timeHm ? timeHm + ':00' : liveNow(), src: db.deviceOk ? 'opt' : 'phone', flag: '', cid: myCid
   };
   db.events.push(optimistic);
   state.punching = true; // 폴링이 이 사이에 state.db를 통째로 갈아끼우면 방금 찍은 도장이 잠깐 사라진다
@@ -1166,7 +1173,7 @@ function doPunch(kind) {
     else { var c2 = compose(); state.status = c2; renderMain(c2); }
     toast(msg);
   }
-  api('punch', { kind: kind, cid: myCid }, true).then(function (r) {
+  api('punch', { kind: kind, cid: myCid, time: timeHm || '' }, true).then(function (r) {
     state.punching = false;
     if (!r.ok) { rollback(r.error); return; }
     if (localStorage.getItem('att_locked')) return;        // 낙관적 잠금 뒤 성공 응답 — 화면 갱신 불요(다음 로그인의 sync가 진실)
@@ -1182,25 +1189,57 @@ $('btnIn').addEventListener('click', function () {
   if ($('btnIn').disabled) return;
   doPunch('in');
 });
-$('btnOut').addEventListener('click', function () { // 퇴근 = 2단계(논모달 시트)
+/* 퇴근 = 2단계(논모달 시트).
+   21차(유성 07-28): 종업을 지난 뒤 **폰**에서 남길 땐 시각 칸이 뜬다(빈칸 — 이미 퇴근한 뒤라 '지금'이 틀린 값이고,
+   기본값을 종업으로 채우면 가만히 있는 게 유리해진다). 종업 전이면 지금 시각 그대로 = 회사 PC와 같은 흐름. */
+var outLateMode = false; // 이 시트가 시각 입력 모드인가(outGo가 읽는다)
+$('btnOut').addEventListener('click', function () {
   if ($('btnOut').disabled) return;
   var r = state.status;
   var nowM = (+r.nowHms.slice(0, 2)) * 60 + (+r.nowHms.slice(3, 5));
-  var openM = (+r.open.slice(0, 2)) * 60 + (+r.open.slice(3, 5));
-  $('outInfo').textContent = ampm(r.nowHms) + ' - 오늘 ' + fmtMin(r.workedMin) + ' 근무했어요';
+  var endM = r.plan.end ? (+r.plan.end.slice(0, 2)) * 60 + (+r.plan.end.slice(3, 5)) : 0;
+  outLateMode = !r.deviceOk && !!r.plan.end && nowM >= endM;
+  var tw = $('outTw');
+  if (outLateMode) {
+    $('outTitle').textContent = '몇 시에 나오셨어요?'; // §2.1-4 예외 2ⓑ(상황을 추정해 물을 때) — 시각을 모르니 묻는다
+    $('outInfo').textContent = ampm(r.open) + '에 출근했어요';
+    tw.style.display = 'block'; tw.innerHTML = '';
+    twMount(tw, r.plan.end || '15:00', function () { paintOutWarn(r); }); // 오전·오후 세그 초기 선택만 종업 기준, 숫자 칸은 빈칸
+  } else {
+    $('outTitle').textContent = '지금 퇴근할까요?';
+    $('outInfo').textContent = ampm(r.nowHms) + ' - 오늘 ' + fmtMin(r.workedMin) + ' 근무했어요';
+    tw.style.display = 'none'; tw.innerHTML = '';
+  }
+  paintOutWarn(r);
+  $('outSheet').classList.add('on');
+});
+// 소정 미달 경고 — 시각 입력 모드에선 적은 시각으로 다시 계산한다(안 그러면 "왜 연차가 줄었지?"가 된다)
+function paintOutWarn(r) {
   var leaveMin = r.leaves.reduce(function (a, l) { return a + l.hours * 60; }, 0);
-  var short0 = r.plan.work ? Math.max(0, r.plan.planMin - r.workedMin - leaveMin) : 0;
+  var workedMin = r.workedMin;
+  if (outLateMode) {
+    var t = $('outTw').value24 && $('outTw').value24();
+    if (!t) { $('outWarn').style.display = 'none'; return; } // 아직 안 적었으면 계산할 게 없다
+    // ⚠️ r.workedMin은 열린 구간을 **지금까지**로 이미 세고 있다(엔진 dayStatus: open이면 nowHms까지 가산).
+    //   그대로 더하면 이중 계산이라 밤에 열면 항상 '미달 0'이 됐다 → 닫힌 구간만 합하고 열린 구간은 적은 시각으로 닫는다.
+    function toSec(v) { return (+v.slice(0, 2)) * 3600 + (+v.slice(3, 5)) * 60 + (+(v.slice(6, 8) || 0)); }
+    var closedSec = 0;
+    (r.segments || []).forEach(function (s) { closedSec += toSec(s[1]) - toSec(s[0]); });
+    workedMin = Math.floor((closedSec + Math.max(0, toSec(t + ':00') - toSec(r.open))) / 60);
+  }
+  var short0 = r.plan.work ? Math.max(0, r.plan.planMin - workedMin - leaveMin) : 0;
   var grace = (state.db && state.db.settings.graceMin) || 0;
   var shortfall = short0 <= grace ? 0 : short0; // 엔진과 같은 오차 허용(다르면 시트가 겁주고 실제론 차감 0)
   if (shortfall > 0) {
     // 정의(07-24): 기준은 '몇 시에 왔나'가 아니라 '채웠나' → 확정 단언("연차에서 30분을 써요") 금지.
     //   채울 길을 먼저 알려주고, 안 채웠을 때를 뒤에 붙인다. 차감은 실제로 되돌릴 수 있다(재출근=복원).
     $('outWarn').style.display = 'block';
-    $('outWarn').innerHTML = '오늘 근무가 ' + fmtMin(shortfall) + ' 모자라요'
-      + '<span class="cwsub">오늘 안에 다시 출근하면 채울 수 있어요. 안 채우면 연차에서 ' + fmtMin(shortfall) + '을 써요</span>';
+    $('outWarn').innerHTML = (outLateMode ? '그날' : '오늘') + ' 근무가 ' + fmtMin(shortfall) + ' 모자라요'
+      + '<span class="cwsub">' + (outLateMode
+        ? '연차에서 ' + fmtMin(shortfall) + '을 써요'
+        : '오늘 안에 다시 출근하면 채울 수 있어요. 안 채우면 연차에서 ' + fmtMin(shortfall) + '을 써요') + '</span>';
   } else $('outWarn').style.display = 'none';
-  $('outSheet').classList.add('on');
-});
+}
 function hideSheet() { $('outSheet').classList.remove('on'); $('outSheet').style.transform = ''; }
 document.addEventListener('pointerdown', function (e) { // 시트 밖 탭 = 닫힘(논모달)
   if ($('outSheet').classList.contains('on') && !e.target.closest('#outSheet') && !e.target.closest('#btnOut')) hideSheet();
@@ -1232,6 +1271,13 @@ function initSheetDrag(sh, onClose) {
 }
 initSheetDrag($('outSheet'), hideSheet);
 $('outGo').addEventListener('click', function () {
+  if (outLateMode) { // 21차: 적은 시각으로 남긴다(빈칸이면 저장 안 함 — 기본값 폴백 없음)
+    var t = $('outTw').value24();
+    if (!t) { toast('시각을 끝까지 적어 주세요'); return; }
+    hideSheet();
+    doPunch('out', t);
+    return;
+  }
   hideSheet();
   doPunch('out');
 });
@@ -1246,10 +1292,14 @@ function showDone(txt, sub, wait) { // wait=true → 주황 시계(신청 대기
 }
 
 /* ── v6 시각 입력 위젯(오전/오후 세그 + OTP식 커서칸 — 프리뷰 A안, 유성 픽 반영 지점) ── */
-function twMount(host, defaultHm) {
-  var h24 = +defaultHm.slice(0, 2), mm0 = defaultHm.slice(3, 5);
-  var pm = h24 >= 12, h12 = h24 % 12 || 12;
-  var ghost = (h12 < 10 ? '0' + h12 : '' + h12) + mm0;
+/* 21차(유성 07-28): **미입력 폴백 폐기.** 구판은 종업 시각을 회색으로 미리 깔고 `value24()`가 미입력이면
+   그 값을 그대로 저장했다(07-22 확정 "버튼만 눌러도 저장"). 그래서 14:00에 조퇴한 날도 아무것도 안 적고
+   버튼만 누르면 15:00으로 기록돼 1시간이 붙고 연차 차감이 사라졌다 — 가만히 있는 게 유리한 구조.
+   이제 숫자 칸은 **빈칸**이고 미입력=null(저장 안 됨). hintHm은 오전·오후 세그 초기 선택에만 쓴다(터치 1회 절약).
+   onInput = 입력이 바뀔 때마다 호출(미달 경고 갱신용, 선택). */
+function twMount(host, hintHm, onInput) {
+  var h24 = +hintHm.slice(0, 2);
+  var pm = h24 >= 12;
   var val = '';
   host.innerHTML =
     '<div class="tw-ap"><button type="button" data-ap="am"' + (!pm ? ' class="on"' : '') + '>오전</button><button type="button" data-ap="pm"' + (pm ? ' class="on"' : '') + '>오후</button></div>' +
@@ -1261,7 +1311,7 @@ function twMount(host, defaultHm) {
       var c = cells[i];
       c.classList.remove('filled', 'ghost', 'active');
       if (i < val.length) { c.textContent = val[i]; c.classList.add('filled'); }
-      else { c.textContent = ghost[i]; c.classList.add('ghost'); }
+      else c.textContent = ''; // 빈칸(21차) — 회색 종업 시각을 깔지 않는다
     }
     if (document.activeElement === input && val.length < 4) cells[val.length].classList.add('active');
   }
@@ -1270,6 +1320,7 @@ function twMount(host, defaultHm) {
     var grew = v.length > val.length;
     input.value = v; val = v; paint();
     if (grew && val.length) { var c = cells[val.length - 1]; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
+    if (onInput) onInput();
   });
   input.addEventListener('focus', paint);
   input.addEventListener('blur', function () { cells.forEach(function (c) { c.classList.remove('active'); }); });
@@ -1277,12 +1328,13 @@ function twMount(host, defaultHm) {
     b.addEventListener('click', function () {
       host.querySelectorAll('.tw-ap button').forEach(function (x) { x.classList.remove('on'); });
       b.classList.add('on');
+      if (onInput) onInput(); // 오전↔오후를 바꿔도 계산이 따라오게
     });
   });
   paint();
-  host.value24 = function () { // 미입력=기본값. 3자리(300=3:00) 허용. 형식 오류=null
+  host.value24 = function () { // 미입력=null(21차 — 폴백 폐기). 3자리(300=3:00) 허용. 형식 오류=null
     var d;
-    if (!val.length) d = ghost;
+    if (!val.length) return null;
     else if (val.length === 4) d = val;
     else if (val.length === 3) d = '0' + val;
     else return null;
@@ -1352,18 +1404,19 @@ function renderOverlays(r) {
   var rej = (r.rejections || [])[0];
   if (rej) { showRejSheet(rej); return; }
   var missAll = r.missing || [];
-  var miss = null;
-  for (var i = 0; i < missAll.length; i++) { // 케이스 A(보정)=회사 PC 전용 — 폰에선 건너뛰고 안내만
-    if (missAll[i].kind === 'both' || r.deviceOk) { miss = missAll[i]; break; }
-  }
+  var miss = missAll[0] || null; // 21차: 케이스 A도 폰에서 처리 가능 — 더 이상 기기로 거르지 않는다
   var info = $('missInfo');
-  if (!miss) {
+  // 21차(유성 07-28): 회사 PC에서 **오늘 출근을 아직 안 찍었으면** 밀린 시트를 띄우지 않는다.
+  //   구판은 11시 정각에 출근하려고 켠 순간 어제 시트가 화면을 덮어(딤 pointer-events) 출근 버튼을 못 눌렀다.
+  //   밀린 날이 3일이면 3번 반복 — 출근이 늦어져 지각에 닿을 수 있었다. 출근 직후 재렌더에서 바로 뜬다.
+  var beforeTodayIn = r.deviceOk && r.plan.work && !r.open && !r.segments.length;
+  if (miss && beforeTodayIn) {
     hideBlockSheet();
-    var firstOut = missAll.filter(function (m) { return m.kind === 'out'; })[0];
-    if (firstOut && !r.deviceOk) { info.style.display = 'block'; info.textContent = kDateShort(firstOut.date) + ' 퇴근 기록이 없어요. 회사 컴퓨터에서 남길 수 있어요'; }
-    else info.style.display = 'none';
+    info.style.display = 'block';
+    info.textContent = kDateShort(miss.date) + ' 기록이 비어 있어요. 출근한 뒤에 남길 수 있어요';
     return;
   }
+  if (!miss) { hideBlockSheet(); info.style.display = 'none'; return; }
   info.style.display = 'none';
   showMissSheet(miss, r);
 }
@@ -1391,8 +1444,8 @@ function showMissSheet(miss, r) {
   var sh = $('missSheet');
   var dateHead = '<div class="cdate">' + (+miss.date.slice(5, 7)) + '월 ' + (+miss.date.slice(8, 10)) + '일 (' + '일월화수목금토'[new Date(+miss.date.slice(0, 4), +miss.date.slice(5, 7) - 1, +miss.date.slice(8, 10)).getDay()] + ')</div>';
   function close() { sh.classList.remove('on'); $('blockDim').classList.remove('on'); ovBusy = false; }
-  if (miss.kind === 'out') { // 케이스 A — 퇴근만 없음: 시각 입력(기본=그 요일 종업)
-    sh.innerHTML = dateHead + '<div class="ct">퇴근 기록이 없어요</div><div id="missTw"></div><button class="btn fill" id="missGo">퇴근 시각 남기기</button>';
+  if (miss.kind === 'out') { // 케이스 A — 퇴근만 없음: 시각 직접 입력(21차 — 빈칸, 기본값 폴백 폐기)
+    sh.innerHTML = dateHead + '<div class="ct">몇 시에 나오셨어요?</div><div id="missTw"></div><button class="btn fill" id="missGo">퇴근 시각 남기기</button>';
     twMount(sh.querySelector('#missTw'), miss.end || '15:00');
     sh.querySelector('#missGo').addEventListener('click', function () {
       var b = this;
@@ -1412,19 +1465,26 @@ function showMissSheet(miss, r) {
     var subTxt = total >= 240 ? '병가는 남은 연차에서 4시간을 써요'
       : (total > 0 ? '남은 연차 ' + fmtMin(total) + '을 쓰고 나머지는 무급으로 쉬어요'
         : '남은 연차가 없어 무급으로 쉬어요');
+    // 21차(유성 07-28): [사무실에서 근무했어요] 신설 — 그 전엔 행복센터·병가뿐이라 **사무실에서 정상 근무했는데
+    //   PC를 못 켜 출근조차 못 찍은 날**에 고를 게 없었다(관리자 정정으로만 해결).
     sh.innerHTML = dateHead + '<div class="ct">출퇴근 기록이 없어요</div>' +
-      '<button class="btn fill" id="missHb">행복센터에서 근무했어요</button>' +
+      '<button class="btn fill" id="missOff">사무실에서 근무했어요</button>' +
+      '<button class="btn gray" id="missHb">행복센터에서 근무했어요</button>' +
       '<button class="btn gray" id="missSick">아파서 쉬었어요 (병가)</button>' +
       '<div class="cs2">' + subTxt + '</div>';
-    sh.querySelector('#missHb').addEventListener('click', function () {
-      var b = this;
-      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
-      api('extwork', { date: miss.date, cid: cid() }, true).then(function (rr) {
-        delete b.dataset.busy;
-        if (!rr.ok) { toast(rr.error); return; }
-        close(); showDone('외부 근무로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
-      }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
-    });
+    function bindWork(id, place) {
+      sh.querySelector(id).addEventListener('click', function () {
+        var b = this;
+        if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
+        api('extwork', { date: miss.date, place: place, cid: cid() }, true).then(function (rr) {
+          delete b.dataset.busy;
+          if (!rr.ok) { toast(rr.error); return; }
+          close(); showDone(place + ' 근무로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
+        }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      });
+    }
+    bindWork('#missOff', '사무실');
+    bindWork('#missHb', '행복센터');
     sh.querySelector('#missSick').addEventListener('click', function () {
       var b = this;
       if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
@@ -1585,6 +1645,7 @@ function renderCal(r) {
       clock: '<span class="cic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>',
       leaf: '<span class="cic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4"/><polyline points="9 14 11.5 16.5 15.5 12"/></svg></span>',
       pin: '<span class="cic"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span>',
+      phone: '<span class="cic"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.8 18.4h2.4"/></svg></span>', // 21차 자체 제작 라인(토스 자산 복사 금지, 3-E)
       none: '<span class="cic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span>'
     };
     function calRow(ic, val, label, style) { return '<div class="crow">' + ic + '<b class="cv"' + (style ? ' style="' + style + '"' : '') + '>' + val + '</b>' + (label ? '<span class="cl">' + label + '</span>' : '') + '</div>'; }
@@ -1593,6 +1654,8 @@ function renderCal(r) {
       var segTxt = sel.segs.map(function (s) { return hm(s[0]) + '~' + hm(s[1]); }).join(' - ') + (sel.open ? (sel.segs.length ? ' - ' : '') + hm(sel.open) + '~' : '');
       parts.push(calRow(IC.inout, segTxt, '출퇴근', sel.late ? 'color:var(--warn-weak-fg)' : '')); // 라벨 '출근~퇴근'→'출퇴근'(17차 유성)
       parts.push(calRow(IC.clock, fmtMin(sel.workedMin), '근무'));
+      // 21차(유성 07-28): 회사 PC 밖에서 남긴 퇴근은 어디서 남겼는지가 보인다. 잠정안 — 최종 모양·문구는 프리뷰 픽.
+      if (sel.remoteOut) parts.push(calRow(IC.phone, '직접 입력', '퇴근', 'color:var(--g500)'));
     } else if (!sel.leaves.length) {
       parts.push(calRow(IC.none, '기록이 없어요', '', 'color:var(--g400);font-weight:600'));
     }
@@ -1600,18 +1663,18 @@ function renderCal(r) {
       if (l.pending) return; // 대기 신청은 아래 requests 줄에서
       parts.push(calRow(IC.leaf, l.hours === 4 ? '하루 4h' : '반차 2h', l.type, 'color:var(--green-dark)'));
     });
-    if (sel.external) parts.push(calRow(IC.pin, '행복센터', '외부 근무', 'color:var(--green-dark)'));
+    if (sel.external) parts.push(calRow(IC.pin, sel.externalPlace || '행복센터', '근무', 'color:var(--green-dark)')); // 21차: 장소 분기(사무실·행복센터)
     (sel.requests || []).forEach(function (q) {
       if (q.status === '대기') parts.push(calRow(IC.clock, '확인 기다리는 중<span class="ldd" style="margin-left:4px"><i></i><i></i><i></i></span>', q.kind + ' 신청', 'color:var(--g500);font-weight:600')); // 16차 픽 A2 유지
     });
     var amendHtml = '';
-    if (sel.missingOut && state.status && state.status.deviceOk) {
-      amendHtml = '<div class="excard" style="margin-top:12px"><div class="xt">퇴근 기록이 없어요</div><div id="selTw"></div><button class="btn fill" style="margin-top:10px;padding:13px;font-size:var(--fs-body)" id="selAmendGo">퇴근 시각 남기기</button></div>';
+    if (sel.missingOut) { // 21차: 기기 조건 제거 — 퇴근은 어디서든 남긴다
+      amendHtml = '<div class="excard" style="margin-top:12px"><div class="xt">몇 시에 나오셨어요?</div><div id="selTw"></div><button class="btn fill" style="margin-top:10px;padding:13px;font-size:var(--fs-body)" id="selAmendGo">퇴근 시각 남기기</button></div>';
     }
     sc.className = 'selcard'; // 슬롯 상시(07-23 유성 픽) — 빈 상태는 아래 else서 placeholder
     sc.innerHTML = '<div class="sct">' + kDate(sel.date) + '</div>' + parts.join('') + amendHtml;
     sc.style.display = 'block';
-    if (sel.missingOut && state.status && state.status.deviceOk) {
+    if (sel.missingOut) {
       twMount($('selTw'), sel.planEnd || '15:00');
       $('selAmendGo').addEventListener('click', function () {
         var b = this;
@@ -2660,8 +2723,11 @@ var DEMO_SETTINGS = {
   accrualFrom: '2025-09', anchor: '2025-10-01'
 };
 var demo = { pin: '', n: 0, events: [] };
-function demoEv(date, type, val, flag) {
-  demo.events.push({ at: date + 'T03:00:00.000Z', emp: 'hyeona', date: date, type: type, val: val, src: 'demo', flag: flag || '', cid: '' });
+// 21차 데모 스위치: &ph=1 = 폰(등록 PC 아님) · &late=1 = 종업을 지난 시각(폰 퇴근 시각 입력 모드 확인용)
+var DEMO_PHONE = /[?&]ph=1/.test(location.search);
+var DEMO_LATE = /[?&]late=1/.test(location.search);
+function demoEv(date, type, val, flag, src) {
+  demo.events.push({ at: date + 'T03:00:00.000Z', emp: 'hyeona', date: date, type: type, val: val, src: src || 'demo', flag: flag || '', cid: '' });
 }
 (function buildDemoEvents() {
   var E = AttEngine, today = '2026-08-14';
@@ -2672,7 +2738,7 @@ function demoEv(date, type, val, flag) {
     var p = E.dayPlan(d, DEMO_SETTINGS, {});
     if (!p.work || skip[d]) continue;
     demoEv(d, '출근', p.start + ':00');
-    demoEv(d, '퇴근', p.end + ':01');
+    demoEv(d, '퇴근', p.end + ':01', '', d === '2026-08-07' ? 'phone' : ''); // 8/7=폰에서 남긴 퇴근(21차 캘린더 구분 표시 확인용)
   }
   demoEv('2026-08-05', '출근', '11:07:00'); demoEv('2026-08-05', '퇴근', '15:07:00'); // 지각
   demoEv('2026-08-10', '병가', { hours: 4, half: '' });                                // 병가일
@@ -2694,7 +2760,7 @@ function demoEv(date, type, val, flag) {
 })();
 function demoSync() {
   // ⚠️events=state.db와 참조 공유(도장 낙관 렌더가 이 공유에 의존, 07-24) — 낙관 쓰기 액션(request·cancel)은 아래서 tmp 이벤트를 '채택'하지 append 금지(12차)
-  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: true, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
+  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: DEMO_LATE ? '21:40:00' : '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: !DEMO_PHONE, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
 }
 function demoApi(action, data) {
   data = data || {};
@@ -2703,8 +2769,8 @@ function demoApi(action, data) {
   if (action === 'punch') {
     // 07-24 낙관적 렌더: 이벤트는 doPunch가 이미 로컬 원장에 넣었다 → 여기서 또 넣으면 2번 찍힌다.
     //   응답은 서버 시각만 돌려준다(실서버와 동일 계약). `&pf=1`=실패 응답(롤백 확인용 씬).
-    if (/[?&]pf=1/.test(location.search)) return Promise.resolve({ ok: false, error: '출퇴근은 회사 컴퓨터에서만 찍을 수 있어요' });
-    return Promise.resolve({ ok: true, recorded: { type: data.kind, at: '14:10:22', name: '이현아' } });
+    if (/[?&]pf=1/.test(location.search)) return Promise.resolve({ ok: false, error: '출근은 회사 컴퓨터에서만 찍을 수 있어요' });
+    return Promise.resolve({ ok: true, recorded: { type: data.kind, at: data.time ? data.time + ':00' : (DEMO_LATE ? '21:40:22' : '14:10:22'), name: '이현아' } });
   }
   if (action === 'amend') {
     if (demo.pin && data.pin !== demo.pin) return Promise.resolve({ ok: false, error: '비밀번호가 맞지 않아요', code: 'pin' });

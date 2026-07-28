@@ -6,6 +6,7 @@
  *       전부 여기서 "읽을 때" 파생한다(확정 불가 판정을 행으로 박지 않음 — 재출근·익일 보정으로 사후 변동).
  *
  * 이벤트 형태: { at:ISO, emp, date:'YYYY-MM-DD', type, val, src, flag, cid }
+ *   src = 출처. 등록 출퇴근 PC면 기기 id, 폰(그 외)이면 'phone' — 퇴근류에서 remoteOut 판정에 쓴다(21차).
  *   출근/퇴근      val='HH:MM:SS'
  *   보정퇴근       val='HH:MM' (flag='보정')
  *   연차/병가      val={hours:4|2, half:'front'|'back'|''}  (병가=즉시 확정, 사후 등록 허용)
@@ -17,7 +18,7 @@
  *   신청           val={rid, kind:'연차', hours:4|2, half:'front'|'back'|''} date=휴가일
  *                  → 활성(반려·취소 아님)이면 즉시 차감. 반려·취소=파생 재계산이 곧 복원.
  *   승인/반려/취소 val={target:rid, memo?}       (반려 memo=유성 원문)
- *   외부근무       val={}                        (그 날 소정근로 자동 인정·개근 유지·지각 없음)
+ *   외부근무       val={place:'행복센터'|'사무실'} (그 날 소정근로 자동 인정·개근 유지·지각 없음. place 없는 구 이벤트=행복센터)
  *   반려확인       val={target:rid}              (반려 시트 [확인했어요] — 미확인분만 표시)
  *   통보           val={target:rid, kind:'자동확정'} (카톡 dedup 마커 — 상태 아님)
  *   자동 확정 = 파생 판정: now ≥ 휴가 시작(하루·앞반차=시업, 뒤반차=종업−2h) && 미처리 → 확정.
@@ -47,6 +48,8 @@
 var AttEngine = (function () {
   var DAY_MS = 24 * 60 * 60 * 1000;
   var MONTH_GRANT_MIN = 240;      // 월 개근 시 4시간(하루치)
+  var SRC_PHONE = 'phone';        // 출처 열 규약(21차) — 등록 출퇴근 PC가 아닌 곳에서 남긴 퇴근. Code.js `_punch_`/`_amend_`와 같은 문자열
+  var EXT_PLACE_DEFAULT = '행복센터'; // 외부근무 place 없는 구 이벤트(21차 전)=행복센터
   var LOT_LIFE_MONTHS = 12;       // 발생 월부터 1년 사용
 
   // ── 시간 유틸 (전부 문자열 연산 — 타임존 함정 회피) ──
@@ -196,14 +199,17 @@ var AttEngine = (function () {
     var plan = dayPlan(dateStr, settings, swaps);
     var reqIdx = requestIndex(events);
     var ins = [], outs = [], leaves = [], amended = false, external = false;
+    // remoteOut = 등록된 출퇴근 PC가 아닌 곳(폰)에서 남긴 퇴근. 출처 열 src === SRC_PHONE 규약(Code.js `_punch_`/`_amend_`가 심는다).
+    //   21차(2026-07-28 유성): 퇴근은 어디서든 남길 수 있게 열되, 어디서 남겼는지는 캘린더·월마감에 보이게 한다.
+    var remoteOut = false, extPlace = '';
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if (e.date !== dateStr) continue;
       if (e.type === '출근') ins.push(e.val);
-      else if (e.type === '퇴근') outs.push(e.val);
-      else if (e.type === '보정퇴근') { outs.push(e.val + ':00'); amended = true; }
+      else if (e.type === '퇴근') { outs.push(e.val); if (e.src === SRC_PHONE) remoteOut = true; }
+      else if (e.type === '보정퇴근') { outs.push(e.val + ':00'); amended = true; if (e.src === SRC_PHONE) remoteOut = true; }
       else if (e.type === '연차' || e.type === '병가') leaves.push({ type: e.type, hours: e.val.hours, half: reqHalf(e.val), pending: false });
-      else if (e.type === '외부근무') external = true;
+      else if (e.type === '외부근무') { external = true; extPlace = (e.val && e.val.place) || EXT_PLACE_DEFAULT; } // place 없는 구 이벤트=행복센터(21차 전)
       else if (e.type === '신청' && e.val && e.val.rid && reqIdx[e.val.rid] && reqActive(reqIdx[e.val.rid])) {
         var st6 = reqStatus(reqIdx[e.val.rid], settings, swaps, todayStr, nowHms);
         leaves.push({ type: e.val.hours === 2 ? '반차' : '연차', hours: e.val.hours, half: reqHalf(e.val), pending: st6 === '대기', rid: e.val.rid });
@@ -214,13 +220,13 @@ var AttEngine = (function () {
         date: dateStr, plan: plan, segments: [], open: null, firstIn: null, lastOut: null,
         workedMin: plan.work ? plan.planMin : 0, late: false, lateMin: 0, leaves: [], leaveMin: 0,
         amended: false, missingOut: false, absent: false, deficitMin: 0, overtimeMin: 0,
-        closed: dateStr < todayStr, external: true
+        closed: dateStr < todayStr, external: true, externalPlace: extPlace, remoteOut: false
       };
     }
     var c = corr[dateStr];
     if (c) { // 정정=채운 칸만 대체(빈 칸=원래 도장 유지 — T0-1 출근 실수 삭제 방지)
       if (c.in) ins = [c.in + ':00'];
-      if (c.out) outs = [c.out + ':00'];
+      if (c.out) { outs = [c.out + ':00']; remoteOut = false; } // 관리자가 시각을 확인·정정했으면 '밖에서 남김' 표시는 소멸(정정이 최종 진실)
     }
     ins.sort(); outs.sort();
     // 구간 짝짓기: in[i] ↔ 그 뒤 첫 out. 남는 in=열린 구간.
@@ -277,7 +283,7 @@ var AttEngine = (function () {
       lastOut: outs.length ? outs[outs.length - 1] : null, workedMin: workedMin,
       late: late, lateMin: lateMin, leaves: leaves, leaveMin: leaveMin, amended: amended,
       missingOut: missingOut, absent: absent, deficitMin: deficitMin, overtimeMin: overtimeMin,
-      closed: closed, external: false
+      closed: closed, external: false, externalPlace: '', remoteOut: remoteOut
     };
   }
 
@@ -449,7 +455,7 @@ var AttEngine = (function () {
     var reqIdx = requestIndex(events);
     var days = monthDates(ym), out = [], planTotal = 0, workedTotal = 0;
     var lateCount = 0, absentCount = 0, leaveCount = 0, leaveMinTotal = 0, overtimeTotal = 0, deficitTotal = 0;
-    var amendCount = 0, missingOutCount = 0;
+    var amendCount = 0, missingOutCount = 0, remoteOutCount = 0;
     for (var i = 0; i < days.length; i++) {
       var st = dayStatus(days[i], events, settings, swaps, corr, todayStr, days[i] === todayStr ? nowHms : null);
       if (st.plan.work) planTotal += st.plan.planMin;
@@ -459,6 +465,7 @@ var AttEngine = (function () {
       if (st.leaves.length) { leaveCount++; leaveMinTotal += st.leaveMin; }
       if (st.amended) amendCount++;
       if (st.missingOut) missingOutCount++;
+      if (st.remoteOut) remoteOutCount++;
       overtimeTotal += st.overtimeMin; deficitTotal += st.deficitMin;
       // 그 날짜 신청들(상태 포함 — 캘린더 대기 점·확정 텍스트·처리 내역의 소스)
       var reqs = [];
@@ -479,9 +486,9 @@ var AttEngine = (function () {
       out.push({
         date: days[i], work: st.plan.work, hol: st.plan.why === '공휴일',
         holBadge: st.plan.why === '공휴일' && !!settings.schedule[String(weekday(days[i]))], // 원래 근무 요일의 공휴일만 '휴무' 배지
-        dots: dots, requests: reqs, external: st.external,
+        dots: dots, requests: reqs, external: st.external, externalPlace: st.externalPlace,
         segs: st.segments, open: st.open, leaves: st.leaves, late: st.late, amended: st.amended,
-        missingOut: st.missingOut, absent: st.absent, workedMin: st.workedMin,
+        missingOut: st.missingOut, absent: st.absent, workedMin: st.workedMin, remoteOut: st.remoteOut,
         planStart: st.plan.start || null, planEnd: st.plan.end || null
       });
     }
@@ -489,7 +496,7 @@ var AttEngine = (function () {
       ym: ym, days: out, planMin: planTotal, workedMin: workedTotal,
       lateCount: lateCount, absentCount: absentCount, leaveCount: leaveCount, leaveMin: leaveMinTotal,
       overtimeMin: overtimeTotal, deficitMin: deficitTotal,
-      amendCount: amendCount, missingOutCount: missingOutCount,
+      amendCount: amendCount, missingOutCount: missingOutCount, remoteOutCount: remoteOutCount,
       perfect: perfectMonth(ym, events, settings, swaps, corr, todayStr)
     };
   }
