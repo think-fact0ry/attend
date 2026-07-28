@@ -80,7 +80,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .btn.weak{background:var(--green-bg);color:var(--green-dark)}
 .tlink{background:none;border:0;font:inherit;font-size:var(--fs-sm);color:var(--g500);cursor:pointer;transition:transform .12s}
 .tlink:active{transform:scale(.93)}
-.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
 .toast.on{opacity:1}
 
 /* ── 등록 코드 ── */
@@ -119,7 +119,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .excard .btn{margin-top:10px;padding:13px;font-size:var(--fs-body)}
 
 /* 퇴근 확인 시트(논모달 — dim 없음) */
-.csheet{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));background:#fff;border-radius:24px;padding:12px 14px 12px;box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:500} /* §13-12(7): 패딩=concentric 공식보다 눈 우선(유성) */
+.csheet{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));height:auto;background:#fff;border-radius:24px;padding:12px 14px 12px; /* height:auto=.vsheet와 같은 이유(bottom만 있는 fixed가 flex 안에서 납작해짐) */box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:500} /* §13-12(7): 패딩=concentric 공식보다 눈 우선(유성) */
 .csheet.on{transform:translateX(-50%) translateY(0)}
 .csheet.grab{transition:none}
 .csheet:active{}
@@ -444,7 +444,14 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 /* ── v6 미기록일 시트 (닫기 불가 — §4.3-1 단서: 핸들 없음+상단 26px) + 반려 시트 ── */
 .blockdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .22s;z-index:620}
 .blockdim.on{opacity:1;pointer-events:auto}
-.vsheet{position:fixed;left:50%;transform:translateX(-50%) translateY(130%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));background:#fff;border-radius:24px;box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:621}
+/* ⚠️height:auto 명시 필수(21차-3 실측) — 지우면 시트가 납작해진다.
+   `#app`은 flex column + transform이라 fixed 자식의 containing block이 #app이고, Chrome은 이때
+   **static position(= 그 화면 콘텐츠 흐름의 끝)을 top으로 확정**한 뒤 bottom과의 차이로 높이를 만든다
+   (CSS2 §10.6.4 규칙 1은 "높이=콘텐츠, top을 푼다"인데 실제 동작이 반대).
+   → 콘텐츠가 긴 화면에서 열면 top이 화면 아래로 밀려 높이가 32px(패딩만)로 눌렸다.
+   실측: 연차 신청 화면에서 dateSheet 높이 32px(자식 합 325px) → height:auto 명시로 395px 정상.
+   19·20차 빌드에서도 재현 = 21차 회귀 아님. 화면 콘텐츠 길이에 따라 랜덤하게 터지는 잠복 버그였다. */
+.vsheet{position:fixed;left:50%;transform:translateX(-50%) translateY(130%);width:min(calc(100% - 16px),calc(var(--maxw) - 16px));bottom:calc(8px + env(safe-area-inset-bottom));height:auto;background:#fff;border-radius:24px;box-shadow:0 -6px 30px rgba(25,31,40,.16);transition:transform .28s cubic-bezier(.2,1,.3,1);z-index:621}
 .vsheet.on{transform:translateX(-50%) translateY(0)}
 .vsheet.grab{transition:none}
 .vsheet.noclose{padding:26px 22px 22px} /* 닫기 불가 = 핸들 없음, 상단 26px */
@@ -508,6 +515,13 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
 /* ── v6.1 내 정보 소정근로 줄간격·PIN 행 ── */
 .row .v.sched{line-height:1.9;font-weight:600}
+/* 21차-3(유성, 토스 '금융 서비스' 목록 레퍼런스): 내 정보 항목 앞에 아이콘.
+   문법=17차 캘린더 상세 카드 `.cic`와 동일(30px g100 라운드 사각 + 16px 라인 아이콘, 자체 제작 — 토스 자산 복사 금지 3-E).
+   토스는 항목마다 컬러가 다르지만 우리 팔레트는 그린 단색이라 새 색을 만들지 않고 회색 단색으로 통일(§3.1). */
+#s-me .row{padding:11px 0}
+#s-me .row .l{display:flex;align-items:center;gap:12px;min-width:0}
+#s-me .ric{width:30px;height:30px;border-radius:10px;background:var(--g100);display:flex;align-items:center;justify-content:center;flex:none;color:var(--g600)}
+#s-me .ric svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── §13-12(4·5) squircle: 반경 20px 이상 요소만 corner-shape(크로미움 전용 — 미지원 브라우저=일반 라운드 폴백).
      전 요소 동일 지수 superellipse(2.3)=애플 n≈5 근사. 버튼 15·상태필 12는 일반 라운드 유지(대상 아님). ── */
@@ -521,9 +535,11 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   body{background:var(--g200) !important;padding-top:19px} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
   #app{max-width:min(var(--maxw),calc(100% - 38px));height:100%;min-height:0;background:#fff;border-radius:40px 40px 0 0;corner-shape:superellipse(2.3);box-shadow:0 8px 20px rgba(25,31,40,.15);transform:translateZ(0)}
   .scr.on{overflow-y:auto;overflow-x:hidden;min-height:0} /* #app 높이 고정 → 창 스크롤 대신 화면 내부 스크롤(폰과 동일 감) */
-  /* 20차: 어두운 딤이 떠 있는 동안만 모서리=일반 원호 — Chrome이 #app 배경은 스퀘어클로 칠하면서 자식 클립은 원호로 잘라
-     그 차이 조각(좌상단 초승달)에 딤이 못 닿아 밝게 남는 구현 격차(실측 확정). 딤 중엔 곡률 차이가 안 보여 무손실 */
-  #app:has(> .dim.on, > .blockdim.on, > .mdim.on, > .otpov-exdim.on){corner-shape:round}
+  /* 21차-3 정정(유성): 20차는 딤이 뜨는 동안 **#app 곡률 자체를 round로 바꿔** 맞췄다 — 모서리가 더 깎여 보이는
+     부작용(유성 "기존 라운드 px가 있는데 메뉴를 열면 라운드가 더 깎여서 만들어져"). 증상 진단은 맞았고 처방이 틀렸다.
+     필요한 건 곡률 변경이 아니라 **딤이 #app과 똑같은 모양으로 잘리는 것** — 라운드 바깥에 흰색이 남던 게 본체.
+     → 딤에 #app과 동일한 radius+corner-shape를 준다(딤은 inset:0이라 #app을 꽉 채우므로 모양이 정확히 일치). */
+  #app > .dim, #app > .blockdim, #app > .mdim, #app > .otpov-exdim{border-radius:40px 40px 0 0;corner-shape:superellipse(2.3)}
 }
 </style>
 </head>
@@ -1940,14 +1956,28 @@ function loadMe() {
   var db = state.db;
   if (!db) { syncNow(function () { loadMe(); }); return; }
   var rows = $('meRows'); rows.innerHTML = '';
-  function add(l, v, cls) { var d = document.createElement('div'); d.className = 'row'; d.innerHTML = '<span class="l">' + l + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span>'; rows.appendChild(d); }
-  add('이름', db.name);
+  // 21차-3 항목 아이콘(자체 제작 라인 — 토스 자산 복사 금지, 3-E). 캘린더 상세 카드와 같은 30px 라운드 사각 문법.
+  var MEIC = {
+    name: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',                          // 사람
+    sched: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>',            // 달력
+    late: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/>',                     // 타이머(시계와 구분=위 손잡이)
+    leave: '<path d="M12 20c-4.5 0-8-3-8-7.5C4 7 8 3.5 12 3c4 .5 8 4 8 9.5C20 17 16.5 20 12 20z"/><path d="M12 20V9"/>', // 잎
+    start: '<path d="M5 21V4"/><path d="M5 5h11l-1.6 3.2L16 11H5z"/>',                                       // 깃발
+    lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'             // 자물쇠(관리자 헤더와 동일 도형)
+  };
+  function add(l, v, cls, ic) {
+    var d = document.createElement('div'); d.className = 'row';
+    var icon = ic ? '<span class="ric"><svg viewBox="0 0 24 24">' + ic + '</svg></span>' : '';
+    d.innerHTML = '<span class="l">' + icon + l + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span>';
+    rows.appendChild(d);
+  }
+  add('이름', db.name, '', MEIC.name);
   var sched = Object.keys(db.settings.schedule).sort().map(function (k) { return WD[+k] + ' ' + db.settings.schedule[k][0] + '~' + db.settings.schedule[k][1]; }).join('<br>');
-  add('소정근로', sched, 'sched'); // 07-22 유성: 줄간격 확대
-  add('지각 기준', '근무 시작 후 ' + db.settings.graceMin + '분까지 괜찮아요'); // '시업' 표현 폐기(07-22)
-  add('연차', '한 달 개근하면 다음 달 1일에 4시간');
-  add('연차 시작', accrualFromLabel(true));
-  add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>');
+  add('소정근로', sched, 'sched', MEIC.sched); // 07-22 유성: 줄간격 확대
+  add('지각 기준', '근무 시작 후 ' + db.settings.graceMin + '분까지 괜찮아요', '', MEIC.late); // '시업' 표현 폐기(07-22)
+  add('연차', '한 달 개근하면 다음 달 1일에 4시간', '', MEIC.leave);
+  add('연차 시작', accrualFromLabel(true), '', MEIC.start);
+  add('출퇴근 비밀번호', '<button class="tlink" id="pinChangeGo" style="color:var(--green-dark);text-decoration:underline;text-underline-offset:3px">' + (db.pinSet ? '바꾸기' : '만들기') + '</button>', '', MEIC.lock);
   $('pinChangeGo').addEventListener('click', changePinFlow);
   // 2차: 폰(비-출퇴근 PC)=세션 영구 유지·로그아웃 없음. 출퇴근 PC(전사 지정)=여럿이 공용이라 '로그아웃' 있음.
   //   로그아웃=바로 잠그면 유저가 "내 번호 눌러야 하나" 혼란(유성 07-24) → 확인 모달+완료 인터랙션 후 잠금.
