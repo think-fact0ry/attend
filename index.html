@@ -81,7 +81,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .btn.weak{background:var(--green-bg);color:var(--green-dark)}
 .tlink{background:none;border:0;font:inherit;font-size:var(--fs-sm);color:var(--g500);cursor:pointer;transition:transform .12s}
 .tlink:active{transform:scale(.93)}
-.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;white-space:pre-line;line-height:1.5;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) / pre-line=두 문장 줄바꿈(21차-8 유성) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;white-space:pre-line;line-height:1.5;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) / pre-line=두 문장 줄바꿈(21차-8 유성) / bottom=메인에선 toastBottom()이 인라인으로 올림(22차 — 출퇴근 버튼 위) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
 .toast.on{opacity:1}
 
 /* ── 등록 코드 ── */
@@ -1025,8 +1025,23 @@ function api(action, data, isWrite) {
   };
   return attempt(0);
 }
+/* 22차(유성 07-29): **메인 토스트는 하단 고정 블록을 가리지 않는다** — 기본 자리(bottom 30px)가 출퇴근 버튼 위에
+   그대로 얹혀 "연차 신청을 취소했어요" 같은 두 줄 토스트가 버튼을 덮었다. 버튼 위로 12px 띄운다.
+   버튼 높이는 상태마다 달라(도장 전=1줄 / 도장 후=시각 b줄이 붙어 2줄) CSS 상수로 못 박는다 → 그 요소만 실측
+   (§3.7 매직 px 금지의 정당한 예외 — 재는 건 *자기 높이*뿐이고 위치 계산은 CSS calc이 한다).
+   offsetHeight=레이아웃 값이라 PC 목업의 #app transform과 무관(getBoundingClientRect였다면 좌표계가 갈렸다).
+   폰 전용 화면(punchRow 숨김)은 같은 자리의 안내 박스(#viewOnly)를 기준으로 — '하단 블록을 안 가린다'가 규칙의 본체. */
+function toastBottom() {
+  if (!$('s-main').classList.contains('on')) return '';           // 메인 밖=기본 자리
+  var pr = $('punchRow'), vo = $('viewOnly'), el = null;
+  if (pr.style.display !== 'none') el = pr.firstElementChild;      // 버튼 자체(=.punch의 위 여백 18px은 뺀 높이)
+  else if (vo.style.display !== 'none') el = vo;
+  if (!el || !el.offsetHeight) return '';
+  return 'calc(' + (el.offsetHeight + 32) + 'px + env(safe-area-inset-bottom))'; // 20=.body 아래 패딩 + 12=버튼과의 숨통
+}
 function toast(msg, ok) { // ok=true → 초록 원+체크 아이콘(12차 유성 — 성공 토스트 전부, docs/1 §5.5)
   var t = $('toast');
+  t.style.bottom = toastBottom();
   t.innerHTML = '<span class="tk"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></span><span></span>';
   // 21차-8 유성: **두 문장이면 줄을 띄운다**("신청을 취소했어요 / 연차 4시간이 돌아왔어요").
   //   호출부마다 \n을 넣으면 새 토스트가 생길 때 또 놓치므로 여기서 한 번에 — '문장. 문장'을 줄바꿈으로.
@@ -1050,12 +1065,26 @@ document.addEventListener('pointerdown', function (e) {
   setTimeout(function () { rip.remove(); }, 600);
 }, true);
 
-/* §4.9 비활성·done 버튼 = 누르면 shake(조용한 무반응 X) — 신청하기(날짜 미선택)도 포함(07-22(3) 유성) */
+/* §4.9 비활성·done 버튼 = 누르면 shake(조용한 무반응 X) — 신청하기(날짜 미선택)도 포함(07-22(3) 유성)
+   22차(유성 07-29): shake는 "지금 못 눌러요"까지만 말한다 → **이유와 다음 행동을 토스트로** 같이 준다.
+   문구=§2.1(해요체·능동·이유 먼저·긍정형 다음 행동). 버튼이 이미 말하는 건 안 되풀이(§2.1-7 — 시각은 버튼에 찍혀 있으니 문구에 안 넣음). */
+function punchWhy(btn) {
+  if (!btn.closest('.punch')) return '';                 // 신청하기(날짜 미선택)=shake만 유지(이 라운드 범위 밖)
+  if (state.punching) return '기록하는 중이에요. 잠시만 기다려 주세요';
+  var r = state.status; if (!r) return '';
+  if (btn.id === 'btnOut') {
+    if (r.segments && r.segments.length) return '퇴근은 이미 기록했어요. 다시 근무를 시작하면 출근을 눌러 주세요';
+    return '아직 출근 전이에요. 출근을 누르면 퇴근할 수 있어요';
+  }
+  if (btn.id === 'btnIn' && r.open) return '이미 출근했어요. 일을 마치면 퇴근을 눌러 주세요';
+  return '';
+}
 document.addEventListener('pointerdown', function (e) {
   var t = e.target.closest('.punch .btn, .apply-cta .btn');
   if (t && (t.disabled || t.classList.contains('done'))) {
     t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
     setTimeout(function () { t.classList.remove('shake'); }, 420);
+    var why = punchWhy(t); if (why) toast(why);
   }
 }, true);
 
