@@ -57,8 +57,9 @@ input,textarea{user-select:text;-webkit-user-select:text} /* 입력칸만 예외
 .mchev svg{width:16px;height:16px}
 svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-.scr{display:none;flex-direction:column;flex:1}
+.scr{display:none;flex-direction:column;flex:1;background:#fff} /* 21차-4: 화면 레이어가 자기 배경을 갖는다 — 없으면 #app 배경이 비쳐, 딤 중 모서리용 #app 배경 딤과 .dim이 이중으로 얹혀 본문만 두 배로 어두워졌다(실측) */
 .scr.on{display:flex}
+#s-my,#s-admin{background:var(--g50)} /* 회색 화면(내정보=#s-me는 아래 266행) — 구판은 go()가 #app 인라인으로만 칠해 .scr이 투명이었다 */
 .body{padding:18px 24px calc(20px + env(safe-area-inset-bottom));flex:1;display:flex;flex-direction:column}
 
 /* ── 공통 컴포넌트 ── */
@@ -535,11 +536,16 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   body{background:var(--g200) !important;padding-top:19px} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
   #app{max-width:min(var(--maxw),calc(100% - 38px));height:100%;min-height:0;background:#fff;border-radius:40px 40px 0 0;corner-shape:superellipse(2.3);box-shadow:0 8px 20px rgba(25,31,40,.15);transform:translateZ(0)}
   .scr.on{overflow-y:auto;overflow-x:hidden;min-height:0} /* #app 높이 고정 → 창 스크롤 대신 화면 내부 스크롤(폰과 동일 감) */
-  /* 21차-3 정정(유성): 20차는 딤이 뜨는 동안 **#app 곡률 자체를 round로 바꿔** 맞췄다 — 모서리가 더 깎여 보이는
-     부작용(유성 "기존 라운드 px가 있는데 메뉴를 열면 라운드가 더 깎여서 만들어져"). 증상 진단은 맞았고 처방이 틀렸다.
-     필요한 건 곡률 변경이 아니라 **딤이 #app과 똑같은 모양으로 잘리는 것** — 라운드 바깥에 흰색이 남던 게 본체.
-     → 딤에 #app과 동일한 radius+corner-shape를 준다(딤은 inset:0이라 #app을 꽉 채우므로 모양이 정확히 일치). */
-  #app > .dim, #app > .blockdim, #app > .mdim, #app > .otpov-exdim{border-radius:40px 40px 0 0;corner-shape:superellipse(2.3)}
+  /* 21차-4 최종(유성 진단이 맞았다): 딤을 어떻게 덧칠해도 모서리 흰 조각은 안 사라진다.
+     Chrome은 **배경 페인팅엔 corner-shape를 적용하고 `overflow:clip`엔 적용하지 않는다** →
+     배경(superellipse, 더 넓음) ⊃ 자식 클립(원호, 더 좁음)이라 그 차이 조각엔 *어떤 자식도 닿을 수 없다*.
+     그래서 20차(딤 중 #app 곡률을 round로 전환)는 모서리가 더 깎여 보였고(유성 반려),
+     21차-3(딤에 같은 radius 부여)은 딤을 더 좁혀 흰색을 오히려 키웠다(유성 "radius 끄니까 덜해졌어" = 정확한 관찰).
+     → 답은 덧칠이 아니라 **흰 배경 자체를 어둡게 칠하는 것**(유성 "애초에 흰색을 어둡게 바꾸면 될 것 같은데").
+     배경 레이어는 corner-shape를 정확히 따르므로 경계가 완벽히 일치하고 클립 격차와 무관해진다.
+     딤 농도별로 나눠 얹어 실제 딤 색과 같게 한다(.dim=.6 / 나머지=.4, 겹치면 뒤 규칙인 .6이 이김). */
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-image:linear-gradient(rgba(25,31,40,.4),rgba(25,31,40,.4))}
+  #app:has(> .dim.on){background-image:linear-gradient(rgba(25,31,40,.6),rgba(25,31,40,.6))}
 }
 </style>
 </head>
@@ -1063,8 +1069,10 @@ function go(name) {
   // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
   // §13-12 C: 화면 배경은 #app에도 — 폰목업(PC)에선 body=베젤 g200 고정(!important)이라 #app이 화면색을 담당
   var scrBg = (name === 'me' || name === 'my' || name === 'admin') ? 'var(--g50)' : '#fff';
-  document.body.style.background = scrBg;
-  $('app').style.background = scrBg;
+  // ⚠️`background` 축약이 아니라 **backgroundColor**로 (21차-4): 축약은 `background-image:none`까지 인라인으로 박아
+  //   딤 중 모서리를 어둡게 칠하는 `#app:has(> .dim.on){background-image:…}`를 조용히 이겨버렸다(실측).
+  document.body.style.backgroundColor = scrBg;
+  $('app').style.backgroundColor = scrBg;
   closeDrawer(); hideSheet();
   if (name === 'cal') loadCal();
   if (name === 'my') loadMy();
