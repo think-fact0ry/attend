@@ -546,6 +546,11 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
      딤 농도별로 나눠 얹어 실제 딤 색과 같게 한다(.dim=.6 / 나머지=.4, 겹치면 뒤 규칙인 .6이 이김). */
   #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-image:linear-gradient(rgba(25,31,40,.4),rgba(25,31,40,.4))}
   #app:has(> .dim.on){background-image:linear-gradient(rgba(25,31,40,.6),rgba(25,31,40,.6))}
+  /* 21차-5(유성 적발: "scr background fff 이거 끄니까 사라진다"): 흰 조각의 실제 정체 =
+     **화면 레이어(.scr)의 흰 배경이 모서리 밖으로 새는 것**. `#app{overflow:clip}`이 자를 때 Chrome이
+     corner-shape를 안 따라 곡선 바깥에 흰 띠가 남는다(7배 확대 실측 — 곡선을 따라 밝은 초승달).
+     → 화면 레이어도 앱과 **같은 모양**을 갖게 해 자기 배경이 모서리를 넘지 않게 한다. */
+  #app > .scr{border-radius:40px 40px 0 0;corner-shape:superellipse(2.3)}
 }
 </style>
 </head>
