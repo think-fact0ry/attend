@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v40'; // 07-28 21차-5: 흰 조각 실제 정체=화면 레이어(.scr) 배경이 모서리 밖으로 샌 것(유성 적발) → .scr에 앱과 같은 radius+corner-shape
+var CACHE = 'tf-attend-v41'; // 07-28 21차-6: 마지막 1px 밝은 선 — 반투명 딤을 흰 배경 위에 얹는 대신 **미리 섞은 단일 불투명색**으로(안티앨리어싱 커버리지 불일치 제거)·go()의 #app 인라인 배경 제거
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   '/attend/favicon-32x32.png',

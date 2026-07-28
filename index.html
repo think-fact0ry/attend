@@ -544,8 +544,13 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
      → 답은 덧칠이 아니라 **흰 배경 자체를 어둡게 칠하는 것**(유성 "애초에 흰색을 어둡게 바꾸면 될 것 같은데").
      배경 레이어는 corner-shape를 정확히 따르므로 경계가 완벽히 일치하고 클립 격차와 무관해진다.
      딤 농도별로 나눠 얹어 실제 딤 색과 같게 한다(.dim=.6 / 나머지=.4, 겹치면 뒤 규칙인 .6이 이김). */
-  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-image:linear-gradient(rgba(25,31,40,.4),rgba(25,31,40,.4))}
-  #app:has(> .dim.on){background-image:linear-gradient(rgba(25,31,40,.6),rgba(25,31,40,.6))}
+  /* 21차-6(유성 "픽셀단위로 아주 조금 다른 거 같긴해" — 9배 확대 실측으로 확정):
+     딤 색을 **반투명 레이어로 얹으면** 곡선 가장자리 안티앨리어싱에서 *흰 배경색이 딤보다 넓게 커버*돼
+     1px 밝은 선이 남는다. 그래서 미리 섞은 **단일 불투명색**으로 칠한다(레이어가 하나면 경계도 하나).
+     값 = #fff에 딤을 합성한 결과: .6→rgb(117,121,126) / .4→rgb(163,165,169). 딤 색을 바꾸면 이 값도 같이.
+     ⚠️본문이 이중으로 어두워지지 않는 이유 = `.scr`이 자기 배경을 갖고 이 배경을 덮기 때문(21차-4). 그 배경을 지우면 이중이 된다. */
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-color:rgb(163,165,169)}
+  #app:has(> .dim.on){background-color:rgb(117,121,126)}
   /* 21차-5(유성 적발: "scr background fff 이거 끄니까 사라진다"): 흰 조각의 실제 정체 =
      **화면 레이어(.scr)의 흰 배경이 모서리 밖으로 새는 것**. `#app{overflow:clip}`이 자를 때 Chrome이
      corner-shape를 안 따라 곡선 바깥에 흰 띠가 남는다(7배 확대 실측 — 곡선을 따라 밝은 초승달).
@@ -1074,10 +1079,10 @@ function go(name) {
   // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
   // §13-12 C: 화면 배경은 #app에도 — 폰목업(PC)에선 body=베젤 g200 고정(!important)이라 #app이 화면색을 담당
   var scrBg = (name === 'me' || name === 'my' || name === 'admin') ? 'var(--g50)' : '#fff';
-  // ⚠️`background` 축약이 아니라 **backgroundColor**로 (21차-4): 축약은 `background-image:none`까지 인라인으로 박아
-  //   딤 중 모서리를 어둡게 칠하는 `#app:has(> .dim.on){background-image:…}`를 조용히 이겨버렸다(실측).
+  // 화면색은 이제 `.scr`이 자기 배경으로 갖는다(21차-4/5) → **`#app`엔 인라인을 넣지 않는다**(21차-6):
+  //   인라인은 딤 중 앱 배경을 합성색으로 바꾸는 CSS 규칙을 무조건 이겨서, 모서리 1px 밝은 선이 되돌아온다.
+  //   body는 계속 필요 — 창이 콘텐츠보다 넓을 때 #app 밖(폰 목업에선 미디어쿼리 !important가 베젤색으로 덮음).
   document.body.style.backgroundColor = scrBg;
-  $('app').style.backgroundColor = scrBg;
   closeDrawer(); hideSheet();
   if (name === 'cal') loadCal();
   if (name === 'my') loadMy();
