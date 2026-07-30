@@ -65,10 +65,19 @@ var snap = null;      // 마지막 tick 응답
 var snapAt = 0;       // performance.now() — 단조 시계(사용자가 PC 시계를 바꿔도 안 흔들림)
 var lastOkAt = 0;     // performance.now() 기준 — 벽시계를 바꿔도 안 흔들림
 var dayRolled = false; // 자정을 넘겨 재조회를 이미 한 번 걸었나(요청 폭풍 방지)
+var fails = 0;         // 연속 실패 수 — 재시도 간격을 늘리는 데만 씀
 var hbTimer = null, tickTimer = null;
 var lastSent = '';    // 호스트에 중복 통보 방지
 
 function $(id){ return document.getElementById(id); }
+
+/* 서비스워커 등록 — 이 페이지가 스스로 해야 한다.
+   sw.js의 SHELL에 위젯을 넣어 뒀지만 **등록하는 코드가 없으면 캐시가 생기지 않는다**.
+   앱 창을 한 번 열어야만 등록되던 상태였고, 그러면 설치 첫날 부팅 시 인터넷이 없을 때
+   알약 자리에 브라우저 오류 화면이 뜬다. (scope=/attend/ 라 앱과 같은 워커를 공유) */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('../sw.js', { scope: '/attend/' }).catch(function(){});
+}
 
 /* ══════════ 호스트(exe)와의 대화 ══════════ */
 function toHost(o){
@@ -97,19 +106,28 @@ function fetchTick(immediate){
   .then(function(r){ return r.json(); })
   .then(function(r){
     if (!r || !r.ok) {
-      if (r && r.code === 'auth') { auth = null; snap = null; toHost({ type: 'need-auth' }); }
-      render(); schedule(); return;
+      if (r && r.code === 'auth') { auth = null; snap = null; toHost({ type: 'need-auth' }); render(); schedule(true); return; }
+      render(); schedule(false); return;   // 서버가 살아 있으나 실패 — 짧게 재시도
     }
     // 날짜가 바뀌었으면(자정) 이전 스냅샷은 통째로 버린다 — 타이머가 아니라 값 비교로 판정
     snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
-    render(); schedule();
+    render(); schedule(true);
   })
-  .catch(function(){ render(); schedule(); });   // 오프라인 — 조용히 재시도(거짓 숫자 금지)
+  .catch(function(){ render(); schedule(false); });   // 오프라인 — 짧게 재시도(거짓 숫자 금지)
 }
-function schedule(){
+function schedule(ok){
   clearTimeout(hbTimer);
-  var working = !!(snap && snap.open);
-  hbTimer = setTimeout(function(){ fetchTick(); }, working ? HB_WORKING : HB_IDLE);
+  var wait;
+  if (ok === false) {
+    // 실패 재시도 = 짧게 시작해 늘린다(20초 → 40초 → 80초에서 고정. fails가 3에서 멈추므로 상한도 80초).
+    //   정기 주기(15분)로 물러나면 **부팅 직후 인터넷이 늦게 붙는 흔한 경우에 15분간 틀린 화면**이 된다.
+    fails = Math.min(fails + 1, 3);
+    wait = Math.min(20000 * Math.pow(2, fails - 1), 120000);
+  } else {
+    fails = 0;
+    wait = (snap && snap.open) ? HB_WORKING : HB_IDLE;
+  }
+  hbTimer = setTimeout(function(){ fetchTick(); }, wait);
 }
 
 /* ══════════ 표시 계산 ══════════ */
