@@ -52,7 +52,7 @@ body.moving #pill{cursor:move;opacity:.6}
 #panel{display:none;position:relative;padding:14px 16px 16px;height:100%;box-sizing:border-box}
 body.open #panel{display:block}
 /* − : 작게. 히트 영역을 넉넉히(유성 "잘 안 눌려") */
-#mini{position:absolute;top:4px;right:4px;width:34px;height:34px;border:0;background:transparent;
+#mini{position:absolute;top:4px;right:4px;z-index:9;width:34px;height:34px;border:0;background:transparent;
   color:var(--g500);font:inherit;font-size:22px;font-weight:600;line-height:1;cursor:pointer;border-radius:9px;
   display:flex;align-items:center;justify-content:center;padding:0}
 #mini:hover{background:var(--g100);color:var(--g700)}
@@ -160,8 +160,27 @@ var act = null, actAt = 0;
 var ACT_IDLE_MS = 60 * 60 * 1000;
 function actAlive(){
   if (!act) return false;
-  if (Date.now() - actAt > ACT_IDLE_MS) { act = null; return false; }
+  if (Date.now() - actAt > ACT_IDLE_MS) { endActSession(); return false; }
   return true;
+}
+/* 세션 시작 — 위젯과 **앱의 잠금을 같이 푼다**.
+   유성 07-30: "위젯에서 키패드를 통과했는데 근태 앱을 열면 왜 또 입력해."
+   앱은 같은 출처·같은 프로필이라 localStorage를 그대로 쓴다 → 여기서 열어 주면 앱이 안 묻는다. */
+function startActSession(r){
+  act = { token: r.token, emp: r.emp, name: r.name || '' };
+  actAt = Date.now();
+  auth = { token: r.token, emp: r.emp };
+  try {
+    localStorage.setItem('att_token', r.token);
+    localStorage.setItem('att_emp', r.emp);
+    localStorage.removeItem('att_locked');
+  } catch (e) { }
+  toHost({ type:'auth', token: r.token, emp: r.emp });
+}
+/* 세션 종료 — 퇴근·유휴 1시간. **앱도 같이 잠근다**(다음 사람은 앱에서도 PIN부터) */
+function endActSession(){
+  act = null; actAt = 0;
+  try { localStorage.setItem('att_locked', '1'); } catch (e) { }
 }
 
 function $(id){ return document.getElementById(id); }
@@ -275,10 +294,7 @@ function verify(){
     .then(function(r){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
-      act = { token: r.token, emp: r.emp, name: r.name || '' };
-      actAt = Date.now();
-      toHost({ type:'auth', token: r.token, emp: r.emp });
-      auth = { token: r.token, emp: r.emp };
+      startActSession(r);
       $('dots').classList.add('ok');          // 완료 인터랙션 — 아주 짧게(유성)
       setTimeout(function(){
         pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요'; $('gH1').classList.remove('err');
@@ -350,21 +366,23 @@ function punch(kind){
   punching = true;
   $('pErr').textContent = '';
 
+  // ⚠️토큰을 **먼저 붙잡는다**. 07-30 1차에 퇴근 분기에서 act를 먼저 비우고 아래에서 act.token을 읽어
+  //   **퇴근 요청이 예외로 죽었다**(서버에 안 감) + punching이 true로 남아 그 뒤 도장이 전부 막혔다.
+  var tok = act.token, who = act.emp;
+  var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch(e){}
+  var body = { action:'punch', kind:kind, token:tok, emp:who,
+    cid: 'w' + Date.now() + Math.random().toString(36).slice(2) };
+  if (dev && dev.id) { body.device = dev.id; body.deviceToken = dev.token; }
+
   var prev = JSON.parse(JSON.stringify(snap));
   var nowH = sec2hms(serverSecNow());
-  if (kind === 'in') snap.open = nowH;
+  if (kind === 'in') { snap.open = nowH; actAt = Date.now(); }
   else {
     snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
     snap.open = null; snap.lastOut = nowH;
-    act = null;   // 퇴근 도장 즉시 세션 종료(확정 결정 ①) — 다음 사람은 PIN부터
+    endActSession();          // 퇴근 도장 즉시 세션 종료(확정 결정 ①) — 다음엔 PIN부터
   }
-  actAt = Date.now();
-  setOpen(false);            // ⚡즉시 접힌다. 출근·퇴근 **둘 다** 여기서 끝(구판은 퇴근만 늦었다)
-
-  var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch(e){}
-  var body = { action:'punch', kind:kind, token:act.token, emp:act.emp,
-    cid: 'w' + Date.now() + Math.random().toString(36).slice(2) };
-  if (dev && dev.id) { body.device = dev.id; body.deviceToken = dev.token; }
+  setOpen(false);             // ⚡즉시 접힌다(출근·퇴근 둘 다)
 
   fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); })
