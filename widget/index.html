@@ -174,10 +174,16 @@ function setOpen(v){
   $('pErr').classList.remove('on');
   lastSent = '';           // 창 크기를 다시 알려야 한다
   render();
-  // ⚠️펼칠 때 세로가 한 번 더 커졌다 돌아오던 버그(유성 신고): 클래스를 바꾼 **직후**에 잰 높이는
-  //   레이아웃이 아직 안 잡힌 값이라 한 번 틀리고, 다음 틱에 교정되면서 창이 출렁였다.
-  //   → 다음 프레임에 다시 재서 한 번 더 알린다(그 값이 진짜다).
-  if (window.requestAnimationFrame) requestAnimationFrame(function(){ lastSent = ''; render(); });
+}
+/* ⚠️펼칠 때 세로가 커졌다 돌아오던 버그(유성 신고 — 실측 232→168):
+   클래스를 바꾼 직후에 잰 높이는 웹폰트·레이아웃이 아직 안 잡힌 값이라 한 번 틀리고,
+   나중 렌더가 교정하면서 창이 출렁인다. 한 프레임 뒤에 재는 것으로도 부족했다.
+   → **값이 두 번 연속 같을 때만** 호스트에 알린다. 흔들리는 동안엔 아무것도 안 보낸다. */
+var pendH = -1, stableH = 0;
+function settledH(h){
+  if (h === pendH) { stableH = h; return true; }   // 지난번과 같다 = 잡혔다
+  pendH = h;
+  return false;
 }
 // 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다
 $('pill').addEventListener('click', function(){
@@ -361,6 +367,14 @@ function render(){
     w = Math.max(w, 232);                       // 패널이 열리면 최소 폭
   }
   var h = open ? $('panel').offsetHeight : 34;   // 펼치면 알약 줄은 감춰지므로 패널 높이가 곧 창 높이
+
+  // 높이가 흔들리는 동안엔 보내지 않는다(위 settledH 설명). 접힘(34)은 항상 확정값이다.
+  if (open && !settledH(h)) {
+    if (window.requestAnimationFrame) requestAnimationFrame(render);
+    else setTimeout(render, 16);
+    return;
+  }
+  if (!open) { pendH = 34; stableH = 34; }
 
   var sig = Math.ceil(w) + 'x' + h + '|' + (v.on ? 1 : 0) + '|' + (v.warn ? 1 : 0) + '|' + (v.dim ? 1 : 0);
   if (sig !== lastSent) {   // 값이 바뀔 때만 알린다(1초마다 창을 흔들지 않게)
