@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>근태</title>
+<!--
+  근태 데스크톱 위젯 화면 (2026-07-30 신설)
+  · 주소 = https://think-fact0ry.github.io/attend/widget/  (폴더형 — 슬래시 유무 둘 다 열림. `.html`은 관성이라 안 씀)
+  · 창 자체가 알약이다. 모서리·테두리 색·그림자는 **윈도우가 그린다**(DWM) — CSS로 라운드를 또 그리면
+    두 표면이 같은 곡선을 각자 정의해 경계 픽셀이 어긋난다(21차 딤 모서리 6라운드의 근본 사실).
+  · 이 파일은 Pages에서 로드된다 = 고치고 push하면 전 PC가 다음 조용한 시점에 반영(exe 재배포 불요).
+  · 위젯은 **읽기 전용**이다. 도장·연차는 앱 창(PIN 게이트)이 한다. 서버를 바꾸는 코드를 여기 넣지 말 것.
+-->
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+:root{
+  /* docs/1 §3.1 정본에서 쓰는 칸만 발췌 */
+  --g300:#d1d6db; --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684;
+  --green100:#e9f8ee; --green600:#3a8a5f; --green700:#166841;
+  --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#c07f00;
+}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#fff}
+body{
+  font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;
+  display:flex;align-items:center;gap:9px;padding:0 15px;position:relative;
+  user-select:none;cursor:pointer;word-break:keep-all;-webkit-font-smoothing:antialiased;
+  transition:opacity .2s;
+}
+body.dim{opacity:.45;cursor:default}          /* 휴무일 — 흐리게(유성 확정 07-30) */
+#fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green100);transition:width .4s ease}
+body.warn #fill{background:var(--warn-weak-bg)}
+#dot{position:relative;width:8px;height:8px;border-radius:50%;background:var(--g400);flex:0 0 auto;transition:background .2s}
+body.on #dot{background:var(--green600)}
+body.warn #dot{background:var(--warn)}
+#t{position:relative;font-size:14px;font-weight:700;color:var(--g600);letter-spacing:-.4px;white-space:nowrap;font-variant-numeric:tabular-nums;transition:color .2s}
+body.on #t{color:var(--green700)}
+body.warn #t{color:var(--warn-weak-fg)}
+/* 연결이 5분 넘게 안 될 때만 — "고장난 게 아니라 연결이 안 된 것" */
+#nc{position:relative;width:5px;height:5px;border-radius:50%;background:var(--g300);flex:0 0 auto;display:none}
+body.nc #nc{display:block}
+</style>
+</head>
+<body>
+  <div id="fill"></div>
+  <span id="dot"></span>
+  <span id="t">근태</span>
+  <span id="nc" title="연결 안 됨"></span>
+
+<script>
+/* ══════════ 설정 ══════════ */
+var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8SyUuwU-Ma0r3db446Nl56_yGRkFq_dsaXq5gk70FWQ/exec';
+var HB_WORKING = 3 * 60 * 1000;    // 근무 중 3분 — 폰에서 찍은 퇴근을 알아채는 유일한 경로(사전구현 D-6)
+var HB_IDLE    = 15 * 60 * 1000;   // 그 밖 15분
+var AFTER_OUT_MS = 30 * 60 * 1000; // 퇴근 후 30분 뒤 미출근으로(유성 확정 07-30)
+var OFFLINE_MARK_MS = 5 * 60 * 1000;
+// 지각 색(주황)을 위젯에도 띄울 것인가 — **기본 꺼짐**.
+//   앱 안에서는 본인만 보지만, 위젯은 공용 PC에 하루 종일 떠 있어 옆을 지나는 사람에게도 보인다.
+//   위젯의 일은 "아직 안 끝났다"를 알리는 것이지 지각을 표시하는 게 아니다(사전구현 §6 판정 원칙 3 "판정하지 않는다").
+//   유성이 원하면 이 한 줄만 true로.
+var SHOW_LATE = false;
+
+/* ══════════ 상태 ══════════ */
+var auth = null;      // {token, emp} — 호스트(exe)가 넣어준다. 이 페이지는 토큰을 저장하지 않는다
+var snap = null;      // 마지막 tick 응답
+var snapAt = 0;       // performance.now() — 단조 시계(사용자가 PC 시계를 바꿔도 안 흔들림)
+var lastOkAt = 0;     // performance.now() 기준 — 벽시계를 바꿔도 안 흔들림
+var dayRolled = false; // 자정을 넘겨 재조회를 이미 한 번 걸었나(요청 폭풍 방지)
+var hbTimer = null, tickTimer = null;
+var lastSent = '';    // 호스트에 중복 통보 방지
+
+function $(id){ return document.getElementById(id); }
+
+/* ══════════ 호스트(exe)와의 대화 ══════════ */
+function toHost(o){
+  if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(o));
+}
+if (window.chrome && window.chrome.webview) {
+  window.chrome.webview.addEventListener('message', function(e){
+    var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch(_){ return; }
+    if (!m || !m.type) return;
+    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(true); }
+    if (m.type === 'signout') { auth = null; snap = null; render(); }
+    if (m.type === 'wake')    { fetchTick(true); }   // 절전 복귀·앱 창 닫힘·자정 — 주기와 무관하게 즉시
+  });
+}
+// 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다(연차 신청은 쉬는 날에도 한다)
+document.body.addEventListener('click', function(){ toHost({ type: 'open' }); });
+
+/* ══════════ 서버 조회 (읽기 전용) ══════════ */
+function fetchTick(immediate){
+  if (!auth) { render(); schedule(); return; }
+  fetch(GAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },   // 단순 요청 — GAS는 preflight(OPTIONS)를 처리 못 함
+    body: JSON.stringify({ action: 'tick', token: auth.token, emp: auth.emp })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(r){
+    if (!r || !r.ok) {
+      if (r && r.code === 'auth') { auth = null; snap = null; toHost({ type: 'need-auth' }); }
+      render(); schedule(); return;
+    }
+    // 날짜가 바뀌었으면(자정) 이전 스냅샷은 통째로 버린다 — 타이머가 아니라 값 비교로 판정
+    snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+    render(); schedule();
+  })
+  .catch(function(){ render(); schedule(); });   // 오프라인 — 조용히 재시도(거짓 숫자 금지)
+}
+function schedule(){
+  clearTimeout(hbTimer);
+  var working = !!(snap && snap.open);
+  hbTimer = setTimeout(function(){ fetchTick(); }, working ? HB_WORKING : HB_IDLE);
+}
+
+/* ══════════ 표시 계산 ══════════ */
+function hms2sec(s){
+  if (!s) return 0;
+  var p = String(s).split(':');
+  return (+p[0] || 0) * 3600 + (+p[1] || 0) * 60 + (+p[2] || 0);
+}
+function fmt(min){
+  if (min < 60) return min + '분';
+  var h = Math.floor(min / 60), m = min % 60;
+  return m ? (h + '시간 ' + m + '분') : (h + '시간');
+}
+// 지금 서버 시각(초) = 마지막 스냅샷의 서버 시각 + 그 뒤 흐른 단조 시간
+function serverSecNow(){
+  if (!snap) return 0;
+  return hms2sec(snap.nowHms) + Math.floor((performance.now() - snapAt) / 1000);
+}
+
+function view(){
+  if (!auth || !snap) return { text: '근태', on: false, warn: false, dim: false, gauge: 0 };
+
+  // 자정을 넘겼으면 이전 값은 오늘 것이 아니다 → 즉시 미출근으로 보이고, 서버 재조회는 **한 번만** 건다.
+  //   render()는 1초마다 도는데 여기서 매번 fetch를 걸면 오프라인 자정에 요청 폭풍이 된다.
+  if (serverSecNow() >= 24 * 3600) {
+    if (!dayRolled) { dayRolled = true; fetchTick(); }
+    return { text: '근무 전', on: false, warn: false, dim: false, gauge: 0 };
+  }
+
+  if (!snap.work) return { text: '휴무일', on: false, warn: false, dim: true, gauge: 0 };
+
+  // 게이지 분모 = 오늘 내가 채워야 하는 양. 연차·병가로 인정된 분은 빼야 한다.
+  //   엔진 실판정이 shortMin = planMin - workedMin - leaveMin (근태엔진.js:273)이라
+  //   4시간 고정으로 두면 반차 쓴 날 다 채웠는데 절반으로 보인다(사전구현 D-1).
+  var need = Math.max(1, (snap.planMin || 0) - (snap.leaveMin || 0));
+
+  // [사무실에서 근무했어요] — 도장이 없어 open이 null이지만 소정근로가 인정된 날(사전구현 D-2).
+  //   open 유무로만 판정하면 하루 종일 '미출근'으로 보인다.
+  if (snap.external) return { text: '사무실 근무', on: true, warn: false, dim: false, gauge: 100 };
+
+  var worked = snap.workedMin || 0;
+  if (snap.open) {   // 근무 중 — 열린 구간을 지금까지 이어서 센다(서버 왕복 0)
+    worked += Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open)) / 60);
+    return { text: fmt(worked), on: true, warn: SHOW_LATE && !!snap.late, dim: false, gauge: Math.min(100, worked / need * 100) };
+  }
+  if (snap.lastOut) {  // 퇴근했다 — 30분 동안만 결과를 보여주고 그 뒤엔 미출근으로 돌아간다
+    var since = serverSecNow() - hms2sec(snap.lastOut);
+    if (since >= 0 && since * 1000 < AFTER_OUT_MS) {
+      return { text: fmt(worked), on: false, warn: false, dim: false, gauge: Math.min(100, worked / need * 100) };
+    }
+  }
+  return { text: '근무 전', on: false, warn: false, dim: false, gauge: 0 };
+}
+
+function render(){
+  var v = view();
+  var b = document.body;
+  b.classList.toggle('on', v.on);
+  b.classList.toggle('warn', v.warn);
+  b.classList.toggle('dim', v.dim);
+  var offline = auth && lastOkAt && (performance.now() - lastOkAt > OFFLINE_MARK_MS);
+  b.classList.toggle('nc', !!offline);
+  $('t').textContent = v.text;
+  $('fill').style.width = v.gauge + '%';
+
+  // 창 폭 = 좌우 패딩 15+15 + 점 8 + 간격 9 + 글자 + (연결안됨 점 5+간격 9)
+  //   getBoundingClientRect 대신 offsetWidth — 레이아웃 값이라 배율·좌표계에 안 흔들린다(§5.5 결)
+  var w = 15 + 8 + 9 + $('t').offsetWidth + 15 + (offline ? 14 : 0);
+  var sig = Math.ceil(w) + '|' + (v.on ? 1 : 0) + '|' + (v.warn ? 1 : 0) + '|' + (v.dim ? 1 : 0);
+  if (sig !== lastSent) {   // 값이 바뀔 때만 알린다(1초마다 창을 흔들지 않게)
+    lastSent = sig;
+    toHost({ type: 'state', w: Math.ceil(w), on: v.on, warn: v.warn, dim: v.dim });
+  }
+}
+
+/* ══════════ 1초 틱 — 표시만 갱신(서버 호출 아님) ══════════ */
+function loop(){ render(); tickTimer = setTimeout(loop, 1000); }
+
+/* ══════════ ?demo=1 — 서버 없이 상태를 돌려본다 (앱의 ?demo=1 관례) ══════════
+   토큰이 있어야만 숫자가 뜨는 화면이라, 이게 없으면 사람도 Claude도 눈으로 확인할 방법이 없다. */
+if (/[?&]demo=1/.test(location.search)) {
+  var DEMO = [
+    { work:true,  planMin:240, leaveMin:0,   workedMin:0,   open:null,       lastOut:null,      late:false, external:false }, // 근무 전
+    { work:true,  planMin:240, leaveMin:0,   workedMin:0,   open:'11:00:00', lastOut:null,      late:false, external:false }, // 방금 출근
+    { work:true,  planMin:240, leaveMin:0,   workedMin:63,  open:'11:00:00', lastOut:null,      late:false, external:false }, // 근무 중
+    { work:true,  planMin:240, leaveMin:120, workedMin:118, open:'13:00:00', lastOut:null,      late:false, external:false }, // 반차 쓴 날(분모 2시간)
+    { work:true,  planMin:240, leaveMin:0,   workedMin:0,   open:null,       lastOut:null,      late:false, external:true  }, // 사무실 근무
+    { work:true,  planMin:240, leaveMin:0,   workedMin:240, open:null,       lastOut:'15:00:00',late:false, external:false }, // 퇴근 직후
+    { work:false, planMin:0,   leaveMin:0,   workedMin:0,   open:null,       lastOut:null,      late:false, external:false }  // 휴무일
+  ];
+  var di = 0;
+  auth = { token: 'demo', emp: 'demo' };
+  fetchTick = function(){};   // 서버 호출 차단
+  schedule = function(){};
+  setInterval(function(){
+    var d = DEMO[di++ % DEMO.length];
+    snap = JSON.parse(JSON.stringify(d));
+    snap.nowHms = d.open ? '12:03:00' : (d.lastOut ? '15:10:00' : '10:30:00');
+    snap.today = '2026-07-30';
+    snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+    render();
+  }, 2500);
+}
+
+document.fonts && document.fonts.ready.then(function(){ lastSent = ''; render(); }); // 폰트 로드 후 폭 재측정
+render();
+loop();
+schedule();
+toHost({ type: 'ready' });
+</script>
+</body>
+</html>
