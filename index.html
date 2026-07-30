@@ -893,14 +893,29 @@ var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8Sy
 var DEMO = /[?&]demo=1/.test(location.search);
 var $ = function (id) { return document.getElementById(id); };
 
+// 데스크톱 위젯 껍데기(exe)에 세션을 넘긴다 — **WebView2 안일 때만**. 폰·브라우저엔 `window.chrome.webview`가
+//   없어 아무 일도 안 일어난다(2026-07-30). 껍데기는 이 토큰으로 알약에 근무시간을 띄우고, 앱의 잠금 규칙은
+//   그대로 둔다("잠겨도 위젯은 보이고 앱은 PIN" — 유성 확정). setter 한 곳에 걸어 로그인 경로 3개를 다 덮는다.
+function _hostAuth_() {
+  try {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage(JSON.stringify({
+        type: 'auth',
+        token: localStorage.getItem('att_token') || '',
+        emp: localStorage.getItem('att_emp') || 'hyeona'
+      }));
+    }
+  } catch (e) { /* 껍데기가 없으면 무해 */ }
+}
 var store = {
   get token() { return localStorage.getItem('att_token') || ''; },
-  set token(v) { localStorage.setItem('att_token', v); },
+  set token(v) { localStorage.setItem('att_token', v); _hostAuth_(); },
   get emp() { return localStorage.getItem('att_emp') || 'hyeona'; }, // 2차: PIN 로그인이 세션 신원을 심음(구 하드코딩 'hyeona' 대체)
-  set emp(v) { localStorage.setItem('att_emp', v); },
+  set emp(v) { localStorage.setItem('att_emp', v); _hostAuth_(); },
   get dev() { try { return JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { return null; } },
   set dev(v) { localStorage.setItem('att_dev', JSON.stringify(v)); }
 };
+_hostAuth_(); // 이미 로그인된 채로 껍데기가 앱을 열었을 때(재부팅 후 세션 복원) 한 번 밀어준다
 var state = { status: null, db: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
 // 07-22(2) 유성: 앱 안 우클릭 차단(+안드로이드 롱프레스 메뉴 — 관리자 5초 누름 보호 겸함).
 //   ⚠️소스 완전 차단은 아님(정적 페이지 본질) — 코드에 비밀 0(토큰=localStorage·시크릿=서버)이라 억제용.
