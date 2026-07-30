@@ -22,12 +22,27 @@
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#fff}
 body{
   font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;
-  display:flex;align-items:center;gap:9px;padding:0 15px;position:relative;
-  user-select:none;cursor:pointer;word-break:keep-all;-webkit-font-smoothing:antialiased;
-  transition:opacity .2s;
+  user-select:none;word-break:keep-all;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
 }
-body.dim{opacity:.45}                         /* 휴무일 — 흐리게(유성 확정 07-30). 누르는 건 그대로 된다 */
-body.moving{cursor:move;opacity:.6}           /* 3초 꾹 눌러 옮기는 중 — 놓으면 그 자리에 고정 */
+#pill{
+  display:flex;align-items:center;gap:9px;padding:0 15px;position:relative;
+  height:34px;flex:0 0 34px;cursor:pointer;transition:opacity .2s;
+}
+/* ── 펼친 패널 ── */
+#panel{display:none;padding:14px 15px 15px;position:relative}
+body.open #panel{display:block}
+body.open #pill{border-top:1px solid var(--g200);order:2}
+#panel .ph{font-size:11.5px;font-weight:700;color:var(--g500);letter-spacing:-.2px}
+#panel .pv{font-size:20px;font-weight:800;color:var(--g900);letter-spacing:-.6px;margin:3px 0 12px;font-variant-numeric:tabular-nums}
+#panel .pb{display:block;width:100%;border:0;background:var(--green600);color:#fff;font:inherit;font-size:15px;font-weight:600;padding:11px;border-radius:10px;cursor:pointer;letter-spacing:-.3px}
+#panel .pb:active{background:var(--green700)}
+#panel .pb:disabled{background:#b7e0c8;cursor:default}
+#panel .pb.ghost{background:#fff;color:var(--g700);border:1px solid var(--g200);margin-top:7px}
+#panel .perr{font-size:12px;color:#f04452;line-height:1.5;margin-top:8px;display:none}
+#panel .perr.on{display:block}
+body.dim #pill{opacity:.45}                         /* 휴무일 — 흐리게(유성 확정 07-30). 누르는 건 그대로 된다 */
+body.moving #pill{cursor:move;opacity:.6}           /* 3초 꾹 눌러 옮기는 중 — 놓으면 그 자리에 고정 */
 #fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green100);transition:width .4s ease}
 body.warn #fill{background:var(--warn-weak-bg)}
 #dot{position:relative;width:8px;height:8px;border-radius:50%;background:var(--g400);flex:0 0 auto;transition:background .2s}
@@ -42,10 +57,20 @@ body.nc #nc{display:block}
 </style>
 </head>
 <body>
-  <div id="fill"></div>
-  <span id="dot"></span>
-  <span id="t">근태</span>
-  <span id="nc" title="연결 안 됨"></span>
+  <div id="pill">
+    <div id="fill"></div>
+    <span id="dot"></span>
+    <span id="t">근태</span>
+    <span id="nc" title="연결 안 됨"></span>
+  </div>
+  <!-- 알약을 누르면 여기가 열린다. 앱 창을 띄우지 않고 바로 도장을 찍기 위한 자리(유성 07-30) -->
+  <div id="panel">
+    <div class="ph" id="pLabel">오늘 일한 시간</div>
+    <div class="pv" id="pVal">근무 전</div>
+    <button class="pb" id="pDo">출근</button>
+    <button class="pb ghost" id="pOpen">근태 앱 열기</button>
+    <div class="perr" id="pErr"></div>
+  </div>
 
 <script>
 /* ══════════ 설정 ══════════ */
@@ -111,7 +136,8 @@ var holdT = null, moved = false;
 
 function endHold(){ clearTimeout(holdT); holdT = null; document.body.classList.remove('moving'); }
 
-document.body.addEventListener('pointerdown', function(e){
+// ⚠️알약 위에서만 건다 — 패널의 버튼을 3초 누르고 있다가 창이 끌려가면 안 된다
+$('pill').addEventListener('pointerdown', function(e){
   if (e.button !== 0) return;
   moved = false;
   clearTimeout(holdT);
@@ -122,13 +148,62 @@ document.body.addEventListener('pointerdown', function(e){
   }, HOLD_MS);
 });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev){
-  document.body.addEventListener(ev, function(){ if (!moved) endHold(); });
+  $('pill').addEventListener(ev, function(){ if (!moved) endHold(); });
 });
-// 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다(연차 신청은 쉬는 날에도 한다)
-document.body.addEventListener('click', function(){
+
+/* ══════════ 알약을 누르면 작은 패널이 먼저 열린다 (유성 07-30) ══════════
+   앱 창을 띄우지 않고 **여기서 바로 출근·퇴근을 찍는다**. 앱은 [근태 앱 열기]로.
+   ⚠️출근은 등록된 회사 PC에서만 된다 — 기기 토큰은 앱과 **같은 출처·같은 프로필**의
+     `localStorage.att_dev`에 있으므로 이 페이지가 그대로 읽어 쓴다(새 등록 불필요). */
+var open = false, punching = false;
+
+function setOpen(v){
+  open = v;
+  document.body.classList.toggle('open', open);
+  $('pErr').classList.remove('on');
+  lastSent = '';           // 창 크기를 다시 알려야 한다
+  render();
+}
+// 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다
+$('pill').addEventListener('click', function(){
   if (moved) { moved = false; return; }   // 옮기고 나서 딸려오는 클릭은 삼킨다
-  toHost({ type: 'open' });
+  setOpen(!open);
 });
+$('pOpen').addEventListener('click', function(){ setOpen(false); toHost({ type: 'open' }); });
+$('pDo').addEventListener('click', function(){ punch(snap && snap.open ? 'out' : 'in'); });
+
+function punch(kind){
+  if (punching || !auth) return;
+  punching = true;
+  $('pDo').disabled = true;
+  $('pErr').classList.remove('on');
+  var dev = null;
+  try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { }
+  var body = {
+    action: 'punch', kind: kind, token: auth.token, emp: auth.emp,
+    cid: 'w' + Date.now() + Math.random().toString(36).slice(2)
+  };
+  if (dev && dev.id) { body.device = dev.id; body.deviceToken = dev.token; }
+  fetch(GAS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json(); })
+    .then(function(r){
+      punching = false; $('pDo').disabled = false;
+      if (!r || !r.ok) {
+        $('pErr').textContent = (r && r.error) || '기록이 안 됐어요. 다시 눌러 주세요';
+        $('pErr').classList.add('on');
+        lastSent = ''; render();
+        return;
+      }
+      setOpen(false);      // 찍었으면 접는다 — 알약 색이 곧 결과다
+      fetchTick();
+    })
+    .catch(function(){
+      punching = false; $('pDo').disabled = false;
+      $('pErr').textContent = '연결이 안 돼요. 잠시 후 다시 눌러 주세요';
+      $('pErr').classList.add('on');
+      lastSent = ''; render();
+    });
+}
 
 /* ══════════ 서버 조회 (읽기 전용) ══════════ */
 function fetchTick(){
@@ -235,10 +310,22 @@ function render(){
   // 창 폭 = 좌우 패딩 15+15 + 점 8 + 간격 9 + 글자 + (연결안됨 점 5+간격 9)
   //   getBoundingClientRect 대신 offsetWidth — 레이아웃 값이라 배율·좌표계에 안 흔들린다(§5.5 결)
   var w = 15 + 8 + 9 + $('t').offsetWidth + 15 + (offline ? 14 : 0);
-  var sig = Math.ceil(w) + '|' + (v.on ? 1 : 0) + '|' + (v.warn ? 1 : 0) + '|' + (v.dim ? 1 : 0);
+
+  // 패널 내용 — 알약과 같은 값을 쓰되 문구는 크게
+  if (open) {
+    var working = !!(snap && snap.open);
+    $('pLabel').style.display = (v.on || (snap && snap.lastOut)) ? '' : 'none';
+    $('pVal').textContent = v.text;
+    $('pDo').textContent = working ? '퇴근' : '출근';
+    $('pDo').style.display = (snap && snap.work && !snap.external) ? '' : 'none';
+    w = Math.max(w, 232);                       // 패널이 열리면 최소 폭
+  }
+  var h = 34 + (open ? $('panel').offsetHeight : 0);
+
+  var sig = Math.ceil(w) + 'x' + h + '|' + (v.on ? 1 : 0) + '|' + (v.warn ? 1 : 0) + '|' + (v.dim ? 1 : 0);
   if (sig !== lastSent) {   // 값이 바뀔 때만 알린다(1초마다 창을 흔들지 않게)
     lastSent = sig;
-    toHost({ type: 'state', w: Math.ceil(w), on: v.on, warn: v.warn, dim: v.dim });
+    toHost({ type: 'state', w: Math.ceil(w), h: h, on: v.on, warn: v.warn, dim: v.dim });
   }
 }
 
