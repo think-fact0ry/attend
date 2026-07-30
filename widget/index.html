@@ -63,7 +63,12 @@ var SHOW_LATE = false;
 var auth = null;      // {token, emp} — 호스트(exe)가 넣어준다. 이 페이지는 토큰을 저장하지 않는다
 var snap = null;      // 마지막 tick 응답
 var snapAt = 0;       // performance.now() — 단조 시계(사용자가 PC 시계를 바꿔도 안 흔들림)
-var lastOkAt = 0;     // performance.now() 기준 — 벽시계를 바꿔도 안 흔들림
+var lastOkAt = 0;     // performance.now() 기준 — 벽시계를 바꿔도 안 흔들림. 0 = 아직 한 번도 성공 못 함
+var bootAt = 0;       // 시작 시각(performance.now()) — "한 번도 성공 못 한 채 5분"을 재는 기준
+// 절전·시계 점프 감지용. performance.now()는 절전 중 멈추고 Date.now()는 계속 간다 →
+//   둘의 증가폭이 크게 벌어지면 "잠들었다 깼다"는 뜻이라 서버와 다시 맞춘다.
+//   껍데기(exe)가 wake 신호를 보내주기로 했지만, 그게 없거나 실패해도 화면이 조용히 틀리면 안 된다.
+var lastPerf = 0, lastWall = 0;
 var dayRolled = false; // 자정을 넘겨 재조회를 이미 한 번 걸었나(요청 폭풍 방지)
 var fails = 0;         // 연속 실패 수 — 재시도 간격을 늘리는 데만 씀
 var hbTimer = null, tickTimer = null;
@@ -87,16 +92,16 @@ if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', function(e){
     var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch(_){ return; }
     if (!m || !m.type) return;
-    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(true); }
+    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(); }
     if (m.type === 'signout') { auth = null; snap = null; render(); }
-    if (m.type === 'wake')    { fetchTick(true); }   // 절전 복귀·앱 창 닫힘·자정 — 주기와 무관하게 즉시
+    if (m.type === 'wake')    { fetchTick(); }   // 절전 복귀·앱 창 닫힘·자정 — 주기와 무관하게 즉시
   });
 }
 // 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다(연차 신청은 쉬는 날에도 한다)
 document.body.addEventListener('click', function(){ toHost({ type: 'open' }); });
 
 /* ══════════ 서버 조회 (읽기 전용) ══════════ */
-function fetchTick(immediate){
+function fetchTick(){
   if (!auth) { render(); schedule(); return; }
   fetch(GAS, {
     method: 'POST',
@@ -188,7 +193,10 @@ function render(){
   b.classList.toggle('on', v.on);
   b.classList.toggle('warn', v.warn);
   b.classList.toggle('dim', v.dim);
-  var offline = auth && lastOkAt && (performance.now() - lastOkAt > OFFLINE_MARK_MS);
+  // 아직 한 번도 성공 못 했으면 '시작 시점'부터 잰다 — 안 그러면 lastOkAt=0이 falsy라
+  //   **부팅 직후 인터넷이 없는 바로 그 경우에 이 표시가 영영 안 뜬다**(이 표시를 만든 이유가 그 경우였다).
+  var since = performance.now() - (lastOkAt || bootAt);
+  var offline = !!auth && since > OFFLINE_MARK_MS;
   b.classList.toggle('nc', !!offline);
   $('t').textContent = v.text;
   $('fill').style.width = v.gauge + '%';
@@ -204,7 +212,15 @@ function render(){
 }
 
 /* ══════════ 1초 틱 — 표시만 갱신(서버 호출 아님) ══════════ */
-function loop(){ render(); tickTimer = setTimeout(loop, 1000); }
+function loop(){
+  // 절전·시계 점프 감지: 두 시계의 증가폭이 60초 넘게 벌어지면 그 사이 뭔가 있었다는 뜻.
+  //   (절전=벽시계만 감 / 시계 수동 변경·NTP 보정=벽시계가 튐) → 스스로 서버와 다시 맞춘다.
+  var p = performance.now(), w = Date.now();
+  if (lastPerf && Math.abs((w - lastWall) - (p - lastPerf)) > 60000) { dayRolled = false; fetchTick(); }
+  lastPerf = p; lastWall = w;
+  render();
+  tickTimer = setTimeout(loop, 1000);
+}
 
 /* ══════════ ?demo=1 — 서버 없이 상태를 돌려본다 (앱의 ?demo=1 관례) ══════════
    토큰이 있어야만 숫자가 뜨는 화면이라, 이게 없으면 사람도 Claude도 눈으로 확인할 방법이 없다. */
@@ -232,6 +248,7 @@ if (/[?&]demo=1/.test(location.search)) {
   }, 2500);
 }
 
+bootAt = performance.now();
 document.fonts && document.fonts.ready.then(function(){ lastSent = ''; render(); }); // 폰트 로드 후 폭 재측정
 render();
 loop();
