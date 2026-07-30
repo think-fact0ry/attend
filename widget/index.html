@@ -76,6 +76,7 @@ body.open #panel{display:block}
 .g-titles.hide{opacity:0;transform:translateY(-10px);pointer-events:none}
 .g-titles h1{font-size:14px;font-weight:600;margin:0;color:var(--g900);transition:color .2s}
 .g-titles h1.err{color:var(--red)}
+.g-titles h1.okmsg{color:var(--green700);font-weight:700}
 .g-titles h1.shake{animation:gshake .35s}
 @keyframes gshake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
 .pindots{position:absolute;left:0;right:0;top:38px;display:flex;gap:15px;justify-content:center;
@@ -304,12 +305,17 @@ function verify(){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
       startActSession(r);
-      $('dots').classList.add('ok');          // 완료 인터랙션 — 아주 짧게(유성)
+      // 완료 인터랙션 — 짧지만 **보이게**(유성 "인터랙션 안 나와").
+      //   점이 초록으로 차오르고, 제목 자리에 이름이 잠깐 떴다가 도장 화면으로 넘어간다.
+      $('dots').classList.add('ok');
+      $('gTit').classList.remove('hide');
+      $('gH1').textContent = (act.name ? act.name + '님' : '확인됐어요');
+      $('gH1').classList.remove('err'); $('gH1').classList.add('okmsg');
       setTimeout(function(){
-        pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요'; $('gH1').classList.remove('err');
-        $('gForgot').classList.remove('as-btn'); drawDots();
+        pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요';
+        $('gH1').classList.remove('okmsg'); $('gForgot').classList.remove('as-btn'); drawDots();
         setStep('act');
-      }, 220);
+      }, 620);
       fetchTick();
     })
     .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
