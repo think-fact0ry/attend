@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v52'; // 07-30 도장 앞에 PIN 키패드·높이 상수화·이름 표기·앱열기 버튼 면
+var CACHE = 'tf-attend-v53'; // 07-30 키패드=앱 문법 이식(랜덤 제외)·세션 수명을 확정 결정대로·커서 즉시 반응
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다

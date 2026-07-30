@@ -65,21 +65,38 @@ body.open #panel{display:block}
 .step > *:nth-child(4){animation-delay:.12s}
 @keyframes rise{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 
-/* ── 1단계: 키패드 ── */
-#sPin .khd{font-size:13.5px;font-weight:700;color:var(--g700);letter-spacing:-.3px;margin:2px 0 10px}
-#dots{display:flex;gap:9px;justify-content:center;margin:0 0 12px}
-#dots i{width:9px;height:9px;border-radius:50%;background:var(--g200);display:block;transition:background .15s,transform .15s}
-#dots i.f{background:var(--green600);transform:scale(1.12)}
-#dots.bad i{background:var(--red)}
-#sPin.shake{animation:sh .3s}
-@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-#kp{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-#kp button{border:0;background:var(--g50);color:var(--g900);font:inherit;font-size:19px;font-weight:600;
-  padding:9px 0;border-radius:10px;cursor:pointer}
-#kp button:active{background:var(--g200)}
-#kp button.z{background:transparent;font-size:15px;color:var(--g500)}
-.perr{font-size:12px;color:var(--red);line-height:1.5;margin-top:9px;min-height:0}
-
+/* ── 1단계: 키패드 (앱 #s-gate / 태블릿 g-pad 문법 이식 — §4.2. 랜덤 배열만 뺌: 유성 07-30) ── */
+#sPin{display:none;flex-direction:column;align-items:center;height:100%;box-sizing:border-box}
+#sPin.on{display:flex}
+.g-titles{overflow:hidden;max-height:60px;opacity:1;transform:translateY(0);text-align:center;
+  transition:max-height .5s cubic-bezier(.4,0,.2,1),opacity .55s ease,transform .5s cubic-bezier(.4,0,.2,1)}
+.g-titles.hide{max-height:0;opacity:0;transform:translateY(-14px)}
+.g-titles h1{font-size:14.5px;font-weight:600;margin:2px 0 0;transition:color .2s}
+.g-titles h1.err{color:var(--red)}
+.g-titles h1.shake{animation:gshake .35s}
+@keyframes gshake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.pindots{display:flex;gap:16px;margin:12px 0 10px}
+.pindots i{width:8px;height:8px;border-radius:50%;background:var(--g300);box-shadow:0 0 0 3px rgba(176,184,193,.16);
+  transition:background .22s,box-shadow .3s cubic-bezier(.2,.7,.3,1)}
+.pindots i.f{background:var(--green600);box-shadow:0 0 0 3px rgba(58,138,95,.18)}
+.pindots.ok i{background:var(--green600);box-shadow:0 0 0 5px rgba(58,138,95,.22)}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;width:100%}
+.pinpad button{position:relative;height:46px;border-radius:12px;background:transparent;border:0;font:inherit;
+  font-size:21px;font-weight:500;color:var(--g900);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;overflow:hidden;transition:transform .18s cubic-bezier(.2,.7,.3,1);touch-action:manipulation}
+.pinpad button:active{transform:scale(.9)}
+.pinpad button.fn{color:var(--g700);font-size:17px;opacity:0;pointer-events:none;transition:opacity .22s ease}
+.pinpad button.fn.show{opacity:1;pointer-events:auto}
+.pinpad button.empty{pointer-events:none}
+.pinpad .ripple{position:absolute;left:50%;top:50%;width:175%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle, rgba(58,138,95,.42) 0%, rgba(58,138,95,.16) 42%, rgba(58,138,95,0) 70%);
+  transform:translate(-50%,-50%) scale(.2);pointer-events:none;z-index:0;animation:grip .58s ease-out forwards}
+@keyframes grip{0%{transform:translate(-50%,-50%) scale(.2);opacity:.95}100%{transform:translate(-50%,-50%) scale(1.75);opacity:0}}
+.g-forgot{width:100%;margin-top:6px;background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  color:var(--g500);opacity:.55;cursor:pointer;padding:9px;border-radius:10px;transition:background .4s,opacity .4s,transform .3s}
+.g-forgot.as-btn{background:rgba(58,138,95,.06);opacity:1;color:var(--green700)}
+.g-forgot:active{transform:scale(.94)}
+.perr{font-size:12px;color:var(--red);line-height:1.5;margin-top:8px}
 /* ── 2단계: 출근·퇴근 ── */
 #sAct .ph{font-size:12px;font-weight:700;color:var(--g500);letter-spacing:-.2px}
 #sAct .pv{font-size:21px;font-weight:800;color:var(--g900);letter-spacing:-.6px;margin:3px 0 13px;font-variant-numeric:tabular-nums}
@@ -102,10 +119,10 @@ body.open #panel{display:block}
 
     <!-- 1단계 — 누구인지부터 확인한다 -->
     <div class="step on" id="sPin">
-      <div class="khd">비밀번호를 눌러주세요</div>
-      <div id="dots"><i></i><i></i><i></i><i></i></div>
-      <div id="kp"></div>
-      <div class="perr" id="pinErr"></div>
+      <div class="g-titles" id="gTit"><h1 id="gH1">비밀번호를 눌러주세요</h1></div>
+      <div class="pindots" id="dots"><i></i><i></i><i></i><i></i></div>
+      <div class="pinpad" id="kp"></div>
+      <button class="g-forgot" id="gForgot">비밀번호를 몰라요</button>
     </div>
 
     <!-- 2단계 — 확인된 뒤에만 -->
@@ -126,15 +143,26 @@ var AFTER_OUT_MS = 30 * 60 * 1000, OFFLINE_MARK_MS = 5 * 60 * 1000;
 var SHOW_LATE = false;   // 지각 색은 공용 표면이라 기본 꺼짐(§판정 원칙 3 "판정하지 않는다")
 
 /* 창 높이 = **상수**. 재지 않는다(측정하면 열 때마다 흔들린다 — 유성 2회 신고) */
-var H_PILL = 34, H_PIN = 250, H_ACT = 178, H_ERR = 24;
+var H_PILL = 34, H_PIN = 318, H_ACT = 178, H_ERR = 24;
 
 /* ══════════ 상태 ══════════ */
 var auth = null;        // 알약에 시간을 띄우기 위한 **읽기 전용** 세션(호스트가 준다)
-var act = null;         // 키패드를 통과한 **도장용** 세션 {token, emp, name} — 접으면 버린다
 var snap = null, snapAt = 0, lastOkAt = 0, bootAt = performance.now();
 var inFlight = false, dayRolled = false, fails = 0;
 var lastPerf = 0, lastWall = 0, hbTimer = null, tickTimer = null, lastSent = '';
 var open = false, step = 'pin', pin = '', punching = false, verifying = false;
+/* ⭐도장용 세션의 수명 — **확정 결정을 따른다**(scripts/19 CLAUDE.md, 2026-07-24 유성):
+     "세션=곧 찍는 사람이라 도장마다 PIN 재입력 없음"(구 _pinIdentity_=도장마다 PIN은 폐기).
+     공용 회사 PC 세션 종료 = ①퇴근 도장 즉시 ②유휴 1시간 ③잠그기.
+   ⚠️07-30 1차에 "접으면 세션을 버린다"로 만들었는데, 그러면 도장마다 PIN이 되어 폐기된 옛 모델의 부활이다.
+     접는 것은 종료가 아니다. */
+var act = null, actAt = 0;
+var ACT_IDLE_MS = 60 * 60 * 1000;
+function actAlive(){
+  if (!act) return false;
+  if (Date.now() - actAt > ACT_IDLE_MS) { act = null; return false; }
+  return true;
+}
 
 function $(id){ return document.getElementById(id); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '/attend/' }).catch(function(){});
@@ -170,7 +198,7 @@ $('pill').addEventListener('click', function(){
 
 /* ══════════ 펼치기·접기 ══════════ */
 function panelH(){
-  if (step === 'pin') return H_PIN + ($('pinErr').textContent ? H_ERR : 0);
+  if (step === 'pin') return H_PIN;
   return H_ACT + ($('pErr').textContent ? H_ERR : 0);
 }
 function setStep(s){
@@ -182,71 +210,84 @@ function setStep(s){
 function setOpen(v){
   open = v;
   document.body.classList.toggle('open', open);
-  if (open) {                      // 열 때는 언제나 키패드부터 — 누구인지 먼저 확인한다
-    pin = ''; drawDots(); $('pinErr').textContent = ''; $('pErr').textContent = '';
-    setStep('pin');
+  if (open) {
+    $('pErr').textContent = '';
+    if (actAlive()) { actAt = Date.now(); setStep('act'); }   // 살아 있는 세션이면 바로 도장 화면(도장마다 PIN 없음)
+    else { pin = ''; drawDots(); setStep('pin'); }
   } else {
-    act = null;                    // 접으면 도장용 세션은 버린다(자리를 뜨면 남이 못 찍는다)
-    pin = ''; drawDots();
+    pin = ''; drawDots();          // 접는 건 세션 종료가 아니다(확정 결정)
   }
   render();
 }
 $('mini').addEventListener('click', function(e){ e.stopPropagation(); setOpen(false); });
 $('pOpen').addEventListener('click', function(){ setOpen(false); toHost({ type: 'open' }); });
 
-/* ══════════ 키패드 ══════════ */
+/* ══════════ 키패드 — 앱 #s-gate 문법 이식(§4.2). 랜덤 배열은 뺀다(유성 07-30) ══════════ */
 (function buildKeypad(){
-  var keys = ['1','2','3','4','5','6','7','8','9','←','0',''];
+  var keys = ['1','2','3','4','5','6','7','8','9','', '0','←'];
   var html = '';
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
-    if (k === '') { html += '<button class="z" disabled></button>'; continue; }
-    html += '<button class="' + (k === '←' ? 'z' : '') + '" data-k="' + k + '">' + k + '</button>';
+    if (k === '') { html += '<button class="empty" disabled></button>'; continue; }
+    if (k === '←') { html += '<button class="fn" id="kDel" data-k="del"><span class="kd">지움</span></button>'; continue; }
+    html += '<button data-k="' + k + '"><span class="kd">' + k + '</span></button>';
   }
   $('kp').innerHTML = html;
 })();
 function drawDots(){
   var d = $('dots').children;
   for (var i = 0; i < d.length; i++) d[i].className = i < pin.length ? 'f' : '';
-  $('dots').classList.remove('bad');
+  $('dots').classList.remove('ok');
+  $('kDel').classList.toggle('show', pin.length > 0);      // 지움은 입력이 있을 때만(앱과 같은 규칙)
+  $('gTit').classList.toggle('hide', pin.length > 0);      // 입력 시작=제목 접힘
+}
+function ripple(btn){
+  var r = document.createElement('span'); r.className = 'ripple';
+  btn.appendChild(r);
+  setTimeout(function(){ if (r.parentNode) r.parentNode.removeChild(r); }, 600);
 }
 $('kp').addEventListener('click', function(e){
   var b = e.target.closest('button[data-k]'); if (!b || verifying) return;
+  ripple(b);
   var k = b.dataset.k;
-  if (k === '←') { pin = pin.slice(0, -1); drawDots(); return; }
+  if (k === 'del') { pin = pin.slice(0, -1); drawDots(); return; }
   if (pin.length >= 4) return;
   pin += k; drawDots();
   if (pin.length === 4) verify();
 });
+$('gForgot').addEventListener('click', function(){
+  // 몰라요=문자 인증 흐름. 그건 앱에 이미 있으므로 앱을 연다(위젯에 또 만들지 않는다).
+  setOpen(false); toHost({ type: 'open' });
+});
+function pinFail(msg){
+  pin = ''; drawDots();
+  $('gTit').classList.remove('hide');
+  var h = $('gH1');
+  h.textContent = msg; h.classList.add('err','shake');
+  setTimeout(function(){ h.classList.remove('shake'); }, 380);
+  $('gForgot').classList.add('as-btn');      // 실패하면 '몰라요'를 눈에 띄게(앱과 같은 규칙)
+}
 function verify(){
   verifying = true;
-  $('pinErr').textContent = '';
   fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
     body: JSON.stringify({ action:'login', pin: pin, inst: 'widget' }) })
     .then(function(r){ return r.json(); })
     .then(function(r){
       verifying = false;
-      if (!r || !r.ok) {
-        pin = ''; $('dots').classList.add('bad');
-        $('sPin').classList.add('shake');
-        setTimeout(function(){ $('sPin').classList.remove('shake'); drawDots(); }, 320);
-        $('pinErr').textContent = (r && r.error) || '비밀번호가 맞지 않아요';
-        sendState();
-        return;
-      }
+      if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
       act = { token: r.token, emp: r.emp, name: r.name || '' };
-      // 호스트에도 넘겨 알약이 계속 시간을 읽게 한다(읽기 전용)
-      toHost({ type: 'auth', token: r.token, emp: r.emp });
+      actAt = Date.now();
+      toHost({ type:'auth', token: r.token, emp: r.emp });
       auth = { token: r.token, emp: r.emp };
-      pin = ''; drawDots();
-      setStep('act');
+      $('dots').classList.add('ok');          // 완료 인터랙션 — 아주 짧게(유성)
+      setTimeout(function(){
+        pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요'; $('gH1').classList.remove('err');
+        $('gForgot').classList.remove('as-btn'); drawDots();
+        setStep('act');
+      }, 220);
       fetchTick();
     })
-    .catch(function(){
-      verifying = false; pin = ''; drawDots();
-      $('pinErr').textContent = '연결이 안 돼요. 잠시 후 다시 눌러 주세요';
-      sendState();
-    });
+    .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
 }
 
 /* ══════════ 서버 조회(읽기 전용) ══════════ */
@@ -315,7 +356,9 @@ function punch(kind){
   else {
     snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
     snap.open = null; snap.lastOut = nowH;
+    act = null;   // 퇴근 도장 즉시 세션 종료(확정 결정 ①) — 다음 사람은 PIN부터
   }
+  actAt = Date.now();
   setOpen(false);            // ⚡즉시 접힌다. 출근·퇴근 **둘 다** 여기서 끝(구판은 퇴근만 늦었다)
 
   var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch(e){}
