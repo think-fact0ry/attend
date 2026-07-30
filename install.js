@@ -10,6 +10,10 @@
   // (허브 index는 <head> 리다이렉트가 먼저라 body의 SW 등록이 안 돌 수 있어, 진입 페이지마다 여기서 보장.)
   if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch(e){} }
 
+  // 데스크톱 위젯 껍데기(WebView2) 안에서는 '홈 화면에 앱으로 추가'가 말이 안 된다 — **이미 프로그램으로 깔려 있다**.
+  //   서비스워커 등록은 위에서 이미 했으므로 여기서 빠져나가도 손해가 없다(2026-07-30).
+  if (window.chrome && window.chrome.webview) return;
+
   function installed(){
     return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   }

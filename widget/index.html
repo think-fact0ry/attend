@@ -26,7 +26,8 @@ body{
   user-select:none;cursor:pointer;word-break:keep-all;-webkit-font-smoothing:antialiased;
   transition:opacity .2s;
 }
-body.dim{opacity:.45;cursor:default}          /* 휴무일 — 흐리게(유성 확정 07-30) */
+body.dim{opacity:.45}                         /* 휴무일 — 흐리게(유성 확정 07-30). 누르는 건 그대로 된다 */
+body.moving{cursor:move;opacity:.6}           /* 3초 꾹 눌러 옮기는 중 — 놓으면 그 자리에 고정 */
 #fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green100);transition:width .4s ease}
 body.warn #fill{background:var(--warn-weak-bg)}
 #dot{position:relative;width:8px;height:8px;border-radius:50%;background:var(--g400);flex:0 0 auto;transition:background .2s}
@@ -98,10 +99,36 @@ if (window.chrome && window.chrome.webview) {
     if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(); }
     if (m.type === 'signout') { auth = null; snap = null; render(); }
     if (m.type === 'wake')    { fetchTick(); }   // 절전 복귀·앱 창 닫힘·자정 — 주기와 무관하게 즉시
+    if (m.type === 'dragend') { endHold(); }     // 옮기기가 끝났다(마우스를 놓았다) — 이 신호로만 풀 수 있다
   });
 }
+/* ══════════ 누르기: 짧게=열기 / 3초 꾹=옮기기 (유성 07-30) ══════════
+   3초를 채우면 껍데기가 창을 마우스에 붙여 끌고 다니고, 버튼을 놓는 순간 그 자리에 고정된다.
+   ⚠️끌기가 시작되면 이 페이지엔 pointerup이 안 온다(마우스를 창이 가져간다) →
+     끝났다는 신호는 껍데기가 `dragend`로 알려준다. 그거 없이 클래스를 못 지운다. */
+var HOLD_MS = 3000;
+var holdT = null, moved = false;
+
+function endHold(){ clearTimeout(holdT); holdT = null; document.body.classList.remove('moving'); }
+
+document.body.addEventListener('pointerdown', function(e){
+  if (e.button !== 0) return;
+  moved = false;
+  clearTimeout(holdT);
+  holdT = setTimeout(function(){
+    moved = true;                       // 이 뒤에 오는 click은 '열기'가 아니다
+    document.body.classList.add('moving');
+    toHost({ type: 'drag' });
+  }, HOLD_MS);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(function(ev){
+  document.body.addEventListener(ev, function(){ if (!moved) endHold(); });
+});
 // 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다(연차 신청은 쉬는 날에도 한다)
-document.body.addEventListener('click', function(){ toHost({ type: 'open' }); });
+document.body.addEventListener('click', function(){
+  if (moved) { moved = false; return; }   // 옮기고 나서 딸려오는 클릭은 삼킨다
+  toHost({ type: 'open' });
+});
 
 /* ══════════ 서버 조회 (읽기 전용) ══════════ */
 function fetchTick(){
