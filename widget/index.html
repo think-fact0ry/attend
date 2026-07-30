@@ -30,9 +30,19 @@ body{
   height:34px;flex:0 0 34px;cursor:pointer;transition:opacity .2s;
 }
 /* ── 펼친 패널 ── */
-#panel{display:none;padding:14px 15px 15px;position:relative}
+#panel{display:none;padding:13px 15px 15px;position:relative}
 body.open #panel{display:block}
-body.open #pill{border-top:1px solid var(--g200);order:2}
+body.open #pill{display:none}   /* 펼치면 아래 회색 점·'근무 전' 줄은 없앤다(유성 07-30) */
+/* 우측 상단 − : 작은 위젯으로 돌아가는 길(유성 지정) */
+#mini{position:absolute;top:6px;right:7px;width:26px;height:26px;border:0;background:transparent;
+  color:var(--g500);font:inherit;font-size:17px;line-height:1;cursor:pointer;border-radius:8px}
+#mini:hover{background:var(--g100);color:var(--g700)}
+/* 위에서부터 차례로 나타난다(유성 "위에서부터 텍스트 적히고 버튼 생기는 걸로") */
+body.open #panel > *{opacity:0;transform:translateY(-4px);animation:rise .18s ease forwards}
+body.open #panel > *:nth-child(2){animation-delay:.04s}
+body.open #panel > *:nth-child(3){animation-delay:.09s}
+body.open #panel > *:nth-child(4){animation-delay:.13s}
+@keyframes rise{to{opacity:1;transform:none}}
 #panel .ph{font-size:11.5px;font-weight:700;color:var(--g500);letter-spacing:-.2px}
 #panel .pv{font-size:20px;font-weight:800;color:var(--g900);letter-spacing:-.6px;margin:3px 0 12px;font-variant-numeric:tabular-nums}
 #panel .pb{display:block;width:100%;border:0;background:var(--green600);color:#fff;font:inherit;font-size:15px;font-weight:600;padding:11px;border-radius:10px;cursor:pointer;letter-spacing:-.3px}
@@ -65,6 +75,7 @@ body.nc #nc{display:block}
   </div>
   <!-- 알약을 누르면 여기가 열린다. 앱 창을 띄우지 않고 바로 도장을 찍기 위한 자리(유성 07-30) -->
   <div id="panel">
+    <button id="mini" title="작게">−</button>
     <div class="ph" id="pLabel">오늘 일한 시간</div>
     <div class="pv" id="pVal">근무 전</div>
     <button class="pb" id="pDo">출근</button>
@@ -163,6 +174,10 @@ function setOpen(v){
   $('pErr').classList.remove('on');
   lastSent = '';           // 창 크기를 다시 알려야 한다
   render();
+  // ⚠️펼칠 때 세로가 한 번 더 커졌다 돌아오던 버그(유성 신고): 클래스를 바꾼 **직후**에 잰 높이는
+  //   레이아웃이 아직 안 잡힌 값이라 한 번 틀리고, 다음 틱에 교정되면서 창이 출렁였다.
+  //   → 다음 프레임에 다시 재서 한 번 더 알린다(그 값이 진짜다).
+  if (window.requestAnimationFrame) requestAnimationFrame(function(){ lastSent = ''; render(); });
 }
 // 휴무일에도 눌리면 열린다 — 흐린 건 "오늘은 할 말이 없다"는 뜻이지 잠긴 게 아니다
 $('pill').addEventListener('click', function(){
@@ -170,13 +185,35 @@ $('pill').addEventListener('click', function(){
   setOpen(!open);
 });
 $('pOpen').addEventListener('click', function(){ setOpen(false); toHost({ type: 'open' }); });
+$('mini').addEventListener('click', function(e){ e.stopPropagation(); setOpen(false); });
 $('pDo').addEventListener('click', function(){ punch(snap && snap.open ? 'out' : 'in'); });
 
+function sec2hms(s){
+  s = Math.max(0, Math.floor(s));
+  function p(n){ return (n < 10 ? '0' : '') + n; }
+  return p(Math.floor(s / 3600) % 24) + ':' + p(Math.floor(s / 60) % 60) + ':' + p(s % 60);
+}
+
+/* ⚡낙관적 도장 (유성 "출근 버튼을 눌렀을 때 렉이 있어 / 훨씬 큰 최적화가 필요해")
+   구판은 서버 왕복을 **두 번** 기다렸다(도장 응답 1.5~2초 → 다시 조회 1.5~2초 = 체감 4초).
+   이제 **누르는 즉시** 화면을 바꾸고 요청은 뒤로 보낸다. 실패하면 되돌리고 이유를 보여준다.
+   앱이 이미 쓰는 수법과 같다(가드 ⑯ 낙관 쓰기 3규칙). */
 function punch(kind){
-  if (punching || !auth) return;
+  if (punching || !auth || !snap) return;
   punching = true;
-  $('pDo').disabled = true;
   $('pErr').classList.remove('on');
+
+  var prev = JSON.parse(JSON.stringify(snap));      // 되돌릴 자리
+  var nowH = sec2hms(serverSecNow());
+  if (kind === 'in') {
+    snap.open = nowH;
+  } else {
+    snap.workedMin = (snap.workedMin || 0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open)) / 60);
+    snap.open = null;
+    snap.lastOut = nowH;
+  }
+  setOpen(false);              // 즉시 접힌다 — 기다리지 않는다
+
   var dev = null;
   try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { }
   var body = {
@@ -184,25 +221,28 @@ function punch(kind){
     cid: 'w' + Date.now() + Math.random().toString(36).slice(2)
   };
   if (dev && dev.id) { body.device = dev.id; body.deviceToken = dev.token; }
+
   fetch(GAS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); })
     .then(function(r){
-      punching = false; $('pDo').disabled = false;
-      if (!r || !r.ok) {
-        $('pErr').textContent = (r && r.error) || '기록이 안 됐어요. 다시 눌러 주세요';
-        $('pErr').classList.add('on');
-        lastSent = ''; render();
-        return;
-      }
-      setOpen(false);      // 찍었으면 접는다 — 알약 색이 곧 결과다
+      punching = false;
+      if (!r || !r.ok) { rollback(prev, (r && r.error) || '기록이 안 됐어요. 다시 눌러 주세요'); return; }
+      // 성공 — 서버 진실로 조용히 맞춘다(화면은 이미 바뀌어 있으므로 티가 안 난다)
       fetchTick();
     })
     .catch(function(){
-      punching = false; $('pDo').disabled = false;
-      $('pErr').textContent = '연결이 안 돼요. 잠시 후 다시 눌러 주세요';
-      $('pErr').classList.add('on');
-      lastSent = ''; render();
+      punching = false;
+      // 무응답=서버에 남았을 수도 있다 → 되돌리지 말고 서버에 다시 물어 진실을 따른다(앱 신뢰성 3장치와 같은 결)
+      fetchTick();
     });
+}
+function rollback(prev, msg){
+  snap = prev; snapAt = performance.now();
+  lastSent = ''; render();
+  setOpen(true);
+  $('pErr').textContent = msg;
+  $('pErr').classList.add('on');
+  lastSent = ''; render();
 }
 
 /* ══════════ 서버 조회 (읽기 전용) ══════════ */
@@ -320,7 +360,7 @@ function render(){
     $('pDo').style.display = (snap && snap.work && !snap.external) ? '' : 'none';
     w = Math.max(w, 232);                       // 패널이 열리면 최소 폭
   }
-  var h = 34 + (open ? $('panel').offsetHeight : 0);
+  var h = open ? $('panel').offsetHeight : 34;   // 펼치면 알약 줄은 감춰지므로 패널 높이가 곧 창 높이
 
   var sig = Math.ceil(w) + 'x' + h + '|' + (v.on ? 1 : 0) + '|' + (v.warn ? 1 : 0) + '|' + (v.dim ? 1 : 0);
   if (sig !== lastSent) {   // 값이 바뀔 때만 알린다(1초마다 창을 흔들지 않게)
