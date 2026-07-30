@@ -52,11 +52,11 @@ body.moving #pill{cursor:move;opacity:.6}
 #panel{display:none;position:relative;padding:14px 16px 16px;height:100%;box-sizing:border-box}
 body.open #panel{display:block}
 /* − : 작게. 히트 영역을 넉넉히(유성 "잘 안 눌려") */
-#mini{position:absolute;top:4px;right:4px;z-index:9;width:34px;height:34px;border:0;background:transparent;
+#mini{position:absolute;top:4px;right:4px;z-index:9;transition:transform .16s cubic-bezier(.2,.7,.3,1);width:34px;height:34px;border:0;background:transparent;
   color:var(--g500);font:inherit;font-size:22px;font-weight:600;line-height:1;cursor:pointer;border-radius:9px;
   display:flex;align-items:center;justify-content:center;padding:0}
 #mini:hover{background:var(--g100);color:var(--g700)}
-#mini:active{background:var(--g200)}
+#mini:active{background:var(--g200);transform:scale(.86)}
 .step{display:none;animation:rise .16s ease both}
 .step.on{display:block}
 .step > *{animation:rise .18s ease both}
@@ -65,35 +65,41 @@ body.open #panel{display:block}
 .step > *:nth-child(4){animation-delay:.12s}
 @keyframes rise{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 
-/* ── 1단계: 키패드 (앱 #s-gate / 태블릿 g-pad 문법 이식 — §4.2. 랜덤 배열만 뺌: 유성 07-30) ── */
-#sPin{display:none;flex-direction:column;align-items:center;height:100%;box-sizing:border-box}
+/* ── 1단계: 키패드 (앱 #s-gate / 태블릿 g-pad 문법 — §4.2. 랜덤 배열은 뺌) ── */
+#sPin{display:none;flex-direction:column;height:100%;box-sizing:border-box}
 #sPin.on{display:flex}
-.g-titles{overflow:hidden;max-height:60px;opacity:1;transform:translateY(0);text-align:center;
-  transition:max-height .5s cubic-bezier(.4,0,.2,1),opacity .55s ease,transform .5s cubic-bezier(.4,0,.2,1)}
-.g-titles.hide{max-height:0;opacity:0;transform:translateY(-14px)}
-.g-titles h1{font-size:14.5px;font-weight:600;margin:2px 0 0;transition:color .2s}
+/* ⚠️머리 영역은 **높이 고정**. 제목이 사라질 때 전체가 위로 딸려 올라가면 안 된다(유성 07-30)
+     — 제목은 그 자리에서 사라지고, 점만 올라간다. 키패드는 미동도 없다. */
+.g-head{position:relative;flex:0 0 72px;margin-top:6px}
+.g-titles{position:absolute;left:0;right:0;top:2px;text-align:center;
+  opacity:1;transform:translateY(0);transition:opacity .28s ease,transform .34s cubic-bezier(.4,0,.2,1)}
+.g-titles.hide{opacity:0;transform:translateY(-10px);pointer-events:none}
+.g-titles h1{font-size:14px;font-weight:600;margin:0;color:var(--g900);transition:color .2s}
 .g-titles h1.err{color:var(--red)}
 .g-titles h1.shake{animation:gshake .35s}
 @keyframes gshake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
-.pindots{display:flex;gap:16px;margin:12px 0 10px}
+.pindots{position:absolute;left:0;right:0;top:38px;display:flex;gap:15px;justify-content:center;
+  transition:transform .34s cubic-bezier(.4,0,.2,1)}
+.pindots.up{transform:translateY(-22px)}
 .pindots i{width:8px;height:8px;border-radius:50%;background:var(--g300);box-shadow:0 0 0 3px rgba(176,184,193,.16);
   transition:background .22s,box-shadow .3s cubic-bezier(.2,.7,.3,1)}
 .pindots i.f{background:var(--green600);box-shadow:0 0 0 3px rgba(58,138,95,.18)}
 .pindots.ok i{background:var(--green600);box-shadow:0 0 0 5px rgba(58,138,95,.22)}
-.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;width:100%}
-.pinpad button{position:relative;height:46px;border-radius:12px;background:transparent;border:0;font:inherit;
-  font-size:21px;font-weight:500;color:var(--g900);display:flex;align-items:center;justify-content:center;
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 6px;width:100%}
+.pinpad button{position:relative;height:42px;border-radius:11px;background:transparent;border:0;font:inherit;
+  font-size:19px;font-weight:500;color:var(--g900);display:flex;align-items:center;justify-content:center;
   cursor:pointer;overflow:hidden;transition:transform .18s cubic-bezier(.2,.7,.3,1);touch-action:manipulation}
 .pinpad button:active{transform:scale(.9)}
-.pinpad button.fn{color:var(--g700);font-size:17px;opacity:0;pointer-events:none;transition:opacity .22s ease}
+/* 지움 — 숫자보다 작고 연하게(유성) */
+.pinpad button.fn{color:var(--g400);font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .22s ease}
 .pinpad button.fn.show{opacity:1;pointer-events:auto}
 .pinpad button.empty{pointer-events:none}
 .pinpad .ripple{position:absolute;left:50%;top:50%;width:175%;aspect-ratio:1;border-radius:50%;
   background:radial-gradient(circle, rgba(58,138,95,.42) 0%, rgba(58,138,95,.16) 42%, rgba(58,138,95,0) 70%);
   transform:translate(-50%,-50%) scale(.2);pointer-events:none;z-index:0;animation:grip .58s ease-out forwards}
 @keyframes grip{0%{transform:translate(-50%,-50%) scale(.2);opacity:.95}100%{transform:translate(-50%,-50%) scale(1.75);opacity:0}}
-.g-forgot{width:100%;margin-top:6px;background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:600;
-  color:var(--g500);opacity:.55;cursor:pointer;padding:9px;border-radius:10px;transition:background .4s,opacity .4s,transform .3s}
+.g-forgot{width:100%;margin-top:2px;background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  color:var(--g500);opacity:.55;cursor:pointer;padding:7px;border-radius:10px;transition:background .4s,opacity .4s,transform .3s}
 .g-forgot.as-btn{background:rgba(58,138,95,.06);opacity:1;color:var(--green700)}
 .g-forgot:active{transform:scale(.94)}
 .perr{font-size:12px;color:var(--red);line-height:1.5;margin-top:8px}
@@ -119,8 +125,10 @@ body.open #panel{display:block}
 
     <!-- 1단계 — 누구인지부터 확인한다 -->
     <div class="step on" id="sPin">
-      <div class="g-titles" id="gTit"><h1 id="gH1">비밀번호를 눌러주세요</h1></div>
-      <div class="pindots" id="dots"><i></i><i></i><i></i><i></i></div>
+      <div class="g-head">
+        <div class="g-titles" id="gTit"><h1 id="gH1">비밀번호를 눌러주세요</h1></div>
+        <div class="pindots" id="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
       <div class="pinpad" id="kp"></div>
       <button class="g-forgot" id="gForgot">비밀번호를 몰라요</button>
     </div>
@@ -143,7 +151,7 @@ var AFTER_OUT_MS = 30 * 60 * 1000, OFFLINE_MARK_MS = 5 * 60 * 1000;
 var SHOW_LATE = false;   // 지각 색은 공용 표면이라 기본 꺼짐(§판정 원칙 3 "판정하지 않는다")
 
 /* 창 높이 = **상수**. 재지 않는다(측정하면 열 때마다 흔들린다 — 유성 2회 신고) */
-var H_PILL = 34, H_PIN = 318, H_ACT = 178, H_ERR = 24;
+var H_PILL = 34, H_PIN = 306, H_ACT = 178, H_ERR = 24;
 
 /* ══════════ 상태 ══════════ */
 var auth = null;        // 알약에 시간을 띄우기 위한 **읽기 전용** 세션(호스트가 준다)
@@ -258,7 +266,8 @@ function drawDots(){
   for (var i = 0; i < d.length; i++) d[i].className = i < pin.length ? 'f' : '';
   $('dots').classList.remove('ok');
   $('kDel').classList.toggle('show', pin.length > 0);      // 지움은 입력이 있을 때만(앱과 같은 규칙)
-  $('gTit').classList.toggle('hide', pin.length > 0);      // 입력 시작=제목 접힘
+  $('gTit').classList.toggle('hide', pin.length > 0);      // 제목만 사라진다(자리는 그대로)
+  $('dots').classList.toggle('up', pin.length > 0);        // 점만 그 자리로 올라간다 — 키패드는 고정
 }
 function ripple(btn){
   var r = document.createElement('span'); r.className = 'ripple';
