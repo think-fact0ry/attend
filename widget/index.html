@@ -440,6 +440,12 @@ function render(){
   sendState();
 }
 function loop(){
+  // 앱(같은 출처·같은 프로필)이 잠기면 = 퇴근했거나 유휴로 잠긴 것 → 위젯 세션도 함께 끝난다.
+  //   앱에서 퇴근을 찍은 경우 위젯은 그 사실을 모르고 도장 화면을 열어 준다(유성 신고).
+  if (act) {
+    var lk = null; try { lk = localStorage.getItem('att_locked'); } catch (e) { }
+    if (lk === '1') { act = null; actAt = 0; if (open) setOpen(false); }
+  }
   var p = performance.now(), w = Date.now();
   if (lastPerf && Math.abs((w-lastWall)-(p-lastPerf)) > 60000) { dayRolled = false; fetchTick(); }
   lastPerf = p; lastWall = w;
