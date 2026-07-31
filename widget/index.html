@@ -276,8 +276,8 @@ window.addEventListener('storage', function(e){
   // 로그인은 여기서 안 듣는다 — 앱의 `_hostAuth_`가 호스트에 밀고 호스트가 `auth`로 되돌려준다(경로 하나로 유지).
 });
 
-/* ══════════ 알약: 짧게=열기 / 3.5초 꾹=옮기기 (유성 08-01 — 3.5초로 확정) ══════════ */
-var HOLD_MS = 3500, holdT = null, moved = false;
+/* ══════════ 알약: 짧게=열기 / 2초 꾹=옮기기 (유성 08-01 재확정 — "지금보다 짧게", 3→3.5 오해를 2초로 확정) ══════════ */
+var HOLD_MS = 2000, holdT = null, moved = false;
 function endHold(){ clearTimeout(holdT); holdT = null; document.body.classList.remove('moving'); }
 $('pill').addEventListener('pointerdown', function(e){
   if (e.button !== 0) return;

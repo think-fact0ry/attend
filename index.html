@@ -1215,8 +1215,6 @@ function heroB(b) { // 잔여 표기 B안(§10.9): "44시간 (+4)" + 아랫줄 =
 function renderMain(r) {
   $('mainTitle').textContent = (r.deviceOk && r.name) ? r.name + '님' : '근태'; // 공용 회사 PC=세션 주인 이름(T2-7 남의 세션 인지), 폰=미니멀 '근태'
   $('heroLabel').textContent = '남은 연차'; // 스켈레톤이 바꿔 놓은 라벨 복원(다른 값은 아래서 전부 다시 그려짐)
-  // 다음 부팅의 스켈레톤 재료 — 이 화면의 구조 스냅샷(값이 아니라 "무엇이 몇 개 있었나"만)
-  try { localStorage.setItem('att_skel', JSON.stringify({ nm: (r.deviceOk && r.name) ? 1 : 0, cards: (r.cards || []).length })); } catch (e) { }
   resetIdle(); // 공용 PC 유휴 잠금 타이머 리셋(매 렌더=상호작용 신호)
   var hb = heroB(r.balance);
   $('heroVal').innerHTML = hb.val;
@@ -1253,6 +1251,9 @@ function renderMain(r) {
     if (state.punching) { bin.disabled = true; bout.disabled = true; } // 비행 중=둘 다 잠금(연타 레이스 차단, 응답 오면 재렌더가 풂)
   } else if (r.deviceOk) { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'none'; // 회사 PC지만 근무일 아님 — 상태 필이 "근무일이 아니에요" 안내
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
+  // 다음 부팅의 스켈레톤 재료 — 이 화면의 구조 스냅샷(값이 아니라 "무엇이 몇 개 있었나"만).
+  //   버튼 표시가 위 분기에서 확정된 **뒤**에 저장한다(유성 08-01: 하단 버튼 2개도 스켈레톤).
+  try { localStorage.setItem('att_skel', JSON.stringify({ nm: (r.deviceOk && r.name) ? 1 : 0, cards: (r.cards || []).length, punch: $('punchRow').style.display !== 'none' ? 1 : 0 })); } catch (e) { }
 }
 /* 도장 = 기기 게이트만(2차: PIN 로그인 세션이 곧 찍는 사람 — 도장마다 PIN 재입력 폐지)
    낙관적 렌더(2026-07-24 유성 "다음 페이지로 반응이 느림"): 구판은 punch 응답을 기다린 뒤 syncNow로
@@ -2997,8 +2998,8 @@ if ('serviceWorker' in navigator && !DEMO) { try { navigator.serviceWorker.regis
 function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보기(같은 위치·크기 회색 바)
   // 유성 08-01 "2박스만 나오는 게 아쉬워" → 마지막 화면 스냅샷(att_skel — renderMain이 저장)으로
   //   이름·상태 필·일정 카드 개수까지 미리 그린다. 카드가 없던 화면이면 안 그리고, 2개였으면 2개.
-  var s = { nm: 0, cards: 0 };
-  try { var v = JSON.parse(localStorage.getItem('att_skel') || '{}'); if (v && typeof v === 'object') { s.nm = v.nm ? 1 : 0; s.cards = +v.cards || 0; } } catch (e) { }
+  var s = { nm: 0, cards: 0, punch: 0 };
+  try { var v = JSON.parse(localStorage.getItem('att_skel') || '{}'); if (v && typeof v === 'object') { s.nm = v.nm ? 1 : 0; s.cards = +v.cards || 0; s.punch = v.punch ? 1 : 0; } } catch (e) { }
   if (s.nm) $('mainTitle').innerHTML = '<span class="sk-b" style="width:74px;height:20px"></span>';
   $('heroLabel').innerHTML = '<span class="sk-b" style="width:52px;height:13px"></span>';
   $('heroVal').innerHTML = '<span class="sk-b" style="width:150px;height:34px"></span>';
@@ -3013,6 +3014,14 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
     el.innerHTML = '<span class="pdot"></span><div class="pt2"><b><span class="sk-b" style="width:130px;height:15px"></span></b><div class="ps"><span class="sk-b" style="width:100px;height:12px"></span></div></div>';
     wrap.appendChild(el);
   }
+  // 하단 출퇴근 버튼(유성 08-01) — 마지막 화면에 버튼이 있었으면 같은 자리에 회색 골격 2개
+  if (s.punch) {
+    $('punchRow').style.display = 'flex'; $('viewOnly').style.display = 'none';
+    ['btnIn', 'btnOut'].forEach(function (id) {
+      var b = $(id); b.className = 'btn done'; b.disabled = true;
+      b.innerHTML = '<span class="sk-b" style="width:44px;height:19px"></span>';
+    });
+  } else { $('punchRow').style.display = 'none'; }
 }
 (function boot() {
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
