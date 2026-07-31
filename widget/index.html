@@ -397,7 +397,9 @@ function verify(){
       $('gH1').classList.remove('err'); $('gForgot').classList.remove('as-btn'); drawDots();
       $('okName').textContent = (act.name ? act.name + '님 안녕하세요' : '안녕하세요');
       setStep('ok');
-      setTimeout(function(){ if (open) setStep('act'); }, 950);
+      // 확인 화면을 붙잡아 두는 시간 — 서버 왕복이 이미 2.2초(실측)라 여기서 더 붙잡으면 총 3초를 넘는다.
+      //   체크가 그려지고 이름이 읽히는 데 필요한 최소만 남긴다(유성 07-31 "로딩이 거의 없는 수준으로").
+      setTimeout(function(){ if (open) setStep('act'); }, 500);
       fetchTick();
     })
     .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
