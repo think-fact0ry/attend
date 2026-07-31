@@ -586,6 +586,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="hd">
       <div class="t" id="mainTitle">근태</div>
       <div style="display:flex;gap:2px"><!-- 07-22 유성: 캘린더+메뉴 아이콘 나란히(메뉴 직행) -->
+        <button class="ic" id="hostMin" title="창 닫기" style="display:none"><!-- 유성 지시 ②(07-31): 위젯 껍데기 안에서만 — 창 없애기(로그아웃 아님, 알약은 계속) -->
+          <svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
         <button class="ic" id="toCal" title="월 캘린더">
           <svg class="li" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
@@ -916,6 +919,14 @@ var store = {
   set dev(v) { localStorage.setItem('att_dev', JSON.stringify(v)); }
 };
 _hostAuth_(); // 이미 로그인된 채로 껍데기가 앱을 열었을 때(재부팅 후 세션 복원) 한 번 밀어준다
+// 유성 지시 ②(07-31): 위젯 껍데기 안에서만 헤더에 − 노출 — 누르면 **창만 없앤다**(로그아웃 아님, 알약·세션 그대로).
+//   호스트의 close 수신부(근태위젯.cs OnMessage)가 이미 있어 exe 무변경. 폰·Chrome PWA엔 webview가 없어 버튼도 없다.
+if (window.chrome && window.chrome.webview) {
+  $('hostMin').style.display = 'flex';
+  $('hostMin').addEventListener('click', function () {
+    try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (e) { }
+  });
+}
 var state = { status: null, db: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
 // 07-22(2) 유성: 앱 안 우클릭 차단(+안드로이드 롱프레스 메뉴 — 관리자 5초 누름 보호 겸함).
 //   ⚠️소스 완전 차단은 아님(정적 페이지 본질) — 코드에 비밀 0(토큰=localStorage·시크릿=서버)이라 억제용.
@@ -1329,7 +1340,7 @@ function paintOutWarn(r) {
     $('outWarn').innerHTML = (outLateMode ? '그날' : '오늘') + ' 근무가 ' + fmtMin(shortfall) + ' 모자라요'
       + '<span class="cwsub">' + (outLateMode
         ? '연차에서 ' + fmtMin(shortfall) + '을 써요'
-        : '오늘 안에 다시 출근하면 채울 수 있어요. 안 채우면 연차에서 ' + fmtMin(shortfall) + '을 써요') + '</span>';
+        : '오늘 안에 다시 출근하면 채울 수 있어요.<br>안 채우면 연차에서 ' + fmtMin(shortfall) + '을 써요') + '</span>'; // 유성 지시 ①(07-31): 이 문장 다음 줄바꿈
   } else $('outWarn').style.display = 'none';
 }
 function hideSheet() { $('outSheet').classList.remove('on'); $('outSheet').style.transform = ''; }
