@@ -380,92 +380,29 @@ function verifying_on(){
 }
 // 정리(성공·실패)는 기존 경로가 이미 한다 — 성공=제목 textContent 복구+drawDots / 실패=pinFail의 textContent+drawDots.
 //   drawDots가 'ok'·'up'을 모두 되돌리므로 해제 함수를 따로 두지 않는다(안 쓰이는 함수를 남기지 않는다).
-/* ⚡⚡PIN을 **이 PC에서 바로** 확인한다 — 서버 왕복 없이(2026-07-31 유성 "확인하고 있어요가 너무 오래걸려, 5초 이상").
-     ⏱️왜 이렇게까지 하나: GAS 로그인 왕복이 **실측 중앙값 2.2초**(최대 3.0초, 콜드 스타트면 5초+)다.
-       연출을 0으로 줄여도 그 2.2초는 그대로 남는다 — **서버에 묻는 한 그게 바닥**이라 묻지 않는 길로 간다.
-     🔐설계 — **서버는 아무것도 새로 안 내려준다**:
-       첫 로그인이 서버에서 성공한 그 순간, 위젯이 **자기가 만든 무작위 솔트**로 방금 받은 PIN의 해시를 만들어 둔다.
-       다음부터는 입력한 PIN을 같은 솔트로 해시해 **오프라인 대조** → 판정은 같고 대기는 0.
-     ⚠️정직한 대가(유성 고지):
-       ①그 PC에서 4자리 해시를 오프라인 대입할 수 있다. 단 **같은 PC에 이미 도장 가능한 토큰이 있으므로**
-         실질적으로 잃는 건 "누가 눌렀나"의 확실성뿐 — 새로 열리는 문은 없다.
-       ②다른 기기에서 PIN을 바꾸면 **옛 PIN이 잠깐 통한다** → 로컬 통과 뒤에도 서버에 조용히 한 번 더 물어
-         틀리면 세션을 끊고 알린다(몇 초 뒤 자동 정정).
-     되돌리기 = 아래 한 줄을 false 로. */
-var USE_LOCAL_PIN = true;
-function sha256Hex(s){
-  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(buf){
-    var a = new Uint8Array(buf), o = '';
-    for (var i = 0; i < a.length; i++) { var h = a[i].toString(16); o += (h.length < 2 ? '0' : '') + h; }
-    return o;
-  });
-}
-function loadPinv(){ try { return JSON.parse(localStorage.getItem('att_pinv') || 'null'); } catch (e) { return null; } }
-function clearPinv(){ try { localStorage.removeItem('att_pinv'); } catch (e) { } }
-function savePinv(pinStr, r){
-  if (!USE_LOCAL_PIN || !(window.crypto && crypto.subtle)) return;
-  var b = new Uint8Array(16); crypto.getRandomValues(b);
-  var salt = ''; for (var i = 0; i < b.length; i++) { var h = b[i].toString(16); salt += (h.length < 2 ? '0' : '') + h; }
-  sha256Hex(salt + ':' + pinStr).then(function(hash){
-    try { localStorage.setItem('att_pinv', JSON.stringify({ emp: r.emp, name: r.name || '', salt: salt, hash: hash })); } catch (e) { }
-  }).catch(function(){ });
-}
 function verify(){
-  var typed = pin;
-  var pv = loadPinv();
-  // 로컬로 판정할 조건: 저장된 해시가 있고 **호스트가 그 사람의 토큰을 들고 있어야** 한다
-  //   (토큰이 없으면 통과시켜도 도장을 못 찍는다 → 그땐 서버 로그인이 맞다).
-  if (USE_LOCAL_PIN && pv && pv.salt && auth && auth.token && auth.emp === pv.emp && window.crypto && crypto.subtle) {
-    verifying = true; verifying_on();
-    sha256Hex(pv.salt + ':' + typed).then(function(h){
-      if (h === pv.hash) { verifying = false; loginOk({ token: auth.token, emp: pv.emp, name: pv.name }, typed, true); }
-      else serverVerify(typed);   // 틀렸거나 **PIN이 바뀐** 것 — 판정은 서버에 맡긴다
-    }).catch(function(){ serverVerify(typed); });
-    return;
-  }
-  serverVerify(typed);
-}
-function serverVerify(typed){
   verifying = true;
   verifying_on();
   fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
     // lite=위젯은 token·emp·name만 쓴다. 서버가 근태이력 전체+스윕을 건너뛴다(왕복 자체가 가벼워진다).
-    body: JSON.stringify({ action:'login', pin: typed, inst: INST, lite: true }) })
+    body: JSON.stringify({ action:'login', pin: pin, inst: INST, lite: true }) })
     .then(function(r){ return r.json(); })
     .then(function(r){
       verifying = false;
-      if (!r || !r.ok) { clearPinv(); pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
-      loginOk(r, typed, false);
-    })
-    .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
-}
-function loginOk(r, typed, wasLocal){
+      if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
       startActSession(r);
-      if (!wasLocal) savePinv(typed, r);   // **서버가 맞다고 한 그 순간에만** 새로 저장한다
       // 확인됐다는 걸 **독립 화면**으로 보여준다(가운데 큰 체크 + ooo님 안녕하세요).
       //   구판은 제목 글자만 바꿔서 눈에 안 띄었다(유성 "안 나와").
       pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요';
       $('gH1').classList.remove('err'); $('gForgot').classList.remove('as-btn'); drawDots();
       $('okName').textContent = (act.name ? act.name + '님 안녕하세요' : '안녕하세요');
       setStep('ok');
-  // 확인 화면을 붙잡아 두는 시간 — 로컬 통과는 대기가 0이라 이 500ms가 곧 전체 체감이다.
-  //   체크가 그려지고 이름이 읽히는 데 필요한 최소(유성 07-31 "로딩이 거의 없는 수준으로").
-  setTimeout(function(){ if (open) setStep('act'); }, 500);
-  fetchTick();
-  // 로컬로 통과시켰으면 **조용히 서버에 한 번 더 확인**한다 — 다른 기기에서 PIN이 바뀐 경우를 몇 초 뒤 정정.
-  //   화면은 이미 넘어가 있으므로 사용자는 기다리지 않는다.
-  if (wasLocal) {
-    fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'login', pin: typed, inst: INST, lite: true }) })
-      .then(function(x){ return x.json(); })
-      .then(function(x){
-        if (x && x.ok) return;                        // 정상 — 아무 일도 하지 않는다
-        clearPinv(); endActSession();                 // 비밀번호가 바뀌었다 → 세션을 끊고 알린다
-        toHost({ type:'alert', msg:'비밀번호가 바뀌었어요. 다시 눌러 주세요' });
-        if (open) { pin = ''; drawDots(); setStep('pin'); }
-      })
-      .catch(function(){ /* 네트워크 문제면 그대로 둔다 — 도장은 어차피 서버가 다시 검증한다 */ });
-  }
+      // 확인 화면을 붙잡아 두는 시간 — 서버 왕복이 이미 2.2초(실측)라 여기서 더 붙잡으면 총 3초를 넘는다.
+      //   체크가 그려지고 이름이 읽히는 데 필요한 최소만 남긴다(유성 07-31 "로딩이 거의 없는 수준으로").
+      setTimeout(function(){ if (open) setStep('act'); }, 500);
+      fetchTick();
+    })
+    .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
 }
 
 /* ══════════ 서버 조회(읽기 전용) ══════════ */
