@@ -18,8 +18,16 @@
   ⚠️창 높이는 **재지 않고 상수로 정한다**. 재서 보내던 때 열 때마다 커졌다 작아졌다 했다(유성 2회 신고).
     웹폰트·레이아웃이 잡히는 시점이 매번 달라서 측정값이 흔들린다 → 측정을 아예 없앤다.
 -->
+<!--
+  ⚠️웹폰트는 **첫 페인트를 막지 않게** 불러온다(07-31).
+    구판은 <style> 첫 줄의 `@import`였는데, cross-origin CSS의 @import는 렌더 차단이라
+    **부팅 직후 네트워크가 아직 없으면 알약이 그동안 빈칸**이었다(게다가 sw의 오프라인 폴백이
+    CSS 요청에 index.html을 돌려줘 더 늦어진다). media="print"로 받아 로드된 뒤 all로 바꾸면
+    폰트가 늦게 와도 글자는 먼저 뜬다. 폭 재측정은 아래 `document.fonts.ready` 훅이 이미 한다.
+-->
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
 :root{
   --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
   --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968; --g900:#191f28;
@@ -168,12 +176,17 @@ body.open #panel{display:block}
 <script>
 /* ══════════ 설정 ══════════ */
 var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8SyUuwU-Ma0r3db446Nl56_yGRkFq_dsaXq5gk70FWQ/exec';
-var HB_WORKING = 3 * 60 * 1000, HB_IDLE = 15 * 60 * 1000;
+/* ⭐물어보는 주기는 **근무 전이 더 짧다**(07-31 유성 신고 "앱은 로그인 상태인데 알약은 근무전").
+     근무 중엔 알약이 `open`+서버시각으로 **스스로 센다** → 서버에 자주 물을 이유가 없다(밖에서 찍은 퇴근만 늦게 안다).
+     근무 전엔 스스로 알 방법이 **하나도 없다** → 앱·폰에서 출근을 찍어도 다음에 물을 때까지 '근무 전'이다.
+     구판은 이게 뒤집혀 있어(근무 전 15분) 앱 창을 열어 둔 채 출근하면 최대 15분간 '근무 전'이었다. */
+var HB_WORKING = 3 * 60 * 1000, HB_IDLE = 60 * 1000;
 var AFTER_OUT_MS = 30 * 60 * 1000, OFFLINE_MARK_MS = 5 * 60 * 1000;
 var SHOW_LATE = false;   // 지각 색은 공용 표면이라 기본 꺼짐(§판정 원칙 3 "판정하지 않는다")
 
 /* 창 높이 = **상수**. 재지 않는다(측정하면 열 때마다 흔들린다 — 유성 2회 신고) */
-var H_PILL = 34, H_PIN = 306, H_OK = 168, H_ACT = 178, H_ERR = 24;
+//   H_ERR=두 줄까지 넉넉히(12px·line-height 1.5·margin 8 → 한 줄 26·두 줄 44). 실패 문구는 길 수 있다.
+var H_PILL = 34, H_PIN = 306, H_OK = 168, H_ACT = 178, H_ERR = 44;
 
 /* ══════════ 상태 ══════════ */
 var auth = null;        // 알약에 시간을 띄우기 위한 **읽기 전용** 세션(호스트가 준다)
@@ -207,14 +220,30 @@ function startActSession(r){
   } catch (e) { }
   toHost({ type:'auth', token: r.token, emp: r.emp });
 }
-/* 세션 종료 — 퇴근·유휴 1시간. **앱도 같이 잠근다**(다음 사람은 앱에서도 PIN부터) */
+/* 세션 종료 — 퇴근·유휴 1시간. **앱도 같이 잠근다**(다음 사람은 앱에서도 PIN부터)
+   ⚠️호스트에도 알린다: 앱 창이 열려 있으면 그 창을 지금 닫아야 한다.
+     앱 창에 심어둔 후킹은 **그 문서의** localStorage.setItem만 가로채므로, 여기(다른 문서)서 잠근 건 못 본다.
+     이 한 줄이 없으면 호스트의 느린 백스톱 폴링(1초)까지 잠금 화면이 남는다. */
 function endActSession(){
   act = null; actAt = 0;
   try { localStorage.setItem('att_locked', '1'); } catch (e) { }
+  toHost({ type:'locked' });
 }
 
 function $(id){ return document.getElementById(id); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '/attend/' }).catch(function(){});
+
+/* PIN 오답 잠금은 **이 설치에만** 걸려야 한다(07-31).
+     서버 `_pinLockKey_`는 device→inst 순으로 칸을 고르는데, 구판이 `inst:'widget'` **고정 문자열**을 보내
+     사무실 PC 전부가 한 칸을 공유했다 → 한 PC에서 5번 틀리면 다른 PC 위젯도 60초 잠긴다.
+     설치마다 다른 값을 만들어 보관한다(신원 아님 — 잠금 칸을 가르는 용도뿐. 앱의 `inst`와 같은 성격). */
+var INST = (function(){
+  try {
+    var v = localStorage.getItem('att_winst');
+    if (!v) { v = 'w-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); localStorage.setItem('att_winst', v); }
+    return v;
+  } catch (e) { return 'widget'; }
+})();
 
 /* ══════════ 호스트와의 대화 ══════════ */
 function toHost(o){ if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(o)); }
@@ -228,6 +257,15 @@ if (window.chrome && window.chrome.webview) {
     if (m.type === 'dragend') { endHold(); }
   });
 }
+
+/* ⚡앱 창에서 찍은 도장을 **즉시** 반영한다(07-31 유성 신고의 본체).
+     앱 창(같은 출처)에 심어둔 스크립트가 도장·신청을 보낼 때 `att_bump`를 쓴다 →
+     같은 출처의 다른 문서인 여기서 `storage` 이벤트로 그 순간 알 수 있다. 폴링을 기다리지 않는다.
+   ⚠️`storage`는 **쓴 문서 자신에겐 안 온다** — 위젯이 스스로 찍은 건 punch()가 직접 fetchTick을 부른다. */
+window.addEventListener('storage', function(e){
+  if (e && e.key === 'att_bump') fetchTick();
+  // 로그인은 여기서 안 듣는다 — 앱의 `_hostAuth_`가 호스트에 밀고 호스트가 `auth`로 되돌려준다(경로 하나로 유지).
+});
 
 /* ══════════ 알약: 짧게=열기 / 3초 꾹=옮기기 ══════════ */
 var HOLD_MS = 3000, holdT = null, moved = false;
@@ -322,7 +360,7 @@ function pinFail(msg){
 function verify(){
   verifying = true;
   fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({ action:'login', pin: pin, inst: 'widget' }) })
+    body: JSON.stringify({ action:'login', pin: pin, inst: INST }) })
     .then(function(r){ return r.json(); })
     .then(function(r){
       verifying = false;
@@ -414,7 +452,6 @@ function punch(kind){
   else {
     snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
     snap.open = null; snap.lastOut = nowH;
-    endActSession();          // 퇴근 도장 즉시 세션 종료(확정 결정 ①) — 다음엔 PIN부터
   }
   setOpen(false);             // ⚡즉시 접힌다(출근·퇴근 둘 다)
 
@@ -422,10 +459,29 @@ function punch(kind){
     .then(function(r){ return r.json(); })
     .then(function(r){
       punching = false;
-      if (!r || !r.ok) { snap = prev; snapAt = performance.now(); render(); toHost({ type:'alert', msg:(r && r.error) || '기록이 안 됐어요' }); return; }
+      if (!r || !r.ok) { punchFailed(prev, (r && r.error) || '기록이 안 됐어요'); return; }
+      // ⭐세션 종료는 **서버가 받았다고 답한 뒤**(07-31). 낙관적으로 먼저 끝냈더니 실패했을 때
+      //   PIN 화면으로 떨어져 **이유를 보여줄 자리가 없었다**(`pErr`는 도장 화면 안에 있다).
+      //   앱도 완료 인터랙션 뒤 1.5초에 잠그므로 "퇴근 도장 즉시 종료"(확정 결정 ①)와 어긋나지 않는다.
+      if (kind === 'out') endActSession();
       fetchTick();
     })
-    .catch(function(){ punching = false; fetchTick(); });  // 무응답=서버에 남았을 수 있다 → 되돌리지 말고 다시 묻는다
+    // 무응답=서버에 남았을 수 있다 → 되돌리지 말고 다시 묻는다.
+    //   퇴근이 실제로 남았으면 그 조회가 `open:null`을 들고 오고, 아래 loop의 유휴·앱 잠금 감시가 세션을 정리한다.
+    .catch(function(){ punching = false; fetchTick(); });
+}
+/* 도장이 실패하면 **다시 펼쳐서 그 자리에 이유를 보여준다**(07-31).
+     구판은 트레이 풍선 하나뿐이었는데, 패널은 이미 접혔고 알약은 조용히 '근무 전'으로 되돌아갔다
+     → 출근이 안 됐는데 찍힌 줄 알기 쉬운 구조였다(제일 나쁜 실패 모양).
+     앱도 같은 규칙이다 — 완료를 이미 봤으면 토스트로 부족하다(12차 낙관 쓰기 3규칙).
+   ⚠️`snapAt`은 **되돌리지 않는다**. `prev.nowHms`는 그 스냅샷을 받은 시각이라, 여기서 지금으로 다시 찍으면
+     알약 시계가 그동안 흐른 만큼 **뒤로 간다**(다음 조회 때까지). 옛 기준점 그대로가 맞다. */
+function punchFailed(prev, msg){
+  snap = prev;                    // snapAt은 그대로 — 기준점을 옮기면 시계가 역행한다
+  setOpen(true);                  // ⚠️먼저 펼친다 — setOpen(true)가 pErr를 비우므로 문구는 그 뒤에 넣는다
+  $('pErr').textContent = msg;
+  render();                       // 늘어난 높이를 호스트에 다시 알린다(panelH가 pErr를 센다)
+  toHost({ type:'alert', msg: msg });
 }
 
 /* ══════════ 그리기 ══════════ */
@@ -439,14 +495,16 @@ function sendState(){
   lastSent = sig;
   toHost({ type:'state', w:Math.ceil(w), h:h, on:v.on, warn:v.warn, dim:v.dim });
 }
+var lastText = null, lastGauge = null;
 function render(){
   var v = view();
   var b = document.body;
   b.classList.toggle('on', v.on); b.classList.toggle('warn', v.warn); b.classList.toggle('dim', v.dim);
   var offline = !!auth && (performance.now() - (lastOkAt || bootAt) > OFFLINE_MARK_MS);
   b.classList.toggle('nc', offline);
-  $('t').textContent = v.text;
-  $('fill').style.width = v.gauge + '%';
+  // 1초 루프가 매번 같은 값을 다시 써서 레이아웃을 무의미하게 무르게 하지 않는다(값이 바뀔 때만).
+  if (v.text !== lastText) { lastText = v.text; $('t').textContent = v.text; }
+  if (v.gauge !== lastGauge) { lastGauge = v.gauge; $('fill').style.width = v.gauge + '%'; }
 
   if (open && step === 'act') {
     var working = !!(snap && snap.open);
