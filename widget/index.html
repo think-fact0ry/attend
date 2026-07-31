@@ -197,9 +197,9 @@ var H_PILL = 34, H_PIN = 306, H_OK = 168, H_ACT = 178, H_ERR = 44;
 /* ══════════ 상태 ══════════ */
 var auth = null;        // 알약에 시간을 띄우기 위한 **읽기 전용** 세션(호스트가 준다)
 var snap = null, snapAt = 0, lastOkAt = 0, bootAt = performance.now();
-var inFlight = false, dayRolled = false, fails = 0;
+var inFlight = false, inFlightAt = 0, dayRolled = false, fails = 0;
 var lastPerf = 0, lastWall = 0, hbTimer = null, tickTimer = null, lastSent = '';
-var open = false, step = 'pin', pin = '', punching = false, verifying = false;
+var open = false, step = 'pin', pin = '', punching = false, punchAt = 0, verifying = false, verifyAt = 0;
 /* ⭐도장용 세션의 수명 — **확정 결정을 따른다**(scripts/19 CLAUDE.md, 2026-07-24 유성):
      "세션=곧 찍는 사람이라 도장마다 PIN 재입력 없음"(구 _pinIdentity_=도장마다 PIN은 폐기).
      공용 회사 PC 세션 종료 = ①퇴근 도장 즉시 ②유휴 1시간 ③잠그기.
@@ -259,7 +259,10 @@ if (window.chrome && window.chrome.webview) {
     if (!m || !m.type) return;
     if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(); }
     if (m.type === 'signout') { auth = null; act = null; snap = null; render(); }
-    if (m.type === 'wake')    { fetchTick(); }
+    // ⚡`kind`가 실려 오면 = **앱에서 도장이 서버까지 다녀왔다**는 뜻 → 다시 물어보지 않고 바로 반영한다.
+    //   구판은 여기서 tick 왕복(1.2~1.5초)을 한 번 더 돌아서, 앱 punch(1.5~2초) 뒤에도 초록이 늦게 켜졌다.
+    //   서버 진실은 이어서 도는 fetchTick 이 덮는다(틀릴 일이 없다 — 앱이 성공 응답을 받은 뒤에만 온다).
+    if (m.type === 'wake')    { if (m.kind) applyRemotePunch(m.kind); fetchTick(); }
     if (m.type === 'dragend') { endHold(); }
   });
 }
@@ -381,12 +384,11 @@ function verifying_on(){
 // 정리(성공·실패)는 기존 경로가 이미 한다 — 성공=제목 textContent 복구+drawDots / 실패=pinFail의 textContent+drawDots.
 //   drawDots가 'ok'·'up'을 모두 되돌리므로 해제 함수를 따로 두지 않는다(안 쓰이는 함수를 남기지 않는다).
 function verify(){
-  verifying = true;
+  verifying = true; verifyAt = performance.now();
   verifying_on();
-  fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
-    // lite=위젯은 token·emp·name만 쓴다. 서버가 근태이력 전체+스윕을 건너뛴다(왕복 자체가 가벼워진다).
-    body: JSON.stringify({ action:'login', pin: pin, inst: INST, lite: true }) })
-    .then(function(r){ return r.json(); })
+  // lite=위젯은 token·emp·name만 쓴다. 서버가 근태이력 전체+스윕을 건너뛴다(왕복 자체가 가벼워진다).
+  // ⏱️시한 필수 — 없으면 응답이 안 올 때 `verifying`이 굳어 **키패드가 영영 안 먹는다**.
+  ask({ action:'login', pin: pin, inst: INST, lite: true })
     .then(function(r){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
@@ -405,14 +407,32 @@ function verify(){
     .catch(function(){ verifying = false; pinFail('연결이 안 돼요'); });
 }
 
+/* ⏱️**모든 서버 요청에 시한을 건다**(2026-07-31 — 유성 "퇴근했는데 알약이 계속 초록, 시간이 계속 간다").
+     🔴그 사고의 정체: `fetch`에 타임아웃이 없어 **GAS가 응답을 안 주면 그 약속이 영원히 안 끝난다**
+       → `inFlight`가 true로 굳고 → `.then`/`.catch` 어느 쪽도 안 불려 **다음 조회 예약(`schedule`)까지 죽는다**
+       → 그 뒤 모든 조회가 `if(inFlight) return`으로 즉시 돌아가 **알약이 영구히 옛 상태로 멈춘다**.
+       그동안 `loop()`는 계속 돌며 옛 `open`으로 시간을 세므로 **초록인 채 분이 올라간다**(정확히 신고된 증상).
+       `att_locked` 감시는 loop 안이라 살아 있어 **PIN 화면만 정상**으로 보이는 것도 맞아떨어진다.
+     ⚠️GAS는 실제로 멈춘다 — 같은 날 벤치에서 생존핑 한 번이 **303초** 걸린 표본이 나왔다.
+     그래서 "언젠간 오겠지"에 기대지 않고 **끊고 다시 건다**. */
+var REQ_TIMEOUT_MS = 15000;
+function ask(body, ms){
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opt = { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) };
+  if (ctl) opt.signal = ctl.signal;
+  var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, ms || REQ_TIMEOUT_MS);
+  return fetch(GAS, opt).then(
+    function(r){ clearTimeout(timer); return r.json(); },
+    function(e){ clearTimeout(timer); throw e; }
+  );
+}
+
 /* ══════════ 서버 조회(읽기 전용) ══════════ */
 function fetchTick(){
   if (!auth) { render(); schedule(); return; }
   if (inFlight) return;
-  inFlight = true;
-  fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({ action:'tick', token: auth.token, emp: auth.emp }) })
-    .then(function(r){ return r.json(); })
+  inFlight = true; inFlightAt = performance.now();
+  ask({ action:'tick', token: auth.token, emp: auth.emp })
     .then(function(r){
       inFlight = false;
       if (!r || !r.ok) {
@@ -439,6 +459,19 @@ function sec2hms(s){ s = Math.max(0, Math.floor(s)); function p(n){ return (n<10
 function fmt(min){ if (min < 60) return min + '분'; var h = Math.floor(min/60), m = min%60; return m ? (h+'시간 '+m+'분') : (h+'시간'); }
 function serverSecNow(){ if (!snap) return 0; return hms2sec(snap.nowHms) + Math.floor((performance.now()-snapAt)/1000); }
 
+/* 앱에서 찍은 도장을 알약 화면에 **먼저** 반영한다(서버 재조회를 기다리지 않는다).
+     punch()의 낙관적 갱신과 같은 계산을 쓴다 — 다른 데서 찍었을 뿐 결과는 같다. */
+function applyRemotePunch(kind){
+  if (!snap) return;
+  var nowH = sec2hms(serverSecNow());
+  if (kind === 'in') { if (!snap.open) snap.open = nowH; }
+  else if (kind === 'out' && snap.open) {
+    snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
+    snap.open = null; snap.lastOut = nowH;
+  }
+  render();
+}
+
 function view(){
   if (!auth || !snap) return { text:'근태', on:false, warn:false, dim:false, gauge:0 };
   if (serverSecNow() >= 24*3600) return { text:'근무 전', on:false, warn:false, dim:false, gauge:0 };
@@ -462,7 +495,7 @@ function view(){
 $('pDo').addEventListener('click', function(){ punch(snap && snap.open ? 'out' : 'in'); });
 function punch(kind){
   if (punching || !act || !snap) return;
-  punching = true;
+  punching = true; punchAt = performance.now();
   $('pErr').textContent = '';
 
   // ⚠️토큰을 **먼저 붙잡는다**. 07-30 1차에 퇴근 분기에서 act를 먼저 비우고 아래에서 act.token을 읽어
@@ -480,10 +513,10 @@ function punch(kind){
     snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
     snap.open = null; snap.lastOut = nowH;
   }
-  setOpen(false);             // ⚡즉시 접힌다(출근·퇴근 둘 다)
+  showDone(kind);             // 접기 전에 **찍혔다는 것을 보여준다**(유성 지시 — 구판은 말없이 접혔다)
 
-  fetch(GAS, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) })
-    .then(function(r){ return r.json(); })
+  // ⏱️시한 필수 — 없으면 응답이 안 올 때 `punching`이 굳어 **그 뒤 도장이 전부 막힌다**.
+  ask(body)
     .then(function(r){
       punching = false;
       if (!r || !r.ok) { punchFailed(prev, (r && r.error) || '기록이 안 됐어요'); return; }
@@ -503,6 +536,18 @@ function punch(kind){
      앱도 같은 규칙이다 — 완료를 이미 봤으면 토스트로 부족하다(12차 낙관 쓰기 3규칙).
    ⚠️`snapAt`은 **되돌리지 않는다**. `prev.nowHms`는 그 스냅샷을 받은 시각이라, 여기서 지금으로 다시 찍으면
      알약 시계가 그동안 흐른 만큼 **뒤로 간다**(다음 조회 때까지). 옛 기준점 그대로가 맞다. */
+/* 도장 완료 인터랙션 (유성 지시 — 07-30에 받았으나 인계에 안 남아 07-31에 처리).
+     구판은 도장을 누르면 `setOpen(false)`로 **말없이 접혔다** — 찍혔는지 아닌지 화면이 말해주지 않았다.
+     ⚠️새 UI를 만들지 않는다 — PIN 통과 때 쓰는 확인 화면(`#sOk`, 큰 체크)을 **그대로 재사용**한다(§2.2 정보밀도·중복 자산 금지).
+     ⚠️**연출 길이가 곧 대기 시간**이다(위젯은 "빨리 접힌다"가 원래 장점) → 900ms만.
+       도장은 낙관적이라 서버를 안 기다린다 = 이 900ms가 전부다.
+     ⚠️실패가 오면 `punchFailed`가 화면을 도장 화면으로 되돌리므로, 그때는 **접지 않는다**(step 가드). */
+function showDone(kind){
+  $('okName').textContent = (kind === 'in' ? '출근했어요' : '퇴근했어요');
+  setStep('ok');
+  render();
+  setTimeout(function(){ if (step === 'ok') setOpen(false); }, 900);
+}
 function punchFailed(prev, msg){
   snap = prev;                    // snapAt은 그대로 — 기준점을 옮기면 시계가 역행한다
   setOpen(true);                  // ⚠️먼저 펼친다 — setOpen(true)가 pErr를 비우므로 문구는 그 뒤에 넣는다
@@ -550,6 +595,14 @@ function loop(){
     var lk = null; try { lk = localStorage.getItem('att_locked'); } catch (e) { }
     if (lk === '1') { act = null; actAt = 0; if (open) setOpen(false); }
   }
+  // 🛟마지막 안전망 — 위 시한이 어떤 이유로든 안 걸렸을 때(중단 미지원 브라우저·예상 못 한 경로)도
+  //   조회가 영구히 멈추지 않게 한다. **알약이 멈춰 있는 것보다 한 번 더 묻는 게 낫다.**
+  if (inFlight && performance.now() - inFlightAt > REQ_TIMEOUT_MS * 2) {
+    inFlight = false; schedule(false);
+  }
+  // 도장·비밀번호 확인도 같은 병에 걸린다 — 잠금이 굳으면 **그 뒤 도장이 전부 막히고 키패드가 안 먹는다.**
+  if (punching && performance.now() - punchAt > REQ_TIMEOUT_MS * 2) { punching = false; }
+  if (verifying && performance.now() - verifyAt > REQ_TIMEOUT_MS * 2) { verifying = false; pinFail('연결이 안 돼요'); }
   var p = performance.now(), w = Date.now();
   if (lastPerf && Math.abs((w-lastWall)-(p-lastPerf)) > 60000) { dayRolled = false; fetchTick(); }
   lastPerf = p; lastWall = w;

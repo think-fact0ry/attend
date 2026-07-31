@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v63'; // 07-31(5) PIN 로컬 검증 되돌림 — 5회 잠금·비활성 차단을 잃는 변경이라 런치 전날 원복(유성)
+var CACHE = 'tf-attend-v64'; // 07-31(6) 🔴응답 없는 요청 하나에 알약이 영구히 멈추던 것(시한 신설)+도장 완료 인터랙션+앱 도장 즉시 반영
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다
