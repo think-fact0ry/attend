@@ -356,6 +356,9 @@ $('kp').addEventListener('click', function(e){
 });
 $('gForgot').addEventListener('click', function(){
   // 몰라요=문자 인증 흐름. 그건 앱에 이미 있으므로 앱을 연다(위젯에 또 만들지 않는다).
+  //   ⚠️그냥 열면 앱 세션이 안 잠겨 있을 때 **PIN 없이 메인이 뜬다**(유성 08-01 버그 신고) —
+  //   같은 프로필 localStorage로 신호를 넘겨, 앱이 열리자마자 잠그고 본인 확인 화면으로 직행하게 한다.
+  try { localStorage.setItem('att_forgot', '1'); } catch (e) { }
   setOpen(false); toHost({ type: 'open' });
 });
 function pinFail(msg){

@@ -1253,7 +1253,11 @@ function renderMain(r) {
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
   // 다음 부팅의 스켈레톤 재료 — 이 화면의 구조 스냅샷(값이 아니라 "무엇이 몇 개 있었나"만).
   //   버튼 표시가 위 분기에서 확정된 **뒤**에 저장한다(유성 08-01: 하단 버튼 2개도 스켈레톤).
-  try { localStorage.setItem('att_skel', JSON.stringify({ nm: (r.deviceOk && r.name) ? 1 : 0, cards: (r.cards || []).length, punch: $('punchRow').style.display !== 'none' ? 1 : 0 })); } catch (e) { }
+  try {
+    localStorage.setItem('att_skel', JSON.stringify({ nm: (r.deviceOk && r.name) ? 1 : 0, cards: (r.cards || []).length, punch: $('punchRow').style.display !== 'none' ? 1 : 0 }));
+    // 자정 잠금의 기준 날짜 — 회사 PC(도장 기기)+PIN 사용 중일 때만(폰=영구 세션이라 기록 안 함)
+    if (r.deviceOk && r.anyPinSet) localStorage.setItem('att_day', r.today); else localStorage.removeItem('att_day');
+  } catch (e) { }
 }
 /* 도장 = 기기 게이트만(2차: PIN 로그인 세션이 곧 찍는 사람 — 도장마다 PIN 재입력 폐지)
    낙관적 렌더(2026-07-24 유성 "다음 페이지로 반응이 느림"): 구판은 punch 응답을 기다린 뒤 syncNow로
@@ -3025,6 +3029,22 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
 }
 (function boot() {
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
+  // 자정 잠금(08-01) — 확정 규칙 "세션 종료=퇴근·유휴 1시간·자정" 중 자정이 앱엔 미구현이었다:
+  //   퇴근 도장 없이 창을 닫아두면 유휴 타이머가 안 돌아 다음 날에도 토큰이 살았다(위젯 몰라요 버그의 뿌리).
+  //   att_day는 renderMain이 회사 PC(deviceOk)+PIN 사용 중일 때만 기록 — 폰은 기록이 없어 영구 세션 그대로.
+  try {
+    var ad = localStorage.getItem('att_day');
+    if (!DEMO && ad && store.token && ad !== AttEngine.ymd(new Date())) localStorage.setItem('att_locked', '1');
+  } catch (e) { }
+  // 위젯 '비밀번호를 몰라요'(08-01) — 위젯이 att_forgot을 쓰고 앱을 연다. 세션이 안 잠겨 있어도
+  //   본인 확인(문자 인증)으로 직행해야 하므로 잠근 뒤 재설정 화면을 띄운다(비번을 모른다고 선언한 공용 PC).
+  try {
+    if (!DEMO && localStorage.getItem('att_forgot')) {
+      localStorage.removeItem('att_forgot');
+      localStorage.setItem('att_locked', '1');
+      loginGate(); startOtpReset(); return;
+    }
+  } catch (e) { }
   // 07-22(3) 유성: PWA 창 자체 폭 축소(내부 maxw 480 원복과 세트) — 앱 창에서만, 안 먹으면 수동 1회(Chrome이 기억)
   if (matchMedia('(display-mode: standalone)').matches && window.outerWidth > 490) {
     try { window.resizeTo(470, window.outerHeight); } catch (e) { }
