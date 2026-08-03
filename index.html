@@ -292,6 +292,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .pinov .pback{position:absolute;top:calc(14px + env(safe-area-inset-top));left:14px;width:38px;height:38px;border:0;background:none;color:var(--g900);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;border-radius:12px;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .pinov .pback:active{transform:scale(.82)}
 .pinov .pback svg{width:22px;height:22px}
+/* 창 없애기(−) — 좌상단 ←와 대칭 자리·같은 치수. 헤더 `.hd .ic`와 같은 모양이라 어느 화면에서든 같은 버튼으로 읽힌다. */
+.pinov .pmin{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;width:38px;height:38px;border:0;background:none;color:var(--g900);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;border-radius:12px;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.pinov .pmin:active{transform:scale(.82)}
+.pinov .pmin svg{width:22px;height:22px}
 .g-head{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;width:100%}
 .g-titles{overflow:hidden;max-height:120px;opacity:1;transform:translateY(0);transition:max-height .55s cubic-bezier(.4,0,.2,1),opacity .62s ease,transform .55s cubic-bezier(.4,0,.2,1)}
 .g-titles.hide{max-height:0;opacity:0;transform:translateY(-16px)}
@@ -877,6 +881,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
   <div class="pinov" id="pinOv">
     <button class="pback" id="pinBack" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <!-- 잠금 화면은 전체를 덮어(z-index 850) 헤더의 −를 가린다 → 위젯 껍데기에서 이 화면이 뜨면 **창을 닫을 길이 없었다**(유성 08-03).
+         헤더 −와 같은 것(창만 없애기·로그아웃 아님)을 같은 자리에 둔다. 잠금은 그대로 유지되므로 `noCancel` 원칙과 충돌하지 않는다. -->
+    <button class="pmin" id="pinHostMin" title="창 닫기" style="display:none"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     <div class="g-head">
       <div class="g-titles" id="pinTitles"><h1 id="pinTitle">비밀번호를 눌러주세요</h1></div>
       <div class="pindots" id="pinDots"></div>
@@ -922,9 +929,12 @@ _hostAuth_(); // 이미 로그인된 채로 껍데기가 앱을 열었을 때(�
 // 유성 지시 ②(07-31): 위젯 껍데기 안에서만 헤더에 − 노출 — 누르면 **창만 없앤다**(로그아웃 아님, 알약·세션 그대로).
 //   호스트의 close 수신부(근태위젯.cs OnMessage)가 이미 있어 exe 무변경. 폰·Chrome PWA엔 webview가 없어 버튼도 없다.
 if (window.chrome && window.chrome.webview) {
-  $('hostMin').style.display = 'flex';
-  $('hostMin').addEventListener('click', function () {
-    try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (e) { }
+  // 08-03 유성: 잠금(PIN) 화면에도 같은 −. 그 화면이 헤더를 통째로 덮어 **창을 닫을 방법이 없었다**.
+  ['hostMin', 'pinHostMin'].forEach(function (id) {
+    $(id).style.display = 'flex';
+    $(id).addEventListener('click', function () {
+      try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (e) { }
+    });
   });
   // ③(08-01 유성 GO): 위젯 창 **상단 12px = 창 이동 그립**. 좌·우·아래 크기 조절은 창의 비클라이언트
   //   밴드(호스트 NCCALCSIZE 인셋)가 네이티브로 처리하고, 캡션이 없는 위쪽만 페이지가 맡는다.
