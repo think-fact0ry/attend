@@ -462,6 +462,28 @@ function sec2hms(s){ s = Math.max(0, Math.floor(s)); function p(n){ return (n<10
 function fmt(min){ if (min < 60) return min + '분'; var h = Math.floor(min/60), m = min%60; return m ? (h+'시간 '+m+'분') : (h+'시간'); }
 function serverSecNow(){ if (!snap) return 0; return hms2sec(snap.nowHms) + Math.floor((performance.now()-snapAt)/1000); }
 
+/* 🔴**서버 `workedMin`에는 열린 구간이 이미 들어 있다**(엔진 dayStatus가 `open`을 nowHms까지 가산 — 근태엔진.js:242).
+     구판은 그 값에 알약이 자기 시계로 잰 열린 구간을 **또** 더했다 = 이중 계산.
+     2026-08-03 현아쌤 신고가 정확히 이것: 11:09 출근·11:30에 **41분**(=서버 20 + 알약 21).
+     그리고 "시간이 갑자기 늘어날 때가 있어요"도 같은 뿌리다 — 조회 사이엔 1분에 1분씩 정상으로 흐르다가,
+     3분마다 조회가 오는 순간 서버 몫이 3분 커져 **화면이 3분 껑충** 뛴다. 게이지도 두 배로 찼다.
+   ⇒ 열린 구간이 안 섞인 `closedSec`(닫힌 구간 합·초)에만 우리 시계를 얹는다.
+     닫힌초+열린초를 합한 **뒤에 한 번만** 버리는 것도 의도다 — 앱 `paintOutWarn`과 같은 식이라
+     같은 순간 앱과 알약이 다른 숫자를 말하지 않는다(앱은 이 함정을 알고 이미 이렇게 계산하고 있었다). */
+function workedMinNow(){
+  if (!snap) return 0;
+  // 구 서버(closedSec 없음)=서버 값 그대로 쓴다. 조회 주기만큼 늦게 갱신될 뿐, 틀리지는 않는다.
+  if (typeof snap.closedSec !== 'number') return snap.workedMin || 0;
+  var openSec = snap.open ? Math.max(0, serverSecNow() - hms2sec(snap.open)) : 0;
+  return Math.floor((snap.closedSec + openSec) / 60);
+}
+/* 열린 구간을 **지금 닫는다**(도장 낙관 갱신 공용).
+   ⚠️`workedMin`은 손대지 않는다 — 서버 값엔 그 구간이 이미 들어 있어서, 더하면 구판의 이중 계산이 되살아난다. */
+function closeOpenSeg(){
+  if (!snap || !snap.open) return;
+  if (typeof snap.closedSec === 'number') snap.closedSec += Math.max(0, serverSecNow() - hms2sec(snap.open));
+}
+
 /* 앱에서 찍은 도장을 알약 화면에 **먼저** 반영한다(서버 재조회를 기다리지 않는다).
      punch()의 낙관적 갱신과 같은 계산을 쓴다 — 다른 데서 찍었을 뿐 결과는 같다. */
 function applyRemotePunch(kind){
@@ -469,7 +491,7 @@ function applyRemotePunch(kind){
   var nowH = sec2hms(serverSecNow());
   if (kind === 'in') { if (!snap.open) snap.open = nowH; }
   else if (kind === 'out' && snap.open) {
-    snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
+    closeOpenSeg();
     snap.open = null; snap.lastOut = nowH;
   }
   render();
@@ -481,9 +503,8 @@ function view(){
   if (!snap.work) return { text:'휴무일', on:false, warn:false, dim:true, gauge:0 };
   var need = Math.max(1, (snap.planMin||0) - (snap.leaveMin||0));
   if (snap.external) return { text:'사무실 근무', on:true, warn:false, dim:false, gauge:100 };
-  var worked = snap.workedMin || 0;
+  var worked = workedMinNow();
   if (snap.open) {
-    worked += Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
     return { text:fmt(worked), on:true, warn:SHOW_LATE && !!snap.late, dim:false, gauge:Math.min(100, worked/need*100) };
   }
   if (snap.lastOut) {
@@ -513,7 +534,7 @@ function punch(kind){
   var nowH = sec2hms(serverSecNow());
   if (kind === 'in') { snap.open = nowH; actAt = Date.now(); }
   else {
-    snap.workedMin = (snap.workedMin||0) + Math.floor(Math.max(0, serverSecNow() - hms2sec(snap.open))/60);
+    closeOpenSeg();
     snap.open = null; snap.lastOut = nowH;
   }
   showDone(kind);             // 접기 전에 **찍혔다는 것을 보여준다**(유성 지시 — 구판은 말없이 접혔다)
