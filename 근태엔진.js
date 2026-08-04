@@ -236,11 +236,17 @@ var AttEngine = (function () {
       if (oi < outs.length) { segs.push([ins[k], outs[oi]]); oi++; }
       else open = ins[k];
     }
-    var workedSec = 0;
-    for (var s = 0; s < segs.length; s++) workedSec += toMinSec(segs[s][1]) - toMinSec(segs[s][0]);
+    /* 근무 시간 = **분 단위**(초 버림, 2026-08-04 유성 확정 — 현아쌤 "15:06 적었는데 3시간 59분").
+       구판은 여기서만 초로 셌다. 도장에는 초가 붙는데(11:06:**40**) 손으로 적는 퇴근은 15:06:**00**이라,
+       같은 분을 적어도 40초가 모자라 늘 1분씩 덜 나왔다 — 회사 PC 정상 근무일도 대부분 '3시간 59분'이 된다.
+       더 나쁜 건 **판정이 안 보이는 초에 좌우된 것**: 11:05:00 출근이면 미달 5분(오차 이내=차감 0),
+       11:05:**40**이면 미달 6분(오차 초과=**6분 전체 차감**) — 화면엔 둘 다 "11:05 출근"이라 이유를 알 길이 없다.
+       ⇒ 지각 판정이 이미 분으로 세고 있었으므로(아래 `inMin`) 같은 단위로 통일한다. `toMin`이 초를 버린다.
+       원장의 원본 기록은 초까지 그대로 두고 **판정만** 분으로 본다(§48 기록은 손대지 않음). */
+    var workedMin = 0;
+    for (var s = 0; s < segs.length; s++) workedMin += toMin(segs[s][1]) - toMin(segs[s][0]);
     var isToday = dateStr === todayStr;
-    if (open && isToday && nowHms) workedSec += Math.max(0, toMinSec(nowHms) - toMinSec(open));
-    var workedMin = Math.floor(workedSec / 60);
+    if (open && isToday && nowHms) workedMin += Math.max(0, toMin(nowHms) - toMin(open));
 
     var firstIn = ins.length ? ins[0] : null;
     var late = false, lateMin = 0;

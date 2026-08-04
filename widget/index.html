@@ -478,18 +478,23 @@ function serverSecNow(){ if (!snap) return 0; return hms2sec(snap.nowHms) + Math
    ⇒ 열린 구간이 안 섞인 `closedSec`(닫힌 구간 합·초)에만 우리 시계를 얹는다.
      닫힌초+열린초를 합한 **뒤에 한 번만** 버리는 것도 의도다 — 앱 `paintOutWarn`과 같은 식이라
      같은 순간 앱과 알약이 다른 숫자를 말하지 않는다(앱은 이 함정을 알고 이미 이렇게 계산하고 있었다). */
+/* ⏱️2026-08-04(유성 확정 "초 버려"): 근무 시간은 **분 단위**다 — 열린 구간도 분으로 센다.
+     서버 엔진·앱이 같은 날 같은 규칙으로 바뀌었으므로 여기만 초로 세면 알약이 1분 덜 말한다.
+     덤: 눈금이 서버 시계의 분이 넘어가는 순간에 정확히 오른다(시계처럼). */
+function minOf(hms){ return Math.floor(hms2sec(hms) / 60); }
+function serverMinNow(){ return Math.floor(serverSecNow() / 60); }
 function workedMinNow(){
   if (!snap) return 0;
   // 구 서버(closedSec 없음)=서버 값 그대로 쓴다. 조회 주기만큼 늦게 갱신될 뿐, 틀리지는 않는다.
   if (typeof snap.closedSec !== 'number') return snap.workedMin || 0;
-  var openSec = snap.open ? Math.max(0, serverSecNow() - hms2sec(snap.open)) : 0;
-  return Math.floor((snap.closedSec + openSec) / 60);
+  var openMin = snap.open ? Math.max(0, serverMinNow() - minOf(snap.open)) : 0;
+  return Math.floor(snap.closedSec / 60) + openMin;   // closedSec은 서버가 이미 분으로 절사해 보낸다(60의 배수)
 }
 /* 열린 구간을 **지금 닫는다**(도장 낙관 갱신 공용).
    ⚠️`workedMin`은 손대지 않는다 — 서버 값엔 그 구간이 이미 들어 있어서, 더하면 구판의 이중 계산이 되살아난다. */
 function closeOpenSeg(){
   if (!snap || !snap.open) return;
-  if (typeof snap.closedSec === 'number') snap.closedSec += Math.max(0, serverSecNow() - hms2sec(snap.open));
+  if (typeof snap.closedSec === 'number') snap.closedSec += Math.max(0, serverMinNow() - minOf(snap.open)) * 60; // 분 절사(2026-08-04)
 }
 
 /* 앱에서 찍은 도장을 알약 화면에 **먼저** 반영한다(서버 재조회를 기다리지 않는다).

@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v73'; // 08-04 퇴근 시각을 24시간제(1506)로 적어도 받는다 + 안 되는 이유를 상태별로 + 토스트가 시트를 안 가림
+var CACHE = 'tf-attend-v74'; // 08-04 근무 시간도 분 단위(초 버림) — 11:06 출근+15:06 퇴근=정확히 4시간 / v73 퇴근 시각 24시간제 수용
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다

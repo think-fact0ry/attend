@@ -1372,10 +1372,12 @@ function paintOutWarn(r) {
     if (!t) { $('outWarn').style.display = 'none'; return; } // 아직 안 적었으면 계산할 게 없다
     // ⚠️ r.workedMin은 열린 구간을 **지금까지**로 이미 세고 있다(엔진 dayStatus: open이면 nowHms까지 가산).
     //   그대로 더하면 이중 계산이라 밤에 열면 항상 '미달 0'이 됐다 → 닫힌 구간만 합하고 열린 구간은 적은 시각으로 닫는다.
-    function toSec(v) { return (+v.slice(0, 2)) * 3600 + (+v.slice(3, 5)) * 60 + (+(v.slice(6, 8) || 0)); }
-    var closedSec = 0;
-    (r.segments || []).forEach(function (s) { closedSec += toSec(s[1]) - toSec(s[0]); });
-    workedMin = Math.floor((closedSec + Math.max(0, toSec(t + ':00') - toSec(r.open))) / 60);
+    // ⏱️2026-08-04: 구간 길이는 **분**으로 센다(초 버림 — 엔진 `dayStatus`·`toMin`과 같은 규칙).
+    //   구판은 초로 합해서, 손으로 적은 퇴근(초=00)이 초가 붙은 출근을 못 따라잡아 늘 1분씩 덜 나왔다.
+    function toMinL(v) { return (+v.slice(0, 2)) * 60 + (+v.slice(3, 5)); }
+    var closedMin = 0;
+    (r.segments || []).forEach(function (s) { closedMin += toMinL(s[1]) - toMinL(s[0]); });
+    workedMin = closedMin + Math.max(0, toMinL(t) - toMinL(r.open));
   }
   var short0 = r.plan.work ? Math.max(0, r.plan.planMin - workedMin - leaveMin) : 0;
   var grace = (state.db && state.db.settings.graceMin) || 0;
