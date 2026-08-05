@@ -614,7 +614,12 @@ function punch(kind){
       //   PIN 화면으로 떨어져 **이유를 보여줄 자리가 없었다**(`pErr`는 도장 화면 안에 있다).
       //   앱도 완료 인터랙션 뒤 1.5초에 잠그므로 "퇴근 도장 즉시 종료"(확정 결정 ①)와 어긋나지 않는다.
       if (kind === 'out') { outPending = false; endActSession(); }
-      fetchTick();
+      // 🚀서버가 최신 상태를 함께 줬으면 **다시 물어보지 않는다**(GAS 왕복 하나 = 약 2초, 2026-08-06 실측).
+      //   못 받았으면(구 서버·조립 실패) 예전처럼 한 번 더 묻는다 — 안전한 실패.
+      if (r.tick && r.tick.ok) {
+        snap = r.tick; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+        render(); schedule(true);
+      } else fetchTick();
     })
     // 무응답=서버에 남았을 수 있다 → 되돌리지 말고 다시 묻는다.
     //   ⚠️퇴근이 남았을 수도 있으므로 **세션은 닫는 쪽**으로 기운다(다음 사람이 PIN 없이 찍는 것보다 한 번 더 묻는 게 낫다).
