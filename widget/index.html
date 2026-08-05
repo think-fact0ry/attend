@@ -261,11 +261,17 @@ var INST = (function(){
 
 /* ══════════ 호스트와의 대화 ══════════ */
 function toHost(o){ if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(o)); }
+/* 알약이 무슨 일을 겪었는지 호스트 로그(edge.log)에 한 줄 — 2026-08-06 신설.
+   알약 쪽 흔적이 **하나도 없어서** "출근했는데 시간이 안 돌아간다"를 추측으로만 좇아야 했다.
+   ⚠️같은 줄은 다시 안 보낸다(조회가 60초마다 도는데 같은 상태를 매번 남기면 로그가 쓸모없어진다).
+   ⚠️토큰·PIN은 절대 담지 않는다(0-10) — 있고 없고만. */
+var lastDiag = '';
+function diag(m){ if (m === lastDiag) return; lastDiag = m; toHost({ type:'diag', m: m }); }
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', function(e){
     var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch(_){ return; }
     if (!m || !m.type) return;
-    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; fetchTick(); }
+    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; diag('auth 받음 ' + (auth ? ('O emp=' + auth.emp) : 'X(세션 없음)')); fetchTick(); }
     if (m.type === 'signout') { auth = null; act = null; snap = null; render(); }
     // ⚡`kind`가 실려 오면 = **앱에서 도장이 서버까지 다녀왔다**는 뜻 → 다시 물어보지 않고 바로 반영한다.
     //   구판은 여기서 tick 왕복(1.2~1.5초)을 한 번 더 돌아서, 앱 punch(1.5~2초) 뒤에도 초록이 늦게 켜졌다.
@@ -460,16 +466,18 @@ var bootSending = false;
 
 /* ══════════ 서버 조회(읽기 전용) ══════════ */
 function fetchTick(){
-  if (!auth) { render(); schedule(); return; }
+  if (!auth) { diag('조회 안 함 — 세션 없음'); render(); schedule(); return; }
   if (inFlight) return;
   inFlight = true; inFlightAt = performance.now();
   ask({ action:'tick', token: auth.token, emp: auth.emp })
     .then(function(r){
       inFlight = false;
       if (!r || !r.ok) {
+        diag('조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
         if (r && r.code === 'auth') { auth = null; act = null; snap = null; toHost({ type:'need-auth' }); }
         render(); schedule(false); return;
       }
+      diag('조회 ok · 출근 ' + (r.open ? '있음(' + r.open + ')' : '없음') + ' · 근무일 ' + (r.work ? 'Y' : 'N'));
       snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
       if (bootRep) sendBoot();   // 네트워크가 살아난 걸 방금 확인했다 — 못 보낸 시작 보고를 지금 보낸다
       render(); schedule(true);
@@ -580,6 +588,7 @@ function punch(kind){
   ask(body)
     .then(function(r){
       punching = false;
+      diag('도장 ' + kind + ' → ' + (r && r.ok ? 'ok' : ('실패: ' + ((r && (r.error || r.code)) || '빈 응답'))));
       // 실패가 **확인된** 경우에만 세션을 되살린다 — 그 자리에 이유를 보여줘야 하므로 도장 화면으로 돌아간다.
       if (!r || !r.ok) { outPending = false; punchFailed(prev, (r && r.error) || '기록이 안 됐어요'); return; }
       // ⭐세션 종료는 **서버가 받았다고 답한 뒤**(07-31). 낙관적으로 먼저 끝냈더니 실패했을 때
