@@ -788,6 +788,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <!-- 21차: 종업을 지난 뒤 폰에서 남길 때만 뜨는 시각 칸(빈칸 — 기본값을 종업으로 채우면 가만히 있는 게 유리해진다, 유성 07-28) -->
     <div id="outTw" style="display:none;margin-bottom:14px"></div>
     <div class="cw" id="outWarn" style="display:none"></div>
+    <!-- 26차-6: 시각 입력 모드에서만 뜨는 1탭 경로. 문구에 **지금 시각을 박아** 무엇이 기록되는지 누르기 전에 보인다
+         (구판은 회사 PC에서 시각을 아예 안 물어 늦게 누른 시각이 조용히 박혔다 — 현아쌤 08-06 "5시간이 기록") -->
+    <button class="btn fill" id="outNow" style="display:none;margin-bottom:10px">지금 나왔어요</button>
     <button class="btn fill" id="outGo">퇴근하기</button>
   </div>
 
@@ -1340,29 +1343,46 @@ $('btnIn').addEventListener('click', function () {
   doPunch('in');
 });
 /* 퇴근 = 2단계(논모달 시트).
-   21차(유성 07-28): 종업을 지난 뒤 **폰**에서 남길 땐 시각 칸이 뜬다(빈칸 — 이미 퇴근한 뒤라 '지금'이 틀린 값이고,
-   기본값을 종업으로 채우면 가만히 있는 게 유리해진다). 종업 전이면 지금 시각 그대로 = 회사 PC와 같은 흐름. */
+   21차(유성 07-28): 종업을 지난 뒤 남길 땐 시각 칸이 뜬다(빈칸 — 이미 퇴근한 뒤라 '지금'이 틀린 값이고,
+   기본값을 종업으로 채우면 가만히 있는 게 유리해진다). 종업 전이면 지금 시각 그대로.
+   🔴26차-6(2026-08-06 현아쌤 "퇴근을 늦게 눌렀는데 컴퓨터로 했더니 5시간이 기록"): 구판 조건이 `!r.deviceOk`라
+   **회사 PC를 통째로 제외**했다 — 폴더 CLAUDE.md의 21차 확정("폰·회사 PC 공통")과 어긋난 구현이었고,
+   그래서 회사 PC에서 한 시간 늦게 누르면 그 시각이 조용히 박혔다. 기기와 무관하게 **종업이 지났으면
+   '지금'은 틀릴 수 있는 값**이다. 대신 종업 직후 정시 퇴근이 매번 손입력이 되지 않게 [지금 나왔어요] 1탭을 같이 둔다(유성 픽 A). */
 var outLateMode = false; // 이 시트가 시각 입력 모드인가(outGo가 읽는다)
 $('btnOut').addEventListener('click', function () {
   if ($('btnOut').disabled) return;
   var r = state.status;
   var nowM = (+r.nowHms.slice(0, 2)) * 60 + (+r.nowHms.slice(3, 5));
   var endM = r.plan.end ? (+r.plan.end.slice(0, 2)) * 60 + (+r.plan.end.slice(3, 5)) : 0;
-  outLateMode = !r.deviceOk && !!r.plan.end && nowM >= endM;
+  outLateMode = !!r.plan.end && nowM >= endM;
   var tw = $('outTw');
   if (outLateMode) {
     $('outTitle').textContent = '몇 시에 나오셨어요?'; // §2.1-4 예외 2ⓑ(상황을 추정해 물을 때) — 시각을 모르니 묻는다
     $('outInfo').textContent = ampm(r.open) + '에 출근했어요';
     tw.style.display = 'block'; tw.innerHTML = '';
-    twMount(tw, r.plan.end || '15:00', function () { paintOutWarn(r); }); // 오전·오후 세그 초기 선택만 종업 기준, 숫자 칸은 빈칸
+    twMount(tw, r.plan.end || '15:00', function () { paintOutWarn(r); outRank(); }); // 오전·오후 세그 초기 선택만 종업 기준, 숫자 칸은 빈칸
+    // 버튼에 **지금 시각을 박는다** — 무엇이 기록되는지 누르기 전에 보여야 한다(구판 사고의 핵심이 그거였다)
+    $('outNow').textContent = ampm(r.nowHms) + '에 나왔어요';
+    $('outNow').style.display = 'block';
   } else {
     $('outTitle').textContent = '지금 퇴근할까요?';
     $('outInfo').textContent = ampm(r.nowHms) + ' - 오늘 ' + fmtMin(r.workedMin) + ' 근무했어요';
     tw.style.display = 'none'; tw.innerHTML = '';
+    $('outNow').style.display = 'none';
   }
+  outRank();
   paintOutWarn(r);
   $('outSheet').classList.add('on');
 });
+/* 두 버튼의 위계는 **적었는지에 따라 뒤바뀐다** — 화면당 fill(1차 액션)은 언제나 하나다(docs/1 §4.14).
+   안 적었으면 '지금 나왔어요'가 주 경로, 적었으면 그 시각으로 '퇴근하기'가 주 경로. */
+function outRank() {
+  if (!outLateMode) return;
+  var wrote = !!($('outTw').value24 && $('outTw').value24());
+  $('outNow').className = 'btn ' + (wrote ? 'weak' : 'fill');
+  $('outGo').className = 'btn ' + (wrote ? 'fill' : 'weak');
+}
 // 소정 미달 경고 — 시각 입력 모드에선 적은 시각으로 다시 계산한다(안 그러면 "왜 연차가 줄었지?"가 된다)
 function paintOutWarn(r) {
   var leaveMin = r.leaves.reduce(function (a, l) { return a + l.hours * 60; }, 0);
@@ -1432,6 +1452,11 @@ $('outGo').addEventListener('click', function () {
   }
   hideSheet();
   doPunch('out');
+});
+// 26차-6: 방금 나온 경우의 1탭 — 적어 둔 게 있어도 **누른 대로** 지금 시각으로 간다(버튼 문구가 그 시각을 이미 보여준다).
+$('outNow').addEventListener('click', function () {
+  hideSheet();
+  doPunch('out');   // time 없이 = 서버가 받은 시각(구판 회사 PC 흐름과 동일)
 });
 function showDone(txt, sub, wait) { // wait=true → 주황 시계(신청 대기, §10.8)
   $('doneTxt').textContent = txt; $('doneSub').textContent = sub || '';
