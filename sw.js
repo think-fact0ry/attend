@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v74'; // 08-04 근무 시간도 분 단위(초 버림) — 11:06 출근+15:06 퇴근=정확히 4시간 / v73 퇴근 시각 24시간제 수용
+var CACHE = 'tf-attend-v75'; // 08-05 오프라인 폴백이 알약 창에 앱 본체를 주던 것 수정(캐시버스터가 매치를 빗나가게 했다) / v74 근무 시간 분 단위(초 버림)
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다
@@ -37,11 +37,22 @@ self.addEventListener('fetch', function(e){
     fetch(req, isDoc ? { cache: 'no-cache' } : undefined).then(function(res){
       if (res && res.ok && new URL(req.url).origin === self.location.origin){
         var copy = res.clone();
-        caches.open(CACHE).then(function(c){ c.put(req, copy); });
+        // ⚠️문서는 **버스터를 뗀 주소로** 저장한다. 알약·앱 창은 열 때마다 `?b=<틱>`을 새로 붙이므로(exe Cfg.Bust)
+        //   요청 그대로 저장하면 실행할 때마다 캐시에 새 항목이 하나씩 쌓이고, 정작 오프라인 때는
+        //   그 어느 것도 다시 안 맞는다(다음 부팅은 또 다른 버스터로 물어보므로).
+        var key = isDoc ? new URL(req.url).pathname : req;
+        caches.open(CACHE).then(function(c){ c.put(key, copy); });
       }
       return res;
     }).catch(function(){
-      return caches.match(req).then(function(r){ return r || caches.match('./index.html'); });
+      // 부팅 직후처럼 네트워크가 아직 없을 때 — 캐시에서 꺼내 준다.
+      //   ⚠️`ignoreSearch`가 없으면 버스터 때문에 **무조건 빗나가서** 아래 폴백으로 떨어졌다.
+      //   그리고 폴백은 **그 창이 원래 열려던 것**이어야 한다. 구판은 알약 창에도 앱 본체(./index.html)를 줘서
+      //   120×34 창에 앱이 통째로 뜨고, 상태 메시지가 영영 안 와 알약이 하얗게 굳었다(2026-08-05 검수).
+      var home = /\/widget\//.test(new URL(req.url).pathname) ? './widget/index.html' : './index.html';
+      return caches.match(req, { ignoreSearch: true }).then(function(r){
+        return r || caches.match(home, { ignoreSearch: true });
+      });
     })
   );
 });

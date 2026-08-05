@@ -197,6 +197,7 @@ var H_PILL = 34, H_PIN = 306, H_OK = 168, H_ACT = 178, H_ERR = 44;
 /* ══════════ 상태 ══════════ */
 var auth = null;        // 알약에 시간을 띄우기 위한 **읽기 전용** 세션(호스트가 준다)
 var snap = null, snapAt = 0, lastOkAt = 0, bootAt = performance.now();
+var bootRep = null;   // 호스트가 넘긴 시작 시각 보고 — 서버가 받아줄 때까지 들고 있는다
 var inFlight = false, inFlightAt = 0, dayRolled = false, fails = 0;
 var lastPerf = 0, lastWall = 0, hbTimer = null, tickTimer = null, lastSent = '';
 var open = false, step = 'pin', pin = '', punching = false, punchAt = 0, verifying = false, verifyAt = 0;
@@ -271,6 +272,8 @@ if (window.chrome && window.chrome.webview) {
     //   서버 진실은 이어서 도는 fetchTick 이 덮는다(틀릴 일이 없다 — 앱이 성공 응답을 받은 뒤에만 온다).
     if (m.type === 'wake')    { if (m.kind) applyRemotePunch(m.kind); fetchTick(); }
     if (m.type === 'dragend') { endHold(); }
+    // 호스트가 "나 언제 떴는지"를 넘겨준다 → 서버에 올려 관리자 화면에서 보이게 한다(2026-08-05).
+    if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at }; sendBoot(); }
   });
 }
 
@@ -438,6 +441,23 @@ function ask(body, ms){
   );
 }
 
+/* ══════════ 시작 시각 보고(진단 전용) ══════════
+   2026-08-05: "위젯이 안 보여요 → 5분 뒤 생겼어요"를 사후에 확인할 방법이 하나도 없었다.
+   트레이 아이콘은 프로세스가 뜨는 즉시 만들어지므로 그 5분은 **프로세스가 없던 시간**인데,
+   그걸 증명하려면 사람 기억에 물어야 했다. 이제 위젯이 스스로 남긴다.
+   ⚠️등록된 출퇴근 PC에서만 보낸다 — 무인증 쓰기 표면을 새로 열지 않으려고 이미 그 PC에 있는 기기 토큰을 쓴다.
+   ⚠️네트워크가 없으면 보고도 실패한다(부팅 직후가 정확히 그 상황) → 성공할 때까지 들고 있다가 조회가 될 때 같이 보낸다. */
+function sendBoot(){
+  if (!bootRep || bootSending) return;
+  var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch(e){}
+  if (!dev || !dev.id) { bootRep = null; return; }
+  bootSending = true;
+  ask({ action:'widget_boot', device: dev.id, deviceToken: dev.token, up: bootRep.up, at: bootRep.at })
+    .then(function(r){ bootSending = false; if (r && r.ok) bootRep = null; })
+    .catch(function(){ bootSending = false; });
+}
+var bootSending = false;
+
 /* ══════════ 서버 조회(읽기 전용) ══════════ */
 function fetchTick(){
   if (!auth) { render(); schedule(); return; }
@@ -451,6 +471,7 @@ function fetchTick(){
         render(); schedule(false); return;
       }
       snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+      if (bootRep) sendBoot();   // 네트워크가 살아난 걸 방금 확인했다 — 못 보낸 시작 보고를 지금 보낸다
       render(); schedule(true);
     })
     .catch(function(){ inFlight = false; render(); schedule(false); });
