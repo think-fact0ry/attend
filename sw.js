@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v77'; // 08-06 알약 진단 로그(diag) — '출근했는데 시간이 안 돌아간다' 추적용 / v76 퇴근 시각 회사 PC
+var CACHE = 'tf-attend-v78'; // 08-06 도장 중에 온 조회 응답이 방금 찍은 도장을 지우던 것 수정(유성 '출근했는데 시간이 안 돌아가') / v77 진단 로그
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다
