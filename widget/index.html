@@ -280,7 +280,11 @@ if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', function(e){
     var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch(_){ return; }
     if (!m || !m.type) return;
-    if (m.type === 'auth')    { auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null; diag('auth 받음 ' + (auth ? ('O emp=' + auth.emp) : 'X(세션 없음)')); fetchTick(); }
+    // ⚠️사람이 바뀌면(공용 PC 계정 전환) 옛 사람의 화면을 들고 있지 않는다 — 다음 조회가 올 때까지
+    //   남의 근무 시간이 알약에 떠 있게 된다. 도장 세션(act)도 그 사람 것이므로 같이 버린다.
+    if (m.type === 'auth')    { var pe = auth && auth.emp; auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null;
+                                if (!auth || auth.emp !== pe) { snap = null; act = null; actAt = 0; }
+                                diag('auth 받음 ' + (auth ? ('O emp=' + auth.emp) : 'X(세션 없음)')); fetchTick(); }
     if (m.type === 'signout') { auth = null; act = null; snap = null; render(); }
     // ⚡`kind`가 실려 오면 = **앱에서 도장이 서버까지 다녀왔다**는 뜻 → 다시 물어보지 않고 바로 반영한다.
     //   구판은 여기서 tick 왕복(1.2~1.5초)을 한 번 더 돌아서, 앱 punch(1.5~2초) 뒤에도 초록이 늦게 켜졌다.
@@ -489,15 +493,27 @@ function fetchTick(){
   if (!auth) { diag('조회 안 함 — 세션 없음'); render(); schedule(); return; }
   if (inFlight) { pendingTick = true; return; }   // 버리지 말 것 — 도장 직후의 이 한 번이 화면을 되살린다
   inFlight = true; inFlightAt = performance.now();
-  ask({ action:'tick', token: auth.token, emp: auth.emp })
+  /* 🔴2026-08-06(유성 "출근을 찍었는데 알약이 아직 회색 근태"): **늦게 온 실패 응답이 이미 바뀐 세션을 버렸다.**
+       앱이 `store.token`·`store.emp`를 따로 저장해 호스트로 **새 토큰 + 옛 사번**이 한 번 갔고(계정 전환),
+       서버는 그 짝을 정직하게 거절했다(`code:'auth'`). 그 1초 사이 알약의 `auth`는 이미 올바른 짝으로
+       교체돼 있었는데도 옛 요청의 실패를 보고 **세션을 통째로 버렸다** → 호스트도 `need-auth`로 세션 삭제
+       → 그 뒤 `fetchTick`이 전부 '세션 없음'으로 즉시 돌아가 **영영 회색**(앱에서 찍은 출근도 못 봄).
+     🔑26차-7(도장 중에 온 조회 응답이 방금 찍은 도장을 지웠다)과 **같은 부류**다 — 그땐 `snap`, 이번엔 `auth`.
+       ⇒ **어느 세션으로 나간 요청인지 붙잡아 두고, 돌아왔을 때 그게 아직 현재 세션인지 확인한다.** */
+  var sent = auth;
+  ask({ action:'tick', token: sent.token, emp: sent.emp })
     .then(function(r){
       inFlight = false;
+      // 응답이 도는 동안 세션이 바뀌었으면 이건 **옛 세션의 답**이다. 성공이든 실패든 지금 화면에 반영하지 않는다.
+      if (auth !== sent) { diag('조회 응답 무시 — 세션 바뀜'); pendingTick = false; fetchTick(); return; }
       // ⚠️도장이 비행 중이면 이 응답은 **도장 이전의 서버 상태**다. 덮으면 방금 찍은 게 사라진다.
       //   도장 응답이 곧 `fetchTick()`을 다시 부르므로 여기서 버려도 잃는 게 없다.
       if (punching) { diag('조회 응답 무시 — 도장 중'); schedule(true); return; }
       if (!r || !r.ok) {
         diag('조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
         if (r && r.code === 'auth') { auth = null; act = null; snap = null; toHost({ type:'need-auth' }); }
+        // ⚠️미뤄둔 조회는 **실패 분기에서도** 소비한다 — 안 하면 `pendingTick`이 true로 굳어 다음 겹침을 또 삼킨다.
+        if (pendingTick) { pendingTick = false; render(); fetchTick(); return; }
         render(); schedule(false); return;
       }
       diag('조회 ok · 출근 ' + (r.open ? '있음(' + r.open + ')' : '없음') + ' · 근무일 ' + (r.work ? 'Y' : 'N'));

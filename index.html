@@ -909,7 +909,13 @@ var $ = function (id) { return document.getElementById(id); };
 // 데스크톱 위젯 껍데기(exe)에 세션을 넘긴다 — **WebView2 안일 때만**. 폰·브라우저엔 `window.chrome.webview`가
 //   없어 아무 일도 안 일어난다(2026-07-30). 껍데기는 이 토큰으로 알약에 근무시간을 띄우고, 앱의 잠금 규칙은
 //   그대로 둔다("잠겨도 위젯은 보이고 앱은 PIN" — 유성 확정). setter 한 곳에 걸어 로그인 경로 3개를 다 덮는다.
-function _hostAuth_() {
+/* 🔴2026-08-06: **토큰과 사번이 따로 저장돼 짝이 안 맞는 조합이 한 번 나갔다.**
+     로그인은 `store.token = r.token; store.emp = r.emp;` 두 줄이고 세터마다 이 함수가 돌았다 →
+     그 사이 **새 토큰 + 옛 사번**이 껍데기로 갔고(계정 전환 때 특히), 서버는 그 짝을 정직하게 거절한다.
+     알약이 그 실패를 보고 세션을 버려 "출근했는데 회색 근태"가 됐다(정본=scripts/19 CLAUDE.md 26차-10).
+   ⇒ 같은 작업이 끝난 뒤 **한 번만** 보낸다. 두 세터가 연달아 불려도 나가는 건 완성된 짝 하나다. */
+var _hostAuthT = null;
+function _hostAuthSend_() {
   try {
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage(JSON.stringify({
@@ -919,6 +925,10 @@ function _hostAuth_() {
       }));
     }
   } catch (e) { /* 껍데기가 없으면 무해 */ }
+}
+function _hostAuth_() {
+  if (_hostAuthT) return;
+  _hostAuthT = setTimeout(function () { _hostAuthT = null; _hostAuthSend_(); }, 0);
 }
 var store = {
   get token() { return localStorage.getItem('att_token') || ''; },
