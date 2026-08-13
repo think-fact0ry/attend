@@ -276,6 +276,11 @@ function diag(m){ if (m === lastDiag) return; lastDiag = m; toHost({ type:'diag'
      같은 구멍이 앱 퇴근·폰 퇴근·관리자 정정·창 닫힘에 공통이라 여기 한 곳에서 막는다. */
 var recheckT = null;
 function recheckSoon(ms){ clearTimeout(recheckT); recheckT = setTimeout(function(){ fetchTick(); }, ms || 4000); }
+/* 앱 창이 지금 열려 있나 — **호스트가 알려준 것만** 쓴다(2026-08-13, 26차-11).
+   ⚠️알약이 스스로 세면 안 된다("내가 열었으니 열려 있겠지"): 트레이 메뉴·작업표시줄 고정 아이콘·헤더 −·
+   ESC·퇴근 자동 닫기까지 여는·닫는 길이 6개라, 알약이 모르는 사이에 바뀌는 경로가 더 많다.
+   같은 원장을 두 표면이 각자 그리면 어긋난다는 게 26차-7·26차-10의 교훈이다 — 진실은 호스트 하나. */
+var appOpen = false;
 if (window.chrome && window.chrome.webview) {
   window.chrome.webview.addEventListener('message', function(e){
     var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch(_){ return; }
@@ -294,6 +299,8 @@ if (window.chrome && window.chrome.webview) {
     if (m.type === 'dragend') { endHold(); }
     // 호스트가 "나 언제 떴는지"를 넘겨준다 → 서버에 올려 관리자 화면에서 보이게 한다(2026-08-05).
     if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at }; sendBoot(); }
+    // 앱 창이 열리고 닫힐 때마다 호스트가 보내준다 → 버튼 글자를 실제 동작에 맞춘다(26차-11).
+    if (m.type === 'appwin')  { var was = appOpen; appOpen = !!m.open; if (was !== appOpen) render(); }
   });
 }
 
@@ -718,7 +725,12 @@ function render(){
     var lateOut = working && !!(snap && snap.end) && serverSecNow() >= hms2sec(snap.end);
     $('pDo').textContent = working ? (lateOut ? (ampm(sec2hms(serverSecNow())) + '에 퇴근') : '퇴근') : '출근';
     $('pDo').style.display = (snap && snap.work && !snap.external) ? '' : 'none';
-    $('pOpen').textContent = lateOut ? '다른 시각에 나왔어요' : '근태 앱 열기';
+    /* 26차-11(유성 08-13 "앱이 열린 상태에서 중간위젯을 켜면 '근태 앱 닫기'로 표기되어야 맞음"):
+       호스트는 **이미 토글**이었다(`ToggleApp` — 열려 있으면 FadeClose). 동작은 옳은데 글자만 늘 '열기'라
+       누르기 전에 무슨 일이 날지 못 알려주는 버튼이었다(26차-6 "버튼 문구에 그 시각을 박는다"와 같은 결).
+       ⚠️열려 있으면 `lateOut`(다른 시각에 나왔어요)보다 '닫기'가 이긴다 — 그 버튼은 *앱으로 보내는* 길인데
+       이미 앱 안에 있으니 보낼 곳이 없다. */
+    $('pOpen').textContent = appOpen ? '근태 앱 닫기' : (lateOut ? '다른 시각에 나왔어요' : '근태 앱 열기');
   }
   sendState();
 }
