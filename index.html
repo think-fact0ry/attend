@@ -1657,6 +1657,34 @@ function showMissSheet(miss, r) {
   var sh = $('missSheet');
   var dateHead = '<div class="cdate">' + (+miss.date.slice(5, 7)) + '월 ' + (+miss.date.slice(8, 10)) + '일 (' + '일월화수목금토'[new Date(+miss.date.slice(0, 4), +miss.date.slice(5, 7) - 1, +miss.date.slice(8, 10)).getDay()] + ')</div>';
   function close() { sh.classList.remove('on'); $('blockDim').classList.remove('on'); ovBusy = false; }
+  /* 26차-11(2026-08-13 유성 "3버튼 누르면 한참 기다려야 다음 화면이 나옴"): **이 시트만 낙관적 렌더 계약에서
+     빠져 있었다**(§13-16·12차 유성 "바로 완료 페이지가 나와야지" — 정규 신청·취소·도장은 전부 낙관이다).
+     실측: 클릭 +150/+600/+1100ms에 배경색·글자·불투명도·커서가 전부 클릭 전과 같다. 유일한 변화인
+     `data-busy`엔 CSS가 하나도 없어 **응답이 올 때까지 화면이 완전히 정지**한다.
+     ⚠️'기다리는 걸 예쁘게 보여주기'로는 못 푼다 — GAS 왕복 바닥이 1.23초(실측 중앙값)인데다 서버가
+     응답 경로 안에서 솔라피 SMS까지 보낸다(`_extwork_`·`_request_`). 그래서 대기를 **없앤다**.
+     세 액션 모두 서버 거절 사유가 로컬 엔진으로 이미 걸러진 것들뿐이라(지난 근무일·absent 판정=miss 목록의
+     출처) 낙관이 안전하다. 실패하면 정규 경로와 같은 모양으로 되돌린다(rollback + openAlert — 완료를
+     이미 봤으므로 토스트로는 부족, §4.5). */
+  function missWrite(btn, ev, action, payload, showDoneFn) {
+    if (btn.dataset.busy) return; btn.dataset.busy = '1'; // 따닥 가드(12차 F — cid가 매번 새로 생겨 멱등이 안 걸린다)
+    close();                                   // 먼저 접는다 — ovBusy=false여야 renderOverlays가 다음 미기록일을 이어서 띄운다
+    var rollback = optimisticEvents([ev]);     // 로컬 원장 선삽입 → 메인·잔여·다음 시트가 즉시 갱신
+    state.applying = true;                     // 비행 중 폴링이 서버 원장(아직 이 이벤트가 없다)으로 되돌리는 레이스 차단
+    showDoneFn();                              // 완료 연출도 즉시(§4.6 — 서버를 기다리지 않는다)
+    var undo = function () {                   // 실패 복구: 이어서 뜬 시트를 걷어야 그 날 시트가 다시 뜬다(renderOverlays는 ovBusy면 그냥 돌아간다)
+      state.applying = false; delete btn.dataset.busy;
+      hideBlockSheet(); ovBusy = false;
+      rollback(); $('doneOv').classList.remove('on');
+    };
+    api(action, payload, true).then(function (rr) {
+      if (!rr.ok) { undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', rr.error + ' - 다시 해 주세요'); return; }
+      state.applying = false; delete btn.dataset.busy;
+      adoptOrSync(rr);                         // 서버 진실 채택(쓰기 응답에 sync 동봉 — 왕복 1회)
+    }).catch(function () {
+      undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', '연결이 안 돼요. 다시 해 주세요');
+    });
+  }
   if (miss.kind === 'out') { // 케이스 A — 퇴근만 없음: 시각 직접 입력(21차 — 빈칸, 기본값 폴백 폐기)
     sh.innerHTML = dateHead + '<div class="ct">몇 시에 나오셨어요?</div><div id="missTw"></div><button class="btn fill" id="missGo">퇴근 시각 남기기</button>';
     twMount(sh.querySelector('#missTw'), miss.end || '15:00');
@@ -1664,13 +1692,13 @@ function showMissSheet(miss, r) {
       var b = this;
       var t = sh.querySelector('#missTw').value24();
       if (!t) { sh.querySelector('#missTw').bad(); return; }
-      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F — cid가 매번 새로 생겨 멱등이 안 걸린다)
+      // 케이스 A도 같은 침묵이었다 — 유성 신고는 3버튼뿐이었지만 갈림길은 물어서 가르지 않고 양쪽 다 고친다(26차-5).
+      //   src=서버 `_amend_`와 같은 규약(등록 PC면 기기 id, 아니면 'phone') — 캘린더 '직접 입력' 뱃지가 낙관 구간에도 맞게 뜬다.
       withPin(function (p) {
-        api('amend', { date: miss.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
-          delete b.dataset.busy;
-          if (!rr.ok) { toast(rr.error); return; }
-          close(); toast('퇴근 시각을 남겼어요', true); adoptOrSync(rr);
-        }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+        missWrite(b,
+          { at: localStamp(), emp: store.emp, date: miss.date, type: '보정퇴근', val: t, flag: '보정', src: (state.db.deviceOk && store.dev) ? store.dev.id : 'phone' },
+          'amend', { date: miss.date, time: t, pin: p, cid: cid() },
+          function () { toast('퇴근 시각을 남겼어요', true); });
       });
     });
   } else { // 케이스 B — 둘 다 없음: 행복센터(fill) / 병가(gray) + 무급 3상태 문구(§10.14)
@@ -1687,25 +1715,22 @@ function showMissSheet(miss, r) {
       '<div class="cs2">' + subTxt + '</div>';
     function bindWork(id, place) {
       sh.querySelector(id).addEventListener('click', function () {
-        var b = this;
-        if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
-        api('extwork', { date: miss.date, place: place, cid: cid() }, true).then(function (rr) {
-          delete b.dataset.busy;
-          if (!rr.ok) { toast(rr.error); return; }
-          close(); showDone(place + ' 근무로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
-        }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+        var b = this, myCid = cid();
+        missWrite(b,
+          { at: localStamp(), emp: store.emp, date: miss.date, type: '외부근무', val: { place: place } },
+          'extwork', { date: miss.date, place: place, cid: myCid },
+          function () { showDone(place + ' 근무로 남겼어요', kDateShort(miss.date)); });
       });
     }
     bindWork('#missOff', '사무실');
     bindWork('#missHb', '행복센터');
     sh.querySelector('#missSick').addEventListener('click', function () {
-      var b = this;
-      if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
-      api('request', { kind: '병가', date: miss.date, hours: 4, cid: cid() }, true).then(function (rr) {
-        delete b.dataset.busy;
-        if (!rr.ok) { toast(rr.error); return; }
-        close(); showDone('병가로 남겼어요', kDateShort(miss.date)); adoptOrSync(rr);
-      }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요. 다시 시도해 주세요'); });
+      var b = this, myCid = cid();
+      // 병가=즉시 확정(승인 대기 아님) → 완료 연출도 초록 체크(정규 신청 경로 2057줄과 같은 이벤트 모양)
+      missWrite(b,
+        { at: localStamp(), emp: store.emp, date: miss.date, type: '병가', val: { hours: 4, half: '' } },
+        'request', { kind: '병가', date: miss.date, hours: 4, cid: myCid },
+        function () { showDone('병가로 남겼어요', kDateShort(miss.date)); });
     });
   }
   $('blockDim').classList.add('on');
