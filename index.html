@@ -86,6 +86,17 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .btn.weak{background:var(--green-bg);color:var(--green-dark)}
 .tlink{background:none;border:0;font:inherit;font-size:var(--fs-sm);color:var(--g500);cursor:pointer;transition:transform .12s}
 .tlink:active{transform:scale(.93)}
+/* ── 종료 확인 박스(§4.11-4 ex18, 26차-16 유성 "스와이프 두 번 해야 끌 수 있게") ──
+   값은 원칙 그대로 복제한다(태블릿 허브 `#exitHint`·06 `Apply.html .exithint`와 한 벌 — 앱 전 표면 공통):
+   다크 알약 #191f28·radius 99 / 왼쪽 28px 초록 원 안 흰 체크 / 글자 #F9FBFA 14.5px 600 / 2초.
+   ⚠️**자리만 attend 규칙을 따른다** — 태블릿엔 하단 고정 블록이 없어 28px 고정이지만, 여기엔 출퇴근 버튼과
+     열린 시트가 있다. `toastBottom()`(22차·26차-3)을 그대로 써서 그것들을 안 덮는다. 원칙이 정한 건 *박스*고
+     자리는 각 앱의 하단 규칙이 정한다 — 다르게 두면 여기서만 버튼을 가린다.
+   ⚠️pointer-events:none — 안내지 차단이 아니다(터치를 막지 않는다는 게 ex18 스펙의 일부). */
+#exitHint{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);z-index:2000;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px);background:#191f28;color:#F9FBFA;font-size:14.5px;font-weight:600;padding:9px 20px 9px 9px;border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap}
+#exitHint.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#exitHint .ck{width:28px;height:28px;border-radius:50%;background:var(--green600);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#exitHint .ck svg{width:15px;height:15px}
 .toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));height:auto;white-space:pre-line;line-height:1.5;transform:translateX(-50%); /* height:auto=.vsheet와 같은 이유(예방 — 두 줄 토스트가 눌리지 않게) / pre-line=두 문장 줄바꿈(21차-8 유성) / bottom=메인에선 toastBottom()이 인라인으로 올림(22차 — 출퇴근 버튼 위) */background:var(--g800);color:#fff;font-size:var(--fs-sm);font-weight:600;border-radius:12px;padding:12px 18px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:900;max-width:88vw;text-align:center}
 .toast.on{opacity:1}
 
@@ -926,6 +937,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   </div>
 
   <div class="toast" id="toast"></div>
+  <!-- 종료 확인(§4.11-4 ex18) — 태블릿 허브 #exitHint·06 Apply .exithint와 **같은 박스·같은 문구**(앱 전 표면 공통) -->
+  <div id="exitHint"><span class="ck"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>한 번 더 뒤로 가면 나가요.</div>
 </div>
 
 <script src="근태엔진.js"></script><!-- 서버와 동일 파일(scripts/19와 동기) — 파생을 클라에서: 월 이동·내역·내 정보=네트워크 0 -->
@@ -2404,9 +2417,24 @@ function closeTopLayer() {
   if ($('drawer').classList.contains('on')) { closeDrawer(); return true; }
   return false;
 }
+/* ⑤메인에서 뒤로 = **한 번으론 안 나간다**(26차-16 유성 "스와이프 두 번 해야 끌 수 있게").
+     구판은 ④"그대로 나가게 둔다"라 폰에서 **스와이프 한 번에 앱이 꺼졌다** — 근태는 출퇴근 도장이 걸린 앱이라
+     실수로 꺼지는 비용이 크다. §4.11-4(ex18) 스펙 그대로: 첫 뒤로 = 머무르며 안내박스, **2초 안에** 한 번 더 = 종료.
+     2초가 지나면 해제되어 다음 뒤로가 다시 첫 단계다(태블릿 허브·06 폼과 같은 값 — 세 표면이 한 벌). */
+var exitArmed = false, exitT = null;
+function showExitHint() {
+  var e = $('exitHint');
+  e.style.bottom = toastBottom() || '';   // 출퇴근 버튼·열린 시트 위로(attend 하단 규칙, 22차·26차-3)
+  e.classList.add('on');
+}
+function hideExitHint() { exitArmed = false; clearTimeout(exitT); $('exitHint').classList.remove('on'); }
 window.addEventListener('popstate', function () {
-  if (closeTopLayer()) { backGuardPush(); return; }
-  if (!$('s-main').classList.contains('on')) { go('main'); refreshMain(); backGuardPush(); }
+  // 겹을 닫거나 화면을 옮기는 뒤로가기는 '나가려는 뒤로'가 아니다 — 무장을 푼다(안 그러면 다음 한 번에 꺼진다)
+  if (closeTopLayer()) { hideExitHint(); backGuardPush(); return; }
+  if (!$('s-main').classList.contains('on')) { hideExitHint(); go('main'); refreshMain(); backGuardPush(); return; }
+  if (exitArmed) { hideExitHint(); history.go(-1); return; }        // 두 번째 → 진짜 나감
+  backGuardPush(); showExitHint(); exitArmed = true;                // 첫 번째 → 머무르고 안내
+  exitT = setTimeout(function () { exitArmed = false; $('exitHint').classList.remove('on'); }, 2000);
 });
 backGuardPush();
 
