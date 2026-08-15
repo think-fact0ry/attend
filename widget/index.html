@@ -207,6 +207,15 @@ var open = false, step = 'pin', pin = '', punching = false, punchAt = 0, verifyi
    ⚠️07-30 1차에 "접으면 세션을 버린다"로 만들었는데, 그러면 도장마다 PIN이 되어 폐기된 옛 모델의 부활이다.
      접는 것은 종료가 아니다. */
 var act = null, actAt = 0;
+/* 🔴알약은 **스스로 갱신되지 않는다**(2026-08-15 실측으로 드러남).
+     앱은 열 때마다 network-first로 새 문서를 받지만, 알약은 exe가 뜰 때 딱 한 번 Navigate하고 끝이다
+     → `edge.log`가 증거: 마지막 `알약: ready`가 **08-13 21:59**(exe 재설치 시각), 그 뒤 08-15까지 0회.
+     그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
+     ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
+       (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
+var PILL_VER = 'v88';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
 /* 🔴퇴근을 누른 뒤 **서버 확답을 기다리는 동안**(GAS 왕복 1.2~2초)에도 세션은 아직 살아 있다.
      그 사이 알약을 다시 누르면 `actAlive()`가 참이라 **PIN 없이 도장 화면**이 열렸다(유성 08-03 신고 —
@@ -237,8 +246,7 @@ function startActSession(r){
        방금 통과한 PIN 위에 어제 날짜가 남아 있어 앱이 열리자마자 다시 잠겼다(매일 아침 1회 재현).
        자정 잠금이 막으려던 건 **묵은 세션**이지 방금 만든 세션이 아니다 — 세션이 시작된 날을 여기서 찍는다.
        ⚠️알약은 사무실 PC 전용이라 "폰은 영구 세션(att_day 안 찍음)" 규칙과 충돌하지 않는다. */
-    var d = new Date();
-    localStorage.setItem('att_day', d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2));
+    localStorage.setItem('att_day', ymdLocal());
   } catch (e) { }
   toHost({ type:'auth', token: r.token, emp: r.emp });
 }
@@ -743,6 +751,12 @@ function render(){
   sendState();
 }
 function loop(){
+  // 날짜가 넘어갔고 아무도 쓰는 중이 아니면 **새 코드를 읽는다**(위 PILL_VER 주석의 실사고).
+  //   조건을 다 건다: 세션 없음·접혀 있음·비행 중 아님 — 사람이 도장을 찍는 중에 페이지가 사라지면 안 된다.
+  if (!act && !open && !punching && !verifying && !inFlight && ymdLocal() !== BOOT_DAY) {
+    try { location.reload(); } catch (e) { }
+    return;                                   // 다음 틱 예약도 하지 않는다(새 문서가 스스로 시작한다)
+  }
   // 앱(같은 출처·같은 프로필)이 잠기면 = 퇴근했거나 유휴로 잠긴 것 → 위젯 세션도 함께 끝난다.
   //   앱에서 퇴근을 찍은 경우 위젯은 그 사실을 모르고 도장 화면을 열어 준다(유성 신고).
   if (act) {
@@ -772,7 +786,7 @@ function loop(){
 
 document.fonts && document.fonts.ready.then(function(){ lastSent = ''; render(); });
 render(); loop(); schedule();
-toHost({ type:'ready' });
+toHost({ type:'ready', m: PILL_VER });   // 호스트가 `알약: ready (v88)`로 남긴다 — 도는 판을 로그에서 바로 확인
 </script>
 </body>
 </html>

@@ -960,6 +960,15 @@ function _hostAuth_() {
   if (_hostAuthT) return;
   _hostAuthT = setTimeout(function () { _hostAuthT = null; _hostAuthSend_(); }, 0);
 }
+/* 🔎앱이 **왜** 비밀번호를 물었는지 껍데기 로그(edge.log)에 남긴다(2026-08-15, 26차-16).
+     08-15 조사에서 이 한 줄이 없어 이틀치 추측을 했다: 잠금 순간을 알려주는 길은 주입 후킹(`setItem`)뿐인데
+     그 주입은 **네비게이션과 경합**해서 부팅 스크립트보다 늦게 붙는다 → 부팅에서 잠근 건 로그에 아예 안 남는다.
+     그래서 페이지가 **자기 입으로** 말한다(주입과 무관·exe 무변경).
+   ⚠️이유를 `m`이 아니라 **type에 붙인다** — 호스트 앱창 수신부는 `메시지 수신: <type>`만 찍고 m은 안 찍는다.
+     모르는 type은 if 사슬을 그냥 지나가므로 무해하다(=exe를 안 고치고 로그를 얻는 유일한 길). */
+function hostDiag(tag) {
+  try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify({ type: 'diag-' + tag })); } catch (e) { }
+}
 var store = {
   get token() { return localStorage.getItem('att_token') || ''; },
   set token(v) { localStorage.setItem('att_token', v); _hostAuth_(); },
@@ -1090,7 +1099,7 @@ function syncNow(cb) {
   if (localStorage.getItem('att_locked') && !DEMO) return; // 잠금 중 재적재 금지(9차 폴링 가드의 전 경로판 — 11차)
   api('sync').then(function (r) {
     if (!r.ok) {
-      if (r.code === 'auth') { localStorage.removeItem('att_token'); loginGate(); return; }
+      if (r.code === 'auth') { hostDiag('pin-server-rejected'); localStorage.removeItem('att_token'); loginGate(); return; } // 서버가 세션을 거절 = 남은 후보 둘 중 나머지
       toast(r.error); return;
     }
     var c = adoptSync(r);
@@ -3295,7 +3304,10 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
   //   att_day는 renderMain이 회사 PC(deviceOk)+PIN 사용 중일 때만 기록 — 폰은 기록이 없어 영구 세션 그대로.
   try {
     var ad = localStorage.getItem('att_day');
-    if (!DEMO && ad && store.token && ad !== AttEngine.ymd(new Date())) localStorage.setItem('att_locked', '1');
+    if (!DEMO && ad && store.token && ad !== AttEngine.ymd(new Date())) {
+      hostDiag('lock-midnight-' + ad);          // 어느 날짜가 남아 있어서 잠갔는지까지 남긴다
+      localStorage.setItem('att_locked', '1');
+    }
   } catch (e) { }
   // 위젯 '비밀번호를 몰라요'(08-01) — 위젯이 att_forgot을 쓰고 앱을 연다. 세션이 안 잠겨 있어도
   //   본인 확인(문자 인증)으로 직행해야 하므로 잠근 뒤 재설정 화면을 띄운다(비번을 모른다고 선언한 공용 PC).
@@ -3312,7 +3324,11 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
   }
   // 관리자 잠수함 진입 2호(07-22(3)): ?admin=1 → PIN. 롱프레스 불발 대비 — 서버 admin_*는 PIN만 요구라 등록 코드 전에도 가능
   var wantAdmin = /[?&]admin=1/.test(location.search);
-  if (!store.token || (localStorage.getItem('att_locked') && !DEMO)) { loginGate(); if (wantAdmin) openAdminPin(); return; } // 2차: 무세션·잠금 둘 다 PIN 로그인(등록코드 폐기)
+  if (!store.token || (localStorage.getItem('att_locked') && !DEMO)) {
+    hostDiag(!store.token ? 'pin-no-token' : 'pin-locked');   // 문 앞에서 되돌린 이유(둘 중 무엇인지가 조사의 갈림길이었다)
+    loginGate(); if (wantAdmin) openAdminPin(); return;       // 2차: 무세션·잠금 둘 다 PIN 로그인(등록코드 폐기)
+  }
+  hostDiag('boot-ok');                                        // 통과했다는 것도 남긴다 — "안 뜬 것"과 "안 남은 것"을 가르려고
   go('main');
   mainSkeleton();
   if (wantAdmin) openAdminPin();
