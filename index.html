@@ -495,9 +495,18 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
 /* ── v6 시각 입력 위젯 (오전/오후 세그 + OTP식 커서칸 — §4.2-10 차용) ── */
 /* 오전/오후 = §4.9 탭 세그(09 .seg 문법 — 회색 트랙+선택 흰-필+그림자, 07-22(2) 유성: 큰 채움 버튼 대체) */
-.tw-ap{display:flex;gap:6px;background:var(--g100);border-radius:12px;padding:4px;margin-bottom:12px}
-.tw-ap button{flex:1;border:0;border-radius:9px;padding:8px 0;font:inherit;font-size:var(--fs-sm);font-weight:600;background:transparent;color:var(--g500);cursor:pointer;transition:all .2s}
-.tw-ap button.on{background:#fff;color:var(--green-dark);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+/* 오전/오후 = **읽기 전용 표시**(26차-14, 유성 08-15) — 고르는 게 아니라 적은 시각을 따라간다.
+   §4.9 "세그먼트 선택 표시는 미끄러진다 — 껐다 켜지지 않는다"(유성 07-28) 문법을 pdfpng `initSegSlide`에서
+   그대로 가져왔다: 흰 필 한 장(::before)이 --sw/--sx를 받아 이동하고, 글자는 색만 바뀐다.
+   ⚠️폴백 필수 — 폭을 아직 못 잰 순간(--sw:0)엔 `.slide`를 빼서 옛 방식(칸 배경)으로 보인다. 선택이 안 보이는 프레임 금지. */
+.tw-ap{display:flex;gap:6px;background:var(--g100);border-radius:12px;padding:4px;margin-bottom:12px;position:relative;isolation:isolate}
+.tw-ap::before{content:'';position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:var(--sw,0);
+  transform:translateX(var(--sx,0));background:#fff;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.1);
+  opacity:0;transition:transform .32s cubic-bezier(.22,.85,.25,1),width .32s cubic-bezier(.22,.85,.25,1),opacity .18s}
+.tw-ap.slide::before{opacity:1}
+.tw-ap span{position:relative;z-index:1;flex:1;text-align:center;border-radius:9px;padding:8px 0;font-size:var(--fs-sm);font-weight:600;color:var(--g500);transition:color .22s;user-select:none}
+.tw-ap span.on{color:var(--green-dark)}
+.tw-ap:not(.slide) span.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .tw-box{position:relative;display:flex;gap:6px;align-items:center;justify-content:center;margin-bottom:4px;cursor:text}
 .tw-cell{width:50px;height:58px;border-radius:12px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--green-dark);position:relative}
 .tw-cell.filled{background:#fff;box-shadow:0 0 0 1px var(--g200) inset}
@@ -1452,7 +1461,8 @@ function initSheetDrag(sh, onClose) {
   var startY = null, dy = 0;
   sh.addEventListener('pointerdown', function (e) {
     // ⚠️07-23 실사고: setPointerCapture가 시트 안 모든 탭을 삼켜 .day(날짜 셀)·.mchev(월 이동) 클릭이 죽었음 — 인터랙티브 요소는 캡처 제외
-    if (e.target.closest('.btn') || e.target.closest('input') || e.target.closest('.day') || e.target.closest('.mchev')) return;
+    //   26차-14: `.tw-ap`(오전/오후 표시) 추가 — button→span이 되면서 이 목록에 안 들어 있으면 탭이 시트 드래그로 먹힌다
+    if (e.target.closest('.btn') || e.target.closest('input') || e.target.closest('.day') || e.target.closest('.mchev') || e.target.closest('.tw-ap')) return;
     startY = e.clientY; dy = 0; sh.classList.add('grab'); try { sh.setPointerCapture(e.pointerId); } catch (err) { }
   });
   sh.addEventListener('pointermove', function (e) {
@@ -1475,8 +1485,7 @@ $('outGo').addEventListener('click', function () {
   if (outLateMode) { // 21차: 적은 시각으로 남긴다(빈칸이면 저장 안 함 — 기본값 폴백 없음)
     var t = $('outTw').value24();
     if (!t) { $('outTw').bad(); return; } // 왜 안 되는지 = 적은 상태마다 다르다(26차-3)
-    hideSheet();
-    doPunch('out', t);
+    confirmEarlyOut(t, function () { hideSheet(); doPunch('out', t); }); // 새벽이면 되묻는다(26차-14)
     return;
   }
   hideSheet();
@@ -1503,12 +1512,37 @@ function showDone(txt, sub, wait) { // wait=true → 주황 시계(신청 대기
    버튼만 누르면 15:00으로 기록돼 1시간이 붙고 연차 차감이 사라졌다 — 가만히 있는 게 유리한 구조.
    이제 숫자 칸은 **빈칸**이고 미입력=null(저장 안 됨). hintHm은 오전·오후 세그 초기 선택에만 쓴다(터치 1회 절약).
    onInput = 입력이 바뀔 때마다 호출(미달 경고 갱신용, 선택). */
+/* §4.9 세그 미끄러짐 — pdfpng `initSegSlide` 그대로(형제의 위치·폭은 CSS가 알 수 없어 측정이 불가피한 예외).
+   재는 건 선택 칸의 좌표·폭뿐이고 애니메이션은 전부 CSS가 한다. */
+function segSlide(seg) {
+  if (!seg || seg._slide) return seg && seg._slide;
+  var sync = function () {
+    var on = seg.querySelector('.on');
+    var w = on ? on.getBoundingClientRect().width : 0;
+    if (!w) { seg.classList.remove('slide'); return; }        // 아직 폭이 없으면 옛 방식으로 폴백
+    var sr = seg.getBoundingClientRect(), br = on.getBoundingClientRect();
+    var pad = parseFloat(getComputedStyle(seg).paddingLeft) || 0;   // ::before의 기준은 패딩 박스
+    seg.style.setProperty('--sw', w + 'px');
+    seg.style.setProperty('--sx', (br.left - sr.left - pad) + 'px');
+    seg.classList.add('slide');
+  };
+  seg._slide = sync;
+  // typeof 가드 — 이 함수는 테스트 하네스(가짜 DOM)에서도 그대로 돌아야 한다
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(sync).observe(seg);
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) document.fonts.ready.then(sync);
+  if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(sync); else sync();
+  return sync;
+}
+
 function twMount(host, hintHm, onInput) {
   var h24 = +hintHm.slice(0, 2);
   var pm = h24 >= 12;
   var val = '';
+  // 26차-14(유성 08-15): 오전/오후는 **고르는 게 아니라 적은 시각을 따라간다**.
+  //   유성 신고 — "오후 15:00과 오후 03:00 중 뭐가 맞는 건지? 유저에게 헷갈리는 걸 만든다."
+  //   그래서 button → span(누르는 것이 아님). 대신 조용한 무반응은 금지(§4.9)라 누르면 shake+사유 토스트.
   host.innerHTML =
-    '<div class="tw-ap"><button type="button" data-ap="am"' + (!pm ? ' class="on"' : '') + '>오전</button><button type="button" data-ap="pm"' + (pm ? ' class="on"' : '') + '>오후</button></div>' +
+    '<div class="tw-ap"><span data-ap="am"' + (!pm ? ' class="on"' : '') + '>오전</span><span data-ap="pm"' + (pm ? ' class="on"' : '') + '>오후</span></div>' +
     '<div class="tw-box"><span class="tw-cell"></span><span class="tw-cell"></span><span class="tw-colon">:</span><span class="tw-cell"></span><span class="tw-cell"></span><input class="tw-in" inputmode="numeric" autocomplete="off"></div>';
   var cells = [].slice.call(host.querySelectorAll('.tw-cell'));
   var input = host.querySelector('.tw-in');
@@ -1521,17 +1555,27 @@ function twMount(host, hintHm, onInput) {
     }
     if (document.activeElement === input && val.length < 4) cells[val.length].classList.add('active');
   }
-  function setAp(pm2) { // 세그를 코드가 맞춘다(버튼 click을 흉내내지 않는다 — onInput은 호출부가 이어서 부른다)
-    host.querySelectorAll('.tw-ap button').forEach(function (x) { x.classList.toggle('on', (x.dataset.ap === 'pm') === pm2); });
+  var apSeg = host.querySelector('.tw-ap');
+  function setAp(pm2) { // 세그를 코드가 맞춘다 — 사람이 고를 길은 이제 없다
+    apSeg.querySelectorAll('span').forEach(function (x) { x.classList.toggle('on', (x.dataset.ap === 'pm') === pm2); });
+    if (apSeg._slide) apSeg._slide();   // 흰 필을 새 칸으로 미끄러뜨린다(§4.9)
   }
   function syncAp() {
-    // 26차-3(08-04): 24시간제로 적은 게 분명하면(13~23시·0시) 오전·오후를 화면이 따라간다.
-    //   안 그러면 '오전' 옆에 15:06이 적혀 있는, 스스로 모순인 화면이 된다.
+    // 26차-14(08-15): 적은 4자리가 **곧 24시간제 시각**이므로 오전·오후는 전 구간에서 파생된다.
+    //   두 자리만 쳐도 먼저 따라간다(유성: "15로 쓰면 오후로, 03까지 쓰면 오전으로 자동").
+    //   ⚠️3자리 약식(`306`=03:06)도 앞 두 자리("30")로 보면 12~23이 아니라 오전 — value24의 해석과 어긋나지 않는다.
     if (val.length < 2) return;
     var hh = +val.slice(0, 2);
-    if (hh >= 13 && hh <= 23) setAp(true);
-    else if (hh === 0) setAp(false);
+    if (hh > 23) return;                // 없는 시각(25xx)엔 세그를 움직이지 않는다 — 어차피 value24가 거절한다
+    setAp(hh >= 12);
   }
+  segSlide(apSeg);
+  // §4.9: 조용한 무반응 X — 눌러 봐도 안 바뀌는 이유를 말해 준다(성공 아님=체크 아이콘 없음)
+  apSeg.addEventListener('pointerdown', function () {
+    apSeg.classList.remove('shake'); void apSeg.offsetWidth; apSeg.classList.add('shake');
+    setTimeout(function () { apSeg.classList.remove('shake'); }, 420);
+    toast('오전·오후는 고르지 않아요. 시각을 적으면 따라가요');
+  });
   input.addEventListener('input', function () {
     var v = input.value.replace(/\D/g, '').slice(0, 4);
     var grew = v.length > val.length;
@@ -1541,39 +1585,29 @@ function twMount(host, hintHm, onInput) {
   });
   input.addEventListener('focus', paint);
   input.addEventListener('blur', function () { cells.forEach(function (c) { c.classList.remove('active'); }); });
-  host.querySelectorAll('.tw-ap button').forEach(function (b) {
-    b.addEventListener('click', function () {
-      host.querySelectorAll('.tw-ap button').forEach(function (x) { x.classList.remove('on'); });
-      b.classList.add('on');
-      if (onInput) onInput(); // 오전↔오후를 바꿔도 계산이 따라오게
-    });
-  });
   paint();
   function hm(h, m) { return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; }
-  host.value24 = function () { // 미입력=null(21차 — 폴백 폐기). 3자리(300=3:00) 허용. 형식 오류=null
-    var d;
-    if (!val.length) return null;
-    else if (val.length === 4) d = val;
-    else if (val.length === 3) d = '0' + val;
-    else return null;
-    var hh = +d.slice(0, 2), m2 = +d.slice(2);
-    if (m2 > 59) return null;
-    /* 26차-3(현아쌤 2026-08-04): **24시간제로 적은 것도 받는다.** 사람은 폰·PC 시계가 보여주는 그대로 적는다 —
-       15:06에 퇴근한 현아쌤이 `1506`을 적었고, 구판은 "12시가 넘는 시각"이라 통째로 거절하면서 문구는
-       "시각을 끝까지 적어 주세요"라 **다 적은 사람에게 더 적으라고** 말했다(퇴근 기록 자체가 막힘).
-       13~23시·0시는 12시간제로 읽을 길이 아예 없으니 뜻이 갈리지 않는다 → 그대로 24시간제로 읽는다.
-       ⛔3자리(`306`)는 이 분기 밖 — 12시간제 약식이라 `030`을 0시 30분으로 읽으면 오히려 뜻이 갈린다. */
-    if (val.length === 4 && (hh === 0 || (hh >= 13 && hh <= 23))) return hm(hh, m2);
-    if (hh < 1 || hh > 12) return null;
-    var pmOn = host.querySelector('[data-ap="pm"]').classList.contains('on');
-    return hm((hh % 12) + (pmOn ? 12 : 0), m2);
+  /* 26차-14(유성 08-15): **적은 숫자가 곧 24시간제 시각이다.** 세그는 파생 표시일 뿐 읽지 않는다.
+     유성 신고 — "오후 15:00와 오후 03:00 뭐가 맞는 건지? 유저에게 헷갈리는 걸 만든다."
+     구판은 세그(사람이 고름) × 숫자(12/24 혼용)로 **같은 시각을 두 가지로 적을 수 있었다.** 한 길만 남긴다.
+     ✅26차-3(현아쌤이 `1506`을 못 남기던 사고)은 그대로 지켜진다 — 24시간제가 이제 유일한 길이므로.
+     ⚠️대가: `0306`으로 '오후 3시'를 적으려던 사람은 오전 3시로 남는다 → `confirmEarlyOut`이 그 자리에서 되묻는다.
+     🔴**3자리 약식(`306`)은 폐지한다**(26차-14 검증 중 발견): 칸이 `□□:□□`라 `306`은 화면에 **"30:6"**으로 그려지는데
+        값은 03:06으로 읽혔고, 세그는 앞 두 자리("30"→"15" 같은 판정)를 따라가 **화면·세그·값이 서로 다른 말을 했다**
+        (실측: `150` → 화면 "15:0", 세그 오후, 값 01:50). 구판이 `030`을 막던 이유가 여기서 되살아난 것 —
+        네 자리를 다 받으면 세 곳이 항상 같은 뜻이 된다. 덜 적었으면 `bad()`가 "끝까지 적어 주세요"로 안내한다. */
+  host.value24 = function () { // 미입력·덜 적음=null(21차 — 폴백 폐기). 형식 오류=null
+    if (val.length !== 4) return null;
+    var hh = +val.slice(0, 2), m2 = +val.slice(2);
+    if (hh > 23 || m2 > 59) return null;
+    return hm(hh, m2);
   };
   host.bad = function () {
     // §4.9: 흔들림은 "지금은 안 돼요"까지만 말한다 — **왜**를 토스트로 같이 준다(성공 아님=체크 아이콘 없음).
     var box = host.querySelector('.tw-box');
     box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
     toast(!val.length ? '시각을 적어 주세요'
-      : val.length < 3 ? '시각을 끝까지 적어 주세요'
+      : val.length < 4 ? '시각을 끝까지 적어 주세요'   // 26차-14: 네 자리 필수(3자리 약식 폐지)
         : '없는 시각이에요. 다시 적어 주세요');
   };
 }
@@ -1610,7 +1644,26 @@ $('mDim').addEventListener('click', closeCancelModal);
 // 2차: 로그아웃 모달 폐기(폰=세션 유지·공용PC=잠그기). lgModal HTML은 잔존하나 미사용.
 // 관리자 범용 확인 모달(구성원 비활성 등) — 우 버튼에 콜백 주입
 var acFn = null;
-function openConfirm(title, sub, btnLabel, fn) { $('acTitle').textContent = title; $('acSub').textContent = sub; $('acGo').textContent = btnLabel; $('acGo').style.background = 'var(--danger)'; $('acKeep').style.display = ''; acFn = fn; $('mDim').classList.add('on'); $('acModal').classList.add('on'); } // openAlert(버튼1)와 스타일 공유 — 서로 복원
+// openAlert(버튼1)와 스타일 공유 — 서로 복원. opts={keep:'취소', tone:'green'}=되묻기(파괴적 액션이 아닐 때, 26차-14)
+function openConfirm(title, sub, btnLabel, fn, opts) {
+  opts = opts || {};
+  $('acTitle').textContent = title; $('acSub').textContent = sub; $('acGo').textContent = btnLabel;
+  $('acGo').style.background = opts.tone === 'green' ? 'var(--green600)' : 'var(--danger)';
+  $('acKeep').textContent = opts.keep || '닫기';   // 기본을 매번 되쓴다 — 안 그러면 앞 호출의 '취소'가 남는다
+  $('acKeep').style.display = ''; acFn = fn;
+  $('mDim').classList.add('on'); $('acModal').classList.add('on');
+}
+/* 26차-14(유성 08-15): **새벽 퇴근은 한 번 더 묻는다.**
+   오전/오후를 못 고르게 한 대가 = `0300`으로 '오후 3시'를 적으려던 사람이 오전 3시로 남길 수 있다.
+   서버는 미래·출근 이전만 막으므로(정상 범위의 오타는 통과) **여기서만 잡을 수 있다.**
+   §4.4 좌=취소·우=주액션 / 파괴가 아니라 확인이므로 주액션은 danger가 아니라 초록(§4.14). */
+function confirmEarlyOut(t, go) {
+  var hh = +t.slice(0, 2);
+  if (hh >= 7) { go(); return; }                  // 오전 7시부터는 안 묻는다
+  var hint = (hh >= 1 && hh <= 6) ? ' 오후 ' + hh + '시라면 ' + (hh + 12) + '00으로 적어 주세요.' : '';
+  openConfirm(ampm(t) + '에 나오신 게 맞나요?', '새벽 시각이라 한 번만 확인해요.' + hint, '남기기', go,
+    { keep: '취소', tone: 'green' });
+}
 $('acKeep').addEventListener('click', closeCancelModal);
 $('acGo').addEventListener('click', function () { var f = acFn; closeCancelModal(); if (f) f(); });
 $('mCancel').addEventListener('click', function () { // 12차: 취소=낙관 반영(카드 제거·연차 복원 *즉시*) — cancel은 백그라운드
@@ -1713,11 +1766,13 @@ function showMissSheet(miss, r) {
       if (!t) { sh.querySelector('#missTw').bad(); return; }
       // 케이스 A도 같은 침묵이었다 — 유성 신고는 3버튼뿐이었지만 갈림길은 물어서 가르지 않고 양쪽 다 고친다(26차-5).
       //   src=서버 `_amend_`와 같은 규약(등록 PC면 기기 id, 아니면 'phone') — 캘린더 '직접 입력' 뱃지가 낙관 구간에도 맞게 뜬다.
-      withPin(function (p) {
-        missWrite(b,
-          { at: localStamp(), emp: store.emp, date: miss.date, type: '보정퇴근', val: t, flag: '보정', src: (state.db.deviceOk && store.dev) ? store.dev.id : 'phone' },
-          'amend', { date: miss.date, time: t, pin: p, cid: cid() },
-          function () { toast('퇴근 시각을 남겼어요', true); });
+      confirmEarlyOut(t, function () {           // 새벽이면 되묻는다(26차-14)
+        withPin(function (p) {
+          missWrite(b,
+            { at: localStamp(), emp: store.emp, date: miss.date, type: '보정퇴근', val: t, flag: '보정', src: (state.db.deviceOk && store.dev) ? store.dev.id : 'phone' },
+            'amend', { date: miss.date, time: t, pin: p, cid: cid() },
+            function () { toast('퇴근 시각을 남겼어요', true); });
+        });
       });
     });
   } else { // 케이스 B — 둘 다 없음: 옵션카드 3칸 + 확정 버튼 하나 + 무급 3상태 문구(§10.14)
@@ -1961,13 +2016,17 @@ function renderCal(r) {
         var b = this;
         var t = $('selTw').value24();
         if (!t) { $('selTw').bad(); return; }
-        if (b.dataset.busy) return; b.dataset.busy = '1'; // 따닥 가드(12차 F)
-        withPin(function (p) {
-          api('amend', { date: sel.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
-            delete b.dataset.busy;
-            if (!rr.ok) { toast(rr.error); return; }
-            toast('퇴근 시각을 남겼어요', true); adoptOrSync(rr, function () { loadCal(); });
-          }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요'); });
+        if (b.dataset.busy) return;
+        // ⚠️따닥 가드(12차 F)는 **되묻기 뒤에** 건다 — 앞에 걸면 [취소]를 누른 순간 busy가 남아 버튼이 죽는다
+        confirmEarlyOut(t, function () {                 // 새벽이면 되묻는다(26차-14)
+          b.dataset.busy = '1';
+          withPin(function (p) {
+            api('amend', { date: sel.date, time: t, pin: p, cid: cid() }, true).then(function (rr) {
+              delete b.dataset.busy;
+              if (!rr.ok) { toast(rr.error); return; }
+              toast('퇴근 시각을 남겼어요', true); adoptOrSync(rr, function () { loadCal(); });
+            }).catch(function () { delete b.dataset.busy; toast('저장이 안 됐어요'); });
+          });
         });
       });
     }
