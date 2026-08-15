@@ -1,6 +1,6 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v86'; // 08-15 퇴근 시각=24시간제 한 길(오전/오후는 따라가는 표시·미끄러짐)+새벽 되묻기 / v85 미기록일 시트 A안 / v84 알약 버튼이 실제 동작을 말한다
+var CACHE = 'tf-attend-v87'; // 08-15 파란 상자(안드로이드 탭 하이라이트) 차단 + 겹친 낙관 쓰기가 서로를 안 지움 + 알약 PIN이 자정 잠금까지 품 / v86 퇴근 시각 24시간제 한 길 / v85 미기록일 시트 A안
 var SHELL = [
   './', './index.html', './approve.html', './근태엔진.js', './install.js', './manifest.json',
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다

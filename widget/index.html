@@ -231,6 +231,14 @@ function startActSession(r){
     localStorage.setItem('att_token', r.token);
     localStorage.setItem('att_emp', r.emp);
     localStorage.removeItem('att_locked');
+    /* 🔴자정 잠금까지 같이 풀어야 한다(2026-08-15 유성 "위젯에서 pin 넣었는데 앱이 또 물어봐").
+       앱 부팅은 `att_day`(앱이 **마지막으로 그린 날**)가 오늘이 아니면 세션을 잠근다(08-01 신설).
+       그런데 `att_day`는 **앱의 renderMain만** 찍는다 → 어제 앱을 쓰고 오늘 알약으로 들어오면
+       방금 통과한 PIN 위에 어제 날짜가 남아 있어 앱이 열리자마자 다시 잠겼다(매일 아침 1회 재현).
+       자정 잠금이 막으려던 건 **묵은 세션**이지 방금 만든 세션이 아니다 — 세션이 시작된 날을 여기서 찍는다.
+       ⚠️알약은 사무실 PC 전용이라 "폰은 영구 세션(att_day 안 찍음)" 규칙과 충돌하지 않는다. */
+    var d = new Date();
+    localStorage.setItem('att_day', d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2));
   } catch (e) { }
   toHost({ type:'auth', token: r.token, emp: r.emp });
 }

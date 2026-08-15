@@ -30,7 +30,12 @@
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
   --maxw:460px; /* 07-23 유성: "살짝 더" — 480→460, 창 resizeTo도 470으로 세트 */
 }
-*{margin:0;padding:0;box-sizing:border-box}
+/* -webkit-tap-highlight-color — 안드로이드 크롬은 누른 요소 **전체**에 홀로블루(#33b5e5) 사각형을 덮고,
+   포커스가 남은 버튼에선 그게 **그대로 눌러붙는다**(유성 08-15 실기기: 미기록일 카드 3개가 파란 상자로 보임).
+   우리 앱은 :active 축소·채움 전환으로 눌린 걸 이미 말하므로 OS 하이라이트는 노이즈일 뿐이다.
+   ⚠️앱 전역 규칙 — 다른 표면(태블릿·홈페이지·09·14·reader·pdfpng 등 28곳)은 진작 이 한 줄을 갖고 있었고
+     **attend만 빠져 있었다**(08-15 전 레포 스윕으로 확인). */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 /* 07-22 유성: 스크롤바가 생겼다 사라지며 폭이 흔들림 → 스크롤바 자체를 안 그림(스크롤은 그대로) */
 html{scrollbar-width:none;-ms-overflow-style:none}
@@ -1066,7 +1071,9 @@ function calView(ym) { // 서버 _month_와 같은 모양
 // sync 페이로드(원장+설정) 채택 — sync·login 응답이 같은 모양이라 한 곳에서만 조립한다(형태가 갈리면 조용히 어긋난다)
 function adoptSync(r) {
   state.db = {
-    events: r.events, settings: r.settings, today: r.today, nowHms: r.nowHms,
+    // 아직 확답이 안 온 낙관 이벤트를 서버본 **위에** 다시 얹는다 — 다른 요청의 응답이 내 방금 기록을
+    //   되감아 유령 시트를 띄우던 사고(26차-15) 차단. 끝에 붙이는 건 optimisticEvents와 같은 자리다.
+    events: (r.events || []).concat(inflightEvents()), settings: r.settings, today: r.today, nowHms: r.nowHms,
     name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now()
   };
   var c = compose();
@@ -1678,7 +1685,7 @@ $('mCancel').addEventListener('click', function () { // 12차: 취소=낙관 반
   api('cancel', { rid: c.rid, cid: cid() }, true).then(function (r) {
     state.applying = false;
     if (!r.ok) { clearTimeout(toastTm); rollback(); openAlert('취소가 되지 않았어요', r.error); return; }
-    adoptOrSync(r);
+    rollback.settle(); adoptOrSync(r);
   }).catch(function () { clearTimeout(toastTm); state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요. 다시 시도해 주세요'); });
 });
 
@@ -1752,6 +1759,7 @@ function showMissSheet(miss, r) {
     api(action, payload, true).then(function (rr) {
       if (!rr.ok) { undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', rr.error + ' - 다시 해 주세요'); return; }
       state.applying = false; delete btn.dataset.busy;
+      rollback.settle();                       // 서버 원장에 들어갔으니 보관소에서 놓는다(26차-15)
       adoptOrSync(rr);                         // 서버 진실 채택(쓰기 응답에 sync 동봉 — 왕복 1회)
     }).catch(function () {
       undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', '연결이 안 돼요. 다시 해 주세요');
@@ -2168,13 +2176,35 @@ function previewApply() { // 12차: 미리보기=로컬 엔진(왕복 0 — 클�
 /* 낙관 반영 공용(12차): 이벤트를 로컬 원장에 선삽입 → 재파생·재렌더. 반환=롤백 함수.
    신뢰성 계약(§13-16): ①cid 멱등=중복 실행 차단 ②실패=롤백+다이얼로그 ③무응답=쓰기 재시도 안 함, 다음 sync가 서버 진실로 교정 */
 function localStamp() { return (state.db ? state.db.today : '') + ' ' + (liveNow() || ''); }
+/* 🔴비행 중 낙관 이벤트 보관소(26차-15, 유성 08-15 "8월 14일 (금) 기록이 남지 않았어요")
+   실사고 재구성(원장 실물로 확인 — 13:12:52 8/12 병가, 13:12:57 8/14 외부근무, 5초 차):
+     ①8/12를 남긴다 → 요청 A 비행 → 시트가 다음 미기록일 8/14로 넘어간다
+     ②8/14를 남긴다 → 요청 B 비행(낙관 반영으로 미기록일 0)
+     ③**A의 응답**이 도착 → `adoptSync`가 원장을 A가 만들어진 시점의 서버본으로 통째로 교체 →
+       그 안엔 B가 아직 없다 → 미기록일에 **8/14가 되살아나 시트가 다시 뜬다**
+     ④사람은 "안 남았나 보다" 하고 다시 누른다 → 서버엔 이미 있으니 거절
+       ("그 날은 근무한 날로 남길 수 있는 날이 아니에요") → **남았는데 안 남았다고 말하는 화면**
+   ⇒ 서버본을 채택할 때 **아직 확답 안 온 낙관 이벤트는 그 위에 다시 얹는다**. 응답이 오면(settle) 놓는다.
+   ⚠️60초 유통기한 — 응답이 영영 안 오는 쓰기(쓰기는 재시도가 없다)의 이벤트가 영구 유령이 되는 걸 막는다. */
+var inflight = [];
+function inflightEvents() {
+  var cut = Date.now() - 60000;
+  inflight = inflight.filter(function (x) { return x.at > cut; });
+  return inflight.map(function (x) { return x.e; });
+}
+function dropInflight(e) { for (var i = 0; i < inflight.length; i++) if (inflight[i].e === e) { inflight.splice(i, 1); return; } }
 function optimisticEvents(evs) {
-  evs.forEach(function (e) { state.db.events.push(e); });
+  var at = Date.now();
+  evs.forEach(function (e) { state.db.events.push(e); inflight.push({ e: e, at: at }); });
   var c = state.status = compose(); renderMain(c); pollKey = pollSnap(c);
-  return function rollback() { // 이미 sync가 원장을 갈아끼웠으면 indexOf=-1 → 자연 no-op(서버 진실 우선)
-    evs.forEach(function (e) { var i = state.db.events.indexOf(e); if (i >= 0) state.db.events.splice(i, 1); });
+  var fn = function rollback() { // 이미 sync가 원장을 갈아끼웠으면 indexOf=-1 → 자연 no-op(서버 진실 우선)
+    evs.forEach(function (e) { var i = state.db.events.indexOf(e); if (i >= 0) state.db.events.splice(i, 1); dropInflight(e); });
     var c2 = state.status = compose(); renderMain(c2); pollKey = pollSnap(c2);
   };
+  // 서버가 받아줬다 = 응답의 원장에 이미 들어 있다 → 더 들고 있으면 **두 벌**이 된다(연차는 tmp rid까지 겹친다).
+  //   반드시 adoptOrSync **앞**에서 부를 것.
+  fn.settle = function () { evs.forEach(dropInflight); };
+  return fn;
 }
 function openAlert(title, sub) { // 단순 알림 다이얼로그(버튼 1 — §4.5). 낙관 완료를 이미 본 뒤의 실패는 토스트론 부족
   $('acTitle').textContent = title; $('acSub').textContent = sub;
@@ -2204,7 +2234,7 @@ $('applyGo').addEventListener('click', function () {
   api('request', { kind: kind, date: date, hours: hours, half: half, cid: myCid }, true).then(function (r) {
     state.applying = false; $('applyGo').disabled = false;
     if (!r.ok) { rollback(); $('doneOv').classList.remove('on'); openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', r.error + ' - 다시 신청해 주세요'); return; }
-    adoptOrSync(r); // 서버 진실 채택(tmp 이벤트 → 실제 rid)
+    rollback.settle(); adoptOrSync(r); // 서버 진실 채택(tmp 이벤트 → 실제 rid)
   }).catch(function () {
     state.applying = false; $('applyGo').disabled = false; rollback(); $('doneOv').classList.remove('on');
     openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', '연결이 안 돼요. 다시 신청해 주세요');

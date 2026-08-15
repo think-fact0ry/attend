@@ -27,7 +27,7 @@
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
   --maxw:520px;
 }
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent} /* 원탭 승인은 폰 링크로만 열린다 — 안드로이드 홀로블루 하이라이트 차단(08-15, index.html과 같은 규칙) */
 html,body{height:100%}
 body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#fff;color:var(--g900);word-break:keep-all;-webkit-font-smoothing:antialiased}
 #app{max-width:var(--maxw);margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
