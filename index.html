@@ -1728,9 +1728,9 @@ $('mCancel').addEventListener('click', function () { // 12차: 취소=낙관 반
   var toastTm = setTimeout(function () { toast('신청을 취소했어요. 연차 ' + c.hours + '시간이 돌아왔어요', true); }, 400);
   api('cancel', { rid: c.rid, cid: cid() }, true).then(function (r) {
     state.applying = false;
-    if (!r.ok) { clearTimeout(toastTm); rollback(); openAlert('취소가 되지 않았어요', r.error); return; }
+    if (!r.ok) { clearTimeout(toastTm); rollback(); openAlert('취소가 되지 않았어요', r.error || '잠시 후 다시 시도해 주세요'); return; }
     rollback.settle(); adoptOrSync(r);
-  }).catch(function () { clearTimeout(toastTm); state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요. 다시 시도해 주세요'); });
+  }).catch(function () { clearTimeout(toastTm); state.applying = false; rollback(); openAlert('취소가 되지 않았어요', '연결이 안 돼요'); });
 });
 
 /* ── v6 반려 시트 + 미기록일 닫기 불가 시트(§4.3-1 단서·§10.13-14) ── */
@@ -1801,12 +1801,14 @@ function showMissSheet(miss, r) {
       rollback(); $('doneOv').classList.remove('on');
     };
     api(action, payload, true).then(function (rr) {
-      if (!rr.ok) { undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', rr.error + ' - 다시 해 주세요'); return; }
+      // 부제 = 서버가 준 사유만. 옛 ' - 다시 해 주세요' 꼬리는 뺐다(유성 2026-09-08) — 제목이 이미 "남지 않았어요"라
+      // 무엇이 안 됐는지 말하고 있어서 명령형 한 마디가 겹친다(§2.1 문구 중복 금지). 사유가 비면 기본 문구로.
+      if (!rr.ok) { undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', rr.error || '잠시 후 다시 시도해 주세요'); return; }
       state.applying = false; delete btn.dataset.busy;
       rollback.settle();                       // 서버 원장에 들어갔으니 보관소에서 놓는다(26차-15)
       adoptOrSync(rr);                         // 서버 진실 채택(쓰기 응답에 sync 동봉 — 왕복 1회)
     }).catch(function () {
-      undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', '연결이 안 돼요. 다시 해 주세요');
+      undo(); openAlert(kDateShort(miss.date) + ' 기록이 남지 않았어요', '연결이 안 돼요');
     });
   }
   if (miss.kind === 'out') { // 케이스 A — 퇴근만 없음: 시각 직접 입력(21차 — 빈칸, 기본값 폴백 폐기)
@@ -2277,11 +2279,12 @@ $('applyGo').addEventListener('click', function () {
   }
   api('request', { kind: kind, date: date, hours: hours, half: half, cid: myCid }, true).then(function (r) {
     state.applying = false; $('applyGo').disabled = false;
-    if (!r.ok) { rollback(); $('doneOv').classList.remove('on'); openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', r.error + ' - 다시 신청해 주세요'); return; }
+    // 위와 같은 이유로 ' - 다시 신청해 주세요' 꼬리 제거(제목이 이미 "접수되지 않았어요"다).
+    if (!r.ok) { rollback(); $('doneOv').classList.remove('on'); openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', r.error || '잠시 후 다시 시도해 주세요'); return; }
     rollback.settle(); adoptOrSync(r); // 서버 진실 채택(tmp 이벤트 → 실제 rid)
   }).catch(function () {
     state.applying = false; $('applyGo').disabled = false; rollback(); $('doneOv').classList.remove('on');
-    openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', '연결이 안 돼요. 다시 신청해 주세요');
+    openAlert(kDateShort(date) + ' ' + lbl + ' 신청이 접수되지 않았어요', '연결이 안 돼요');
   });
 });
 
