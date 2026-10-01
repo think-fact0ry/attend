@@ -309,8 +309,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .btn-out-sm:active{transform:scale(.95)}
 
 /* ── 스켈레톤(§5.4 — 첫 로딩 '—' 대체) ── */
-.sk-b{display:inline-block;background:var(--g100);border-radius:8px;animation:skp 1.1s ease-in-out infinite;pointer-events:none}
-@keyframes skp{0%,100%{opacity:1}50%{opacity:.5}}
+.sk-b{display:inline-block;background:var(--g100);border-radius:8px;background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite;pointer-events:none}
+@keyframes sksh{0%{background-position:150% 0}70%,100%{background-position:-50% 0}}   /* 훑기(§5.4, 2026-10-01 깜빡임 skp 대체) — 배경색 위 흰 띠가 왼→오 */
 
 /* ── 신청 날짜 선택 시트(07-22(3) 유성: 네이티브 date input 폐지 — 앱 캘린더 문법 재사용) ── */
 .dsheet .dsnav{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
