@@ -2947,7 +2947,7 @@ function renderAdmin(r) {
     (r.widgetBoot && r.widgetBoot.length
       ? '<h4 style="margin-top:16px">위젯이 뜬 시각 <span class="cavt">최근 ' + r.widgetBoot.length + '번</span></h4>' +
         '<table class="at">' + r.widgetBoot.map(function (bw) {
-          return '<tr><td>' + (bw.pc || '이름 없는 PC') + '<span class="sub2">' + (bw.at || '시각 모름') + '</span></td><td class="num">' + bootUpLabel(bw.up) + '</td></tr>';
+          return '<tr><td>' + (bw.pc || '이름 없는 PC') + (bw.v ? ' <span style="color:var(--g500)">' + bw.v + '판</span>' : '') + '<span class="sub2">' + (bw.at || '시각 모름') + '</span></td><td class="num">' + bootUpLabel(bw.up) + '</td></tr>';
         }).join('') + '</table>' +
         '<div class="anote">PC를 켜고 <b>얼마 만에</b> 위젯이 떴는지예요. 몇 분씩 걸린다면 그 사이엔 출근을 못 찍어요(작업표시줄에 고정한 근태 아이콘을 누르면 바로 떠요).</div>'
       : '') + '</div>';

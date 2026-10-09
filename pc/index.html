@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>생각공작소 프로그램 설치</title>
+<!--
+  사무실 PC·노트북에 「생각공작소 프로그램」(근태 알약 + 문의 알리미)을 까는 페이지 — 2026-10-09 (문의 알리미 1-c)
+  · 파일은 tools/위젯배포/publish.js가 만든다(이 폴더의 ver.txt·zip·소스). 이 html만 손으로 쓴 것.
+  · 받는 문은 열어 둔다: 프로그램 안에 비밀이 없고, 쓰려면 근태 비밀번호(인사시트 번호 문자 인증)가 필요하다.
+    「Win+R에 붙여넣기」 방식은 피싱(ClickFix)과 같은 동작이라 기각(10-09 엄격 검토) → zip + setup.
+  · 한 번 깔면 다음 판은 프로그램이 스스로 받는다(서명 확인 후 그 PC에서 만들어 바꿔 끼움).
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968; --g900:#191f28;
+  --green100:#e9f8ee; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--g50);color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;
+  font-size:15px;line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:0 auto;padding:40px 16px 60px}
+h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 6px}
+.sub{color:var(--g600);margin:0 0 24px}
+.card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 2px rgba(47,111,77,.05),0 4px 14px rgba(47,111,77,.06)}
+.dl{display:flex;align-items:center;justify-content:center;width:100%;height:56px;border-radius:14px;background:var(--green700);color:#fff;
+  font-size:17px;font-weight:700;text-decoration:none;transition:transform .12s,background .12s}
+.dl:active{transform:scale(.97);background:var(--green800)}
+ol{margin:20px 0 0;padding:0;list-style:none;counter-reset:s}
+ol li{counter-increment:s;position:relative;padding:0 0 14px 36px;color:var(--g700)}
+ol li::before{content:counter(s);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;background:var(--green100);
+  color:var(--green700);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+ol li b{color:var(--g900)}
+.note{margin-top:16px;background:var(--g50);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--g700)}
+.note + .note{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>생각공작소 프로그램 설치</h1>
+  <p class="sub">근태 알약과 문의 알리미가 들어 있어요. 컴퓨터마다 한 번만 깔면 돼요.</p>
+  <div class="card">
+    <a class="dl" href="saenggak-setup.zip" download>설치 파일 받기</a>
+    <ol>
+      <li>받은 파일을 오른쪽 클릭하고 <b>모두 압축 풀기</b>를 눌러요</li>
+      <li>풀린 폴더에서 <b>setup</b>을 두 번 눌러요</li>
+      <li>화면 오른쪽 아래에 초록 알약이 뜨면 끝이에요</li>
+    </ol>
+    <div class="note">파란 「Windows의 PC 보호」 창이 뜨면 <b>추가 정보</b>를 누르고 <b>실행</b>을 눌러 주세요.</div>
+    <div class="note">새 판은 프로그램이 알아서 받아요. 다시 깔지 않아도 돼요.</div>
+  </div>
+</div>
+</body>
+</html>

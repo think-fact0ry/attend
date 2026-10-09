@@ -323,7 +323,7 @@ if (window.chrome && window.chrome.webview) {
     if (m.type === 'wake')    { if (m.kind) applyRemotePunch(m.kind); fetchTick(); recheckSoon(4000); }
     if (m.type === 'dragend') { endHold(); }
     // 호스트가 "나 언제 떴는지"를 넘겨준다 → 서버에 올려 관리자 화면에서 보이게 한다(2026-08-05).
-    if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at }; sendBoot(); }
+    if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at, v: m.v }; sendBoot(); }   // v = exe 판(1-c 10-09, 관리자 화면에서 PC별 판 확인)
     // 앱 창이 열리고 닫힐 때마다 호스트가 보내준다 → 버튼 글자를 실제 동작에 맞춘다(26차-11).
     if (m.type === 'appwin')  { var was = appOpen; appOpen = !!m.open; if (was !== appOpen) { diag('앱창 ' + (appOpen ? '열림 → 버튼=닫기' : '닫힘 → 버튼=열기')); render(); } }
   });
@@ -507,7 +507,7 @@ function sendBoot(){
   var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch(e){}
   if (!dev || !dev.id) { bootRep = null; return; }
   bootSending = true;
-  ask({ action:'widget_boot', device: dev.id, deviceToken: dev.token, up: bootRep.up, at: bootRep.at })
+  ask({ action:'widget_boot', device: dev.id, deviceToken: dev.token, up: bootRep.up, at: bootRep.at, ver: bootRep.v })
     .then(function(r){ bootSending = false; if (r && r.ok) bootRep = null; })
     .catch(function(){ bootSending = false; });
 }
