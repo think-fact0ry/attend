@@ -222,7 +222,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v93';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v94';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -460,6 +460,21 @@ function verify(){
     .then(function(r){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
+      // 한유성 = 관리자(10-09 유성): 도장 화면을 열지 않는다(근태 대상 아님). 세션만 넘기고 앱의 관리자 화면을 연다.
+      //   처음 PC면 앱이 관리자 비밀번호를 한 번 묻는다(4자리만으로 관리자 금지 — 서버 _adminOk_ 주석).
+      if (r.admin) {
+        try {
+          localStorage.setItem('att_token', r.token); localStorage.setItem('att_emp', r.emp);
+          localStorage.removeItem('att_locked'); localStorage.setItem('att_isadmin', '1');
+          localStorage.removeItem('att_inq');   // 행정 문의 서명이 남아 있으면 지운다(관리자 PC는 보기 전용 att_inqv만)
+        } catch (e) { }
+        toHost({ type:'auth', token: r.token, emp: r.emp });
+        pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요'; $('gH1').classList.remove('err'); drawDots();
+        setOpen(false);
+        if (!appOpen) toHost({ type:'open' });
+        return;
+      }
+      try { localStorage.removeItem('att_isadmin'); } catch (e) { }
       startActSession(r);
       inqSave(r.inq);
       // 확인됐다는 걸 **독립 화면**으로 보여준다(가운데 큰 체크 + ooo님 안녕하세요).
