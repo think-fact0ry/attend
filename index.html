@@ -1102,7 +1102,7 @@ function compose() { // 서버 _status_와 같은 모양을 로컬에서
       bonusLots: (bal.liveLots || []).filter(function (l) { return l.kind === '보너스' && l.leftMin > 0; })
         .map(function (l) { return { label: bonusLabel(l.label), leftMin: l.leftMin }; })
     },
-    missing: E.missingDays(evs, s, today), cards: cards, rejections: rejections,
+    missing: db.exempt ? [] : E.missingDays(evs, s, today), cards: cards, rejections: rejections,
     deviceOk: db.deviceOk, pinSet: db.pinSet, anyPinSet: db.anyPinSet
   };
 }
@@ -1132,7 +1132,8 @@ function adoptSync(r) {
     // 아직 확답이 안 온 낙관 이벤트를 서버본 **위에** 다시 얹는다 — 다른 요청의 응답이 내 방금 기록을
     //   되감아 유령 시트를 띄우던 사고(26차-15) 차단. 끝에 붙이는 건 optimisticEvents와 같은 자리다.
     events: (r.events || []).concat(inflightEvents()), settings: r.settings, today: r.today, nowHms: r.nowHms,
-    name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now()
+    name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now(),
+    exempt: !!r.exempt // 근태 면제(서버 `_isAdminMember_` = 한유성, 10-09) — 미기록일 시트를 안 띄운다
   };
   var c = compose();
   state.status = c;
@@ -1360,11 +1361,14 @@ function renderMain(r) {
   else { txt.textContent = '오늘 근무는 ' + r.plan.start + ' ~ ' + r.plan.end + '이에요'; }
   renderCards(r);
   renderOverlays(r);
-  // 도장 버튼 — 등록 기기 + 근무일만(startFrom 전·휴일·주말엔 안 뜸 — 버그: 7/24 도장됨)
+  // 도장 버튼 — 등록 기기 + 근태 시작일 이후(10-09부터 휴일·주말도 뜸, 시작일 전만 안 뜸 — 버그: 7/24 도장됨)
   //   21차(유성 07-28): 폰에서도 **퇴근만** 열린다. 출근은 회사 PC 전용 유지 — 출근 버튼은 '근무 중'과 같은
   //   done 모양(시각 표시·disabled)이라 새 상태를 만들지 않는다. 열린 출근이 없는 폰은 기존 viewOnly.
-  var phoneOut = !r.deviceOk && r.plan.work && !!r.open;
-  if ((r.deviceOk && r.plan.work) || phoneOut) {
+  //   10-09 유성 「휴무일에 출근 퇴근 누를 수 있게 해. 행정인력도 마찬가지」 → 근무일 조건을 뺐다.
+  //   막는 건 근태 시작일(startFrom) 전뿐이다(7/24 테스트 도장 오염 버그의 본래 대상). 서버 `_punch_`와 같은 판정.
+  var stampable = r.plan.why !== '시작전';
+  var phoneOut = !r.deviceOk && stampable && !!r.open;
+  if ((r.deviceOk && stampable) || phoneOut) {
     $('punchRow').style.display = 'flex'; $('viewOnly').style.display = 'none';
     var bin = $('btnIn'), bout = $('btnOut');
     if (r.open) { // 근무 중
@@ -1378,7 +1382,7 @@ function renderMain(r) {
       bout.className = 'btn done'; bout.textContent = '퇴근'; bout.disabled = true;
     }
     if (state.punching) { bin.disabled = true; bout.disabled = true; } // 비행 중=둘 다 잠금(연타 레이스 차단, 응답 오면 재렌더가 풂)
-  } else if (r.deviceOk) { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'none'; // 회사 PC지만 근무일 아님 — 상태 필이 "근무일이 아니에요" 안내
+  } else if (r.deviceOk) { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'none'; // 회사 PC지만 근태 시작일 전 — 상태 필이 "근무일이 아니에요" 안내
   } else { $('punchRow').style.display = 'none'; $('viewOnly').style.display = 'block'; }
   // 다음 부팅의 스켈레톤 재료 — 이 화면의 구조 스냅샷(값이 아니라 "무엇이 몇 개 있었나"만).
   //   버튼 표시가 위 분기에서 확정된 **뒤**에 저장한다(유성 08-01: 하단 버튼 2개도 스켈레톤).
@@ -1760,7 +1764,8 @@ function renderOverlays(r) {
   // 21차(유성 07-28): 회사 PC에서 **오늘 출근을 아직 안 찍었으면** 밀린 시트를 띄우지 않는다.
   //   구판은 11시 정각에 출근하려고 켠 순간 어제 시트가 화면을 덮어(딤 pointer-events) 출근 버튼을 못 눌렀다.
   //   밀린 날이 3일이면 3번 반복 — 출근이 늦어져 지각에 닿을 수 있었다. 출근 직후 재렌더에서 바로 뜬다.
-  var beforeTodayIn = r.deviceOk && r.plan.work && !r.open && !r.segments.length;
+  //   10-09: 휴무일에도 출근을 찍을 수 있게 되어 같은 이유로 근무일 조건을 뺐다(근태 시작일 전만 제외 = 도장 버튼이 없는 날).
+  var beforeTodayIn = r.deviceOk && r.plan.why !== '시작전' && !r.open && !r.segments.length;
   if (miss && beforeTodayIn) {
     hideBlockSheet();
     info.style.display = 'block';

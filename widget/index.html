@@ -222,7 +222,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v93';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v95';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -631,8 +631,10 @@ function applyRemotePunch(kind){
 function view(){
   if (!auth || !snap) return { text:'근태', on:false, warn:false, dim:false, gauge:0 };
   if (serverSecNow() >= 24*3600) return { text:'근무 전', on:false, warn:false, dim:false, gauge:0 };
-  if (!snap.work) return { text:'휴무일', on:false, warn:false, dim:true, gauge:0 };
-  var need = Math.max(1, (snap.planMin||0) - (snap.leaveMin||0));
+  // 10-09: 휴무일에도 출퇴근을 찍을 수 있다 → 찍었으면 근무일처럼 시간을 보여 주고(게이지는 소정이 없어 0), 안 찍었으면 '휴무일'.
+  if (!snap.work && !snap.open && !(snap.lastOut && (serverSecNow() - hms2sec(snap.lastOut)) * 1000 < AFTER_OUT_MS))
+    return { text:'휴무일', on:false, warn:false, dim:true, gauge:0 };
+  var need = snap.work ? Math.max(1, (snap.planMin||0) - (snap.leaveMin||0)) : Infinity;   // 휴무일 = 채울 소정 없음 → 게이지 0
   if (snap.external) return { text:'사무실 근무', on:true, warn:false, dim:false, gauge:100 };
   var worked = workedMinNow();
   if (snap.open) {
@@ -826,7 +828,11 @@ function render(){
   if (open && step === 'act') {
     var working = !!(snap && snap.open);
     // 유성: "오늘 일한 시간 X / ooo님이 근무한 시간 O"
-    $('pLabel').textContent = (act && act.name ? act.name + '님이 ' : '') + '근무한 시간';
+    //   10-09 유성 「휴무일인데 아직 출근도 안 눌렀는데 왜 근무한 시간이라고 나오지」 → 값이 시간일 때만 '근무한 시간'.
+    //   아래 값이 '휴무일'·'근무 전'·'사무실 근무'면 이름만(근무한 적 없는 시간을 근무한 시간이라 부르지 않는다).
+    var isTime = /\d/.test(v.text);
+    var who = act && act.name ? act.name + '님' : '';
+    $('pLabel').textContent = isTime ? (who ? who + '이 근무한 시간' : '근무한 시간') : (who || '근태');
     $('pVal').textContent = v.text;
     // 🔴26차-6(현아쌤 08-06 "퇴근을 늦게 눌렀는데 컴퓨터로 했더니 5시간이 기록"): 알약 도장은 **시각 입력이 없다**
     //   (`punch`를 time 없이 보낸다 = 누른 그 시각). 종업이 지난 뒤엔 '지금'이 틀린 값일 수 있으므로
@@ -834,7 +840,7 @@ function render(){
     //   알약에 시각 입력을 새로 만들지 않는 이유=같은 판정(§4.1-9 관용·세그·거절 문구)을 두 번 구현하면 두 진실이 된다.
     var lateOut = working && !!(snap && snap.end) && serverSecNow() >= hms2sec(snap.end);
     $('pDo').textContent = working ? (lateOut ? (ampm(sec2hms(serverSecNow())) + '에 퇴근') : '퇴근') : '출근';
-    $('pDo').style.display = (snap && snap.work && !snap.external) ? '' : 'none';
+    $('pDo').style.display = (snap && !snap.external) ? '' : 'none';   // 10-09: 휴무일에도 찍는다(서버가 근태 시작일 전만 막음)
     /* 26차-11(유성 08-13 "앱이 열린 상태에서 중간위젯을 켜면 '근태 앱 닫기'로 표기되어야 맞음"):
        호스트는 **이미 토글**이었다(`ToggleApp` — 열려 있으면 FadeClose). 동작은 옳은데 글자만 늘 '열기'라
        누르기 전에 무슨 일이 날지 못 알려주는 버튼이었다(26차-6 "버튼 문구에 그 시각을 박는다"와 같은 결).
