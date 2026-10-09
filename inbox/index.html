@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>문의</title>
+<!--
+  문의 받은함 (2026-10-09, 문의 알리미 1단계 1-b)
+  · 주소 = https://think-fact0ry.github.io/attend/inbox/ — 근태 위젯 exe의 앱 창 안에서 열린다(알약 「문의 N」 → att_go → 앱이 여기로).
+  · 정본: 설계 = docs/4_설계_2026-10-08_문의알리미_1단계.md(D9·D17) · 디자인 확정본 = prototype/문의창_디자인5차_프리뷰.html(알리미 탭)
+          · 원칙 = docs/1 §4.18(채팅·받은함)·§5.3(목록 줄 누름)·§4.13-6(입력칸 그라디언트) · 서버 = scripts/26_문의알리미.
+  · 신원 = 이 PC 저장소의 문의 서명. 관리자 보기(att_inqv)가 있으면 그게 이긴다(유성 PC — 목록 하나·읽음 안 찍힘·답장 없음).
+    없으면 행정 서명(att_inq, 알약이 근태 조회 때마다 갱신). 둘 다 없으면 안내만.
+  · 이 페이지는 박동(on)을 안 보낸다 — 출근 여부를 아는 건 알약이고, 여기서 보내면 알약의 「출근 중」을 덮어쓴다(26 _sPoll_).
+  · 톡톡·카카오 줄(빨려 들기 모션 포함)은 2단계. 지금 목록엔 홈페이지 대화만 있다.
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
+  --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968;
+  --g800:#333d4b; --g900:#191f28;
+  --green50:#f8fbf9; --green100:#e9f8ee; --green200:#cef2db; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
+  --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
+  --p-disabled:#b7e0c8;
+  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --ease:cubic-bezier(.22,.7,.25,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#fff}
+body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-body);
+  line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased;user-select:none}
+button{font-family:inherit}
+#app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+
+/* 머리 — 창 −(위젯 껍데기 안에서만, 근태 앱과 같은 자리·같은 동작) */
+.ahd{display:flex;align-items:center;justify-content:space-between;padding:18px 12px 6px 18px;flex:none}
+.ahd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
+.ahd .vtag{font-size:11.5px;font-weight:700;color:var(--g700);background:var(--g100);border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:2px}
+#hostMin{display:none;width:34px;height:34px;border:0;background:none;color:var(--g500);border-radius:9px;align-items:center;justify-content:center;cursor:pointer;transition:transform .16s}
+#hostMin:hover{background:var(--g100);color:var(--g700)}
+#hostMin:active{transform:scale(.86)}
+#hostMin svg{width:16px;height:16px}
+
+/* 세그(행정만 — 관리자 보기는 목록 하나, D17) */
+.seg{display:flex;margin:6px 18px 8px;background:var(--g100);border-radius:12px;padding:3px;flex:none}
+.seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:9px;font-size:14px;font-weight:500;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:#fff;color:var(--g900);font-weight:600;box-shadow:0 1px 3px rgba(25,31,40,.08)}
+.seg .n{font-size:11.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;color:#fff;display:none;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
+.seg .n.show{display:inline-flex}
+.seg .n.red{background:var(--red)}
+.seg .n.grn{background:var(--green700)}
+body.viewer .seg{display:none}
+
+/* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6) */
+.sw{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.sw::before,.sw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
+.sw::before{top:0;background:var(--sf-top)}
+.sw::after{bottom:0;background:var(--sf-bot)}
+.sw.more::after,.sw.moreTop::before{opacity:1}
+.list{flex:1;overflow-y:auto;padding:4px 0 10px;scrollbar-width:none}
+.list::-webkit-scrollbar{width:0}
+
+/* 목록 줄 — §5.3 누름 = 흰 바탕 유지 + 2겹 그림자 + 내용 .96 (그림자는 줄 자체에 — ::before는 overflow가 자른다) */
+.it{display:flex;gap:11px;align-items:center;position:relative;padding:11px 12px;margin:0 8px;border-radius:14px;cursor:pointer;overflow:hidden;
+  transition:box-shadow .12s,background .12s}
+.it:active,.it.press{background:#fff;box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.12)}
+.it > *{position:relative;transition:transform .12s}
+.it:active > *,.it.press > *{transform:scale(.96)}
+.src{width:42px;height:42px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center}
+.src svg{width:24px;height:24px;display:block}
+.src.hp{background:var(--green600);color:var(--green100)}
+.src.hp svg{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.it .body{flex:1;min-width:0}
+.it .l1{display:flex;align-items:center;gap:6px;font-size:14.5px;font-weight:600}
+.it .l1 .tag{font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap}
+.it .l1 .tag.live{color:var(--green800);background:var(--green100)}
+.it .l2{font-size:var(--fs-sm);color:var(--g700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
+.it .el{font-size:11.5px;color:var(--g600);white-space:nowrap}
+.it.late .el{color:var(--warn-weak-fg);font-weight:600}
+.it .u{width:8px;height:8px;border-radius:50%;background:var(--red)}
+.empty{text-align:center;color:var(--g600);font-size:14px;padding:60px 16px}
+.empty b{display:block;color:var(--g900);font-size:15px;margin-bottom:4px}
+
+/* 대화방 — 오른쪽에서 덮는다 */
+.room{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s var(--ease);z-index:3}
+.room.on{transform:none}
+.rh{display:flex;align-items:center;gap:8px;padding:14px 12px 10px;border-bottom:1px solid var(--g100);flex:none}
+.rh .x{width:34px;height:34px;border:0;background:none;color:var(--g700);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:10px;transition:transform .16s;flex:none}
+.rh .x:active{transform:scale(.86)}
+.rh .x svg{width:20px;height:20px}
+.rh .nm{font-size:15px;font-weight:700}
+.rh .st{font-size:var(--fs-caption);color:var(--g600);display:flex;align-items:center;gap:5px}
+.rh .st i{width:7px;height:7px;border-radius:50%;background:var(--green600);flex:none}
+.rh .st.off i{background:var(--g400)}
+.cchip{border:1px solid var(--g200);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--g700);box-shadow:0 1px 3px rgba(25,31,40,.08);cursor:pointer;transition:transform .08s;white-space:nowrap}
+.cchip:active{transform:scale(.96)}
+.rh .rel{margin-left:auto}
+.thread{flex:1;overflow-y:auto;padding:14px 14px 10px;display:flex;flex-direction:column;scrollbar-width:none;user-select:text}
+.thread::-webkit-scrollbar{width:0}
+.day{align-self:center;font-size:var(--fs-caption);color:var(--g600);margin:16px 0 12px}
+.thread > .day:first-child{margin-top:0}
+.older{align-self:center;border:0;background:var(--g100);color:var(--g700);font-size:12.5px;font-weight:600;border-radius:99px;padding:5px 12px;margin-bottom:8px;cursor:pointer}
+/* 말풍선 간격: 같은 사람이 이어 보내면 4px, 말하는 사람이 바뀌면 16px(§4.18) */
+.row{display:flex;gap:6px;align-items:flex-end;max-width:100%;margin-top:16px}
+.row.cont{margin-top:4px}
+.day + .row{margin-top:0}
+.row.me{justify-content:flex-end}
+.row .who{font-size:var(--fs-caption);color:var(--g600);margin:0 0 4px 2px}
+.bub{max-width:300px;padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.them .bub{background:var(--g100);color:var(--g900)}
+.them:not(.cont) .bub{border-top-left-radius:6px}
+.me .bub{background:var(--g800);color:#fff}
+.me .bub.last{border-bottom-right-radius:6px}
+.meta2{font-size:11px;color:var(--g600);white-space:nowrap;margin-bottom:2px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
+.them .meta2{align-items:flex-start}
+.meta2 .rd{color:var(--green700);font-weight:600}
+.meta2 .bad{color:var(--red);font-weight:600}
+.new{animation:up .42s var(--ease) backwards}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.comp{border-top:1px solid var(--g100);padding:8px 10px 10px;background:#fff;flex:none}
+.comp .line{display:flex;gap:8px;align-items:flex-end}
+.taw{flex:1;min-width:0;position:relative;border-radius:16px;overflow:hidden}
+.taw::before,.taw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:1}
+.taw::before{top:0;background:var(--sf-top)}
+.taw::after{bottom:0;background:var(--sf-bot)}
+.taw.more::after,.taw.moreTop::before{opacity:1}
+.ta{display:block;width:100%;resize:none;background:var(--g100);border:1.5px solid transparent;border-radius:16px;padding:8px 12px;font-size:14px;font-family:inherit;line-height:1.45;color:var(--g900);outline:none;max-height:100px;scrollbar-width:none;transition:background .15s,border-color .15s;user-select:text}
+.ta::-webkit-scrollbar{width:0;height:0}
+.ta::placeholder{color:var(--g500)}
+.ta:focus{background:#fff;border-color:var(--green600)}
+.send{width:38px;height:38px;border-radius:50%;border:0;background:var(--green700);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;transition:transform .1s,background .2s}
+.send:disabled{background:var(--p-disabled);cursor:default}
+.send:not(:disabled):active{transform:scale(.92);background:var(--green800)}
+.send svg{width:20px;height:20px}
+body.viewer .comp,body.viewer .rh .rel{display:none}
+.vnote{font-size:var(--fs-caption);color:var(--g600);text-align:center;padding:10px 12px 12px;border-top:1px solid var(--g100);display:none;flex:none}
+body.viewer .vnote{display:block}
+
+.atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:9}
+.atoast.on{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="ahd"><div><span class="t">문의</span><span class="vtag" id="vtag" style="display:none">보기 전용</span></div>
+    <button id="hostMin" title="작게" aria-label="작게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></svg></button></div>
+  <div class="seg" id="seg"><button class="on" data-t="wait">대기<span class="n red" id="nWait"></span></button><button data-t="mine">내 대화<span class="n grn" id="nMine"></span></button></div>
+  <div class="sw" id="lsw"><div class="list" id="list"></div></div>
+
+  <div class="room" id="room">
+    <div class="rh"><button class="x" id="rBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+      <div><div class="nm">홈페이지 문의</div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
+      <button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
+    <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
+    <div class="comp"><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
+    <div class="vnote">보기 전용이에요. 열어 봐도 읽음으로 안 바뀌어요.</div>
+  </div>
+  <div class="atoast" id="atoast"></div>
+</div>
+
+<script>
+/* ══════════ 설정 ══════════ */
+var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
+var POLL_MS = 5000;          // 창이 열려 있을 때(보는 중) — 알약(10초)보다 짧게. 창이 가려지면 멈춘다
+var LATE_MS = 3 * 60000;     // 답장 전 3분 = 「3분 넘음」(디자인 4차 확정 — 받는 쪽만 다시 알림)
+var REQ_TIMEOUT_MS = 15000;  // 모든 요청에 시한(알약 07-31 사고: 시한 없는 fetch가 폴링을 영구히 멈췄다)
+var HOME_SVG = '<svg viewBox="0 0 24 24"><path d="M4.5 10.5 12 4.5l7.5 6V19a1 1 0 0 1-1 1h-4v-5.5h-5V20h-4a1 1 0 0 1-1-1z"/></svg>';
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function toHost(o){ try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(o)); } catch (e) { } }
+
+/* ══════════ 신원 — 관리자 보기가 이긴다(D17) ══════════ */
+function readId(){
+  try { var v = JSON.parse(localStorage.getItem('att_inqv') || 'null'); if (v && v.sig) return v; } catch (e) { }
+  try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
+  return null;
+}
+var me = readId();
+var VIEWER = !!(me && me.role === 'viewer');
+document.body.classList.toggle('viewer', VIEWER);
+if (VIEWER) $('vtag').style.display = '';
+
+/* GAS 응답은 가끔 JSON 대신 구글 HTML·수십 초로 온다(플랫폼 — 10-09 22 「BAD_REPLY인데 카톡 감」 실측).
+   ⇒ 글자로 받아 직접 해석, 못 읽으면 「응답 못 받음」(실패가 아니다). 읽기는 4초 헤지, 쓰기는 다시 보내지 않고 작업 번호로 묻는다. */
+function ask(body, ms){
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opt = { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) };
+  if (ctl) opt.signal = ctl.signal;
+  var t = setTimeout(function(){ if (ctl) ctl.abort(); }, ms || REQ_TIMEOUT_MS);
+  return fetch(INQ_GAS, opt).then(function(r){ return r.text(); }).then(function(s){
+    clearTimeout(t);
+    try { return JSON.parse(s); } catch (e) { var err = new Error('BAD_REPLY'); err.bad = true; throw err; }
+  }, function(e){ clearTimeout(t); throw e; });
+}
+// 읽기 전용 — 4초 안에 안 오면 같은 요청을 하나 더(먼저 온 쪽). 둘 다 실패해야 실패
+function askRead(body){
+  return new Promise(function(res, rej){
+    var done = false, fails = 0, n = 0;
+    function go(){ n++; ask(body).then(function(r){ if (!done) { done = true; res(r); } }, function(e){ if (++fails >= n && n >= 2 && !done) { done = true; rej(e); } else if (n < 2) go(); }); }
+    go();
+    setTimeout(function(){ if (!done && n < 2) go(); }, 4000);
+  });
+}
+function cid(){ return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+/* ══════════ 창 −·이동 그립(근태 앱 attend/index.html과 같은 문법 — exe 무변경) ══════════ */
+if (window.chrome && window.chrome.webview) {
+  $('hostMin').style.display = 'flex';
+  $('hostMin').addEventListener('click', function(){ toHost({ type:'close' }); });
+  (function(){
+    var st = document.createElement('style'); document.documentElement.appendChild(st);
+    var on = false;
+    function setCur(v){ if (v === on) return; on = v; st.textContent = v ? '*{cursor:move !important}' : ''; }
+    document.addEventListener('mousemove', function(e){ setCur(e.clientY <= 12); }, true);
+    document.addEventListener('mouseleave', function(){ setCur(false); }, true);
+    document.addEventListener('mousedown', function(e){
+      if (e.button !== 0 || e.clientY > 12) return;
+      e.preventDefault(); e.stopPropagation();
+      toHost({ type:'edge', dir:'t' });
+    }, true);
+  })();
+}
+
+/* ══════════ 시간 글자 ══════════ */
+function ago(iso){
+  var d = Date.now() - new Date(iso).getTime();
+  if (!(d >= 0)) return '';
+  if (d < 60000) return '방금';
+  if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+  if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+  var t = new Date(iso); return (t.getMonth() + 1) + '월 ' + t.getDate() + '일';
+}
+function hm(iso){ var t = new Date(iso), h = t.getHours(), m = t.getMinutes(); return (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m; }
+function dayLabel(iso){ var t = new Date(iso); return (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + '일월화수목금토'.charAt(t.getDay()) + '요일'; }
+function ymd(iso){ var t = new Date(iso); return t.getFullYear() + '-' + t.getMonth() + '-' + t.getDate(); }
+
+/* ══════════ 넘칠 때만 그라디언트(막대 없음) ══════════ */
+function fadeWatch(sc, host){
+  var f = function(){ var over = sc.scrollHeight > sc.clientHeight + 1;
+    host.classList.toggle('more', over && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1);
+    host.classList.toggle('moreTop', over && sc.scrollTop > 1); };
+  sc.addEventListener('scroll', f); if (typeof ResizeObserver !== 'undefined') new ResizeObserver(f).observe(sc);
+  return f;
+}
+var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('tsw')), fTa = fadeWatch($('rTa'), $('rTa').parentNode);
+
+/* ══════════ 목록 ══════════ */
+var S = { tab: 'wait', wait: [], mine: [], all: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '' };
+function rowsOfTab(){ return VIEWER ? S.all : (S.tab === 'wait' ? S.wait : S.mine); }
+function isLate(r){ return r.lastWho === 'v' && Date.now() - new Date(r.lastAt).getTime() >= LATE_MS; }
+// 순서 = 마지막 메시지 순(서버) · 단 「3분 넘음」은 맨 위로(디자인 4차·5차 재현 그대로)
+function ordered(L){ return L.map(function(r, i){ return { r: r, i: i }; }).sort(function(a, b){ return ((isLate(b.r) ? 1 : 0) - (isLate(a.r) ? 1 : 0)) || (a.i - b.i); }).map(function(x){ return x.r; }); }
+function rowHtml(r){
+  var live = !!S.live[r.id], tag = '';
+  if (live) tag = '<span class="tag live">보는 중</span>';
+  else if (VIEWER && r.owner) tag = '<span class="tag">맡음</span>';
+  var right;
+  if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '3분 넘음' : esc(ago(r.lastAt))) + '</span><span class="u"></span>';
+  else right = '<span class="el">답장함</span>';
+  return '<div class="it' + (isLate(r) ? ' late' : '') + '" data-id="' + esc(r.id) + '"><div class="src hp">' + HOME_SVG + '</div>' +
+    '<div class="body"><div class="l1">홈페이지' + (tag ? ' ' + tag : '') + '</div><div class="l2">' + esc(r.preview) + '</div></div>' +
+    '<div class="rt">' + right + '</div></div>';
+}
+function emptyHtml(){
+  if (S.dead) return '<div class="empty"><b>문의를 불러올 수 없어요</b>' + esc(S.dead) + '</div>';
+  if (VIEWER) return '<div class="empty">문의가 없어요</div>';
+  return '<div class="empty">' + (S.tab === 'wait' ? '기다리는 문의가 없어요' : '맡은 대화가 없어요') + '</div>';
+}
+function render(){
+  var L = ordered(rowsOfTab());
+  $('list').innerHTML = L.length ? L.map(rowHtml).join('') : emptyHtml();
+  var nw = S.wait.filter(function(r){ return r.lastWho === 'v'; }).length, nm = S.mine.filter(function(r){ return r.lastWho === 'v'; }).length;
+  var a = $('nWait'); a.textContent = nw; a.classList.toggle('show', nw > 0);
+  var b = $('nMine'); b.textContent = nm; b.classList.toggle('show', nm > 0);
+  fList();
+}
+// 새 메시지로 순서가 바뀌면 줄이 제자리에서 미끄러져 올라간다(FLIP .26s, §4.18 「맨 위로」)
+function renderFlip(){
+  var before = {};
+  [].forEach.call(document.querySelectorAll('#list .it'), function(x){ before[x.dataset.id] = x.getBoundingClientRect().top; });
+  render();
+  [].forEach.call(document.querySelectorAll('#list .it'), function(x){
+    var b = before[x.dataset.id]; if (b == null || !x.animate) return;
+    var dy = b - x.getBoundingClientRect().top; if (!dy) return;
+    x.animate([{ transform:'translateY(' + dy + 'px)' }, { transform:'none' }], { duration:260, easing:'cubic-bezier(.22,.7,.25,1)' });
+  });
+}
+function showTab(t){
+  S.tab = t;
+  [].forEach.call($('seg').querySelectorAll('button'), function(x){ x.classList.toggle('on', x.dataset.t === t); });
+  render(); $('list').scrollTop = 0;
+}
+$('seg').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) showTab(b.dataset.t); });
+
+function take(r){   // 서버 목록 → 화면 상태
+  S.gver = r.gver || S.gver;
+  if (r.live) S.live = r.live;
+  if (r.same) return false;
+  if (VIEWER) S.all = r.all || [];
+  else { S.wait = r.wait || []; S.mine = r.mine || []; }
+  return true;
+}
+// 첫 그림 = 알약이 남겨 둔 마지막 목록(왕복 기다리지 않고 바로 보인다). 이어서 서버가 덮는다
+(function(){
+  try {
+    var c = JSON.parse(localStorage.getItem('att_inqc') || 'null');
+    if (c && me && c.role === me.role && (c.emp || '') === (me.emp || '') && Date.now() - c.t < 10 * 60000) { take(c.r); S.gver = ''; }
+  } catch (e) { }
+  render();
+})();
+
+var pollT = null;
+function poll(){
+  clearTimeout(pollT);
+  pollT = setTimeout(poll, POLL_MS);
+  if (!me || document.hidden) return;
+  if (S.busy && Date.now() - S.pollAt < REQ_TIMEOUT_MS * 2) return;
+  S.busy = true; S.pollAt = Date.now();
+  ask({ action:'s_poll', auth: me, gver: S.gver }).then(function(r){
+    S.busy = false;
+    if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
+    S.dead = '';
+    var prevCur = S.cur ? findRow(S.cur.id) : null;
+    var changed = take(r);
+    if (changed) renderFlip(); else render();
+    // 열린 대화방에 새 줄이 왔으면 그 방만 다시 읽는다
+    if (S.cur) {
+      var now = findRow(S.cur.id);
+      setPst();
+      if (now && (!prevCur || now.lastAt !== prevCur.lastAt) && now.lastAt !== S.cur.lastAt) loadRoom(S.cur.id, true);
+    }
+  }).catch(function(){ S.busy = false; });
+}
+function dead(msg){ S.dead = msg; S.wait = []; S.mine = []; S.all = []; render(); }
+function findRow(id){ var L = VIEWER ? S.all : S.wait.concat(S.mine); for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; }
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) poll(); });
+
+/* ══════════ 줄 누르기 — 누른 모양 .17초 보여 주고 대화방. 대기 줄이면 뒤에서 조용히 내 대화로(§4.18) ══════════ */
+$('list').addEventListener('click', function(e){
+  var it = e.target.closest('.it'); if (!it) return;
+  var id = it.dataset.id, inWait = !VIEWER && S.tab === 'wait';
+  it.classList.add('press');
+  setTimeout(function(){
+    it.classList.remove('press');
+    openRoom(id);
+    if (inWait) setTimeout(function(){ claim(id); }, 320);   // 대화방이 다 덮은 뒤에(목록이 움직이는 게 안 보이게)
+  }, 170);
+});
+function claim(id){
+  var r = null;
+  S.wait = S.wait.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
+  if (r) { r.owner = me.emp; S.mine.unshift(r); S.tab = 'mine'; showTab('mine'); }
+  ask({ action:'s_claim', auth: me, id: id, cid: cid() }).then(function(res){
+    if (res && res.ok) return;
+    toastA((res && res.error) || '맡지 못했어요');
+    if (res && res.code === 'taken') { closeRoom(); }
+    S.gver = ''; poll();
+  }).catch(function(){ S.gver = ''; poll(); });
+}
+
+/* ══════════ 대화방 ══════════ */
+var T = $('thread'), ta = $('rTa'), sendB = $('rSend');
+var R = { id: '', msgs: [], more: false, hasPhone: false, live: false, owner: '' };
+function openRoom(id){
+  var row = findRow(id) || { id: id, lastAt: '' };
+  S.cur = { id: id, lastAt: '' };
+  R = { id: id, msgs: [], more: false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '' };
+  T.innerHTML = ''; ta.value = ''; sendB.disabled = true; autosize();
+  setPst();
+  $('room').classList.add('on');
+  loadRoom(id, false);
+  if (!VIEWER) setTimeout(function(){ ta.focus(); }, 340);
+}
+function closeRoom(){ $('room').classList.remove('on'); S.cur = null; R.id = ''; }
+$('rBack').addEventListener('click', function(){ closeRoom(); render(); });
+function loadRoom(id, quietNew){
+  askRead({ action:'s_room', auth: me, id: id }).then(function(r){
+    if (R.id !== id) return;          // 그새 다른 방으로 갔다
+    if (!r || !r.ok) { toastA((r && r.error) || '대화를 열 수 없어요'); if (r && r.code === 'gone') closeRoom(); return; }
+    var had = {}; R.msgs.forEach(function(m){ had[m.seq] = 1; });
+    // 아직 결과를 모르는 내 답장은 남긴다 — 서버 줄에 같은 글이 그 뒤 시각으로 있으면 그게 그것(서버 줄이 이긴다)
+    var local = R.msgs.filter(function(m){ return m.pending || m.unknown || m.failed; });
+    R.msgs = r.msgs.concat(local.filter(function(p){
+      return !r.msgs.some(function(m){ return m.who !== 'v' && m.text === p.text && new Date(m.at).getTime() >= new Date(p.at).getTime() - 120000; });
+    }));
+    R.more = !!r.more; R.hasPhone = !!r.hasPhone; R.live = !!r.live; R.owner = r.owner || '';
+    S.cur.lastAt = (findRow(id) || {}).lastAt || '';
+    setPst();
+    drawThread(quietNew ? had : null, true);
+  }).catch(function(){ if (R.id === id) toastA('연결이 안 돼요'); });
+}
+function loadOlder(){
+  var first = R.msgs.filter(function(m){ return !m.pending; })[0]; if (!first) return;
+  var id = R.id, h0 = T.scrollHeight, t0 = T.scrollTop;
+  askRead({ action:'s_room', auth: me, id: id, before: first.seq }).then(function(r){
+    if (R.id !== id || !r || !r.ok) return;
+    R.msgs = r.msgs.concat(R.msgs); R.more = !!r.more;
+    drawThread(null, false);
+    T.scrollTop = T.scrollHeight - h0 + t0;   // 보던 줄이 제자리에 남게
+  });
+}
+function setPst(){
+  if (!R.id) return;
+  var row = findRow(R.id);
+  if (row) { R.hasPhone = !!row.hasPhone; R.owner = row.owner || R.owner; }
+  R.live = !!S.live[R.id] || (R.live && !row);
+  var off = !R.live;
+  $('rSt').classList.toggle('off', off);
+  $('rStT').textContent = !off ? '문의자가 채팅창을 보고 있어요' : (R.hasPhone ? '나갔어요, 답장은 문자로 가요' : '나갔어요, 번호를 안 남겼어요');
+  // 돌려놓기 = 내가 맡은 방에서만(다른 사람 방은 서버도 거절 — taken)
+  $('rel').style.display = (!VIEWER && R.owner === me.emp) ? '' : 'none';
+}
+/* 행정 답장의 아래 글자: 문자로 갔으면 그 말, 실패면 실패, 아니면 학부모가 그 뒤에 말했거나 지금 보고 있으면 읽음 */
+function meLabel(m, i){
+  if (m.pending) return '<span>보내는 중</span>';
+  if (m.unknown) return '<span>결과를 아직 못 받았어요</span>';   // 중립 — 실패라고 단정하지 않는다(서버가 실패라고 한 것만 빨강)
+  if (m.failed) return '<span class="bad">안 보내졌어요</span>';
+  if (m.sms === 'sent') return '<span class="rd">문자로 보냈어요</span>';
+  if (m.sms === 'fail') return '<span class="bad">문자 실패</span>';
+  var later = R.msgs.slice(i + 1).some(function(x){ return x.who === 'v'; });
+  return (later || R.live) ? '<span class="rd">읽음</span>' : '<span>안 읽음</span>';
+}
+function drawThread(had, keepBottom){
+  var atBottom = T.scrollTop + T.clientHeight >= T.scrollHeight - 30;
+  var html = R.more ? '<button class="older" id="older">이전 대화 보기</button>' : '';
+  var lastDay = '', prevWho = '';
+  R.msgs.forEach(function(m, i){
+    var who = m.who === 'v' ? 'v' : 's';
+    var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + dayLabel(m.at) + '</div>'; lastDay = d; prevWho = ''; }
+    var cont = prevWho === who, next = R.msgs[i + 1], lastOfRun = !next || (next.who === 'v' ? 'v' : 's') !== who || ymd(next.at) !== d;
+    var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
+    if (who === 'v') {
+      html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">홈페이지 방문자</div>') +
+        '<div class="bub">' + esc(m.text) + '</div></div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
+    } else {
+      html += '<div class="row me' + (cont ? ' cont' : '') + nw + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
+        '<div class="bub' + (lastOfRun ? ' last' : '') + '">' + esc(m.text) + '</div></div>';
+    }
+    prevWho = who;
+  });
+  T.innerHTML = html;
+  if ($('older')) $('older').addEventListener('click', loadOlder);
+  if (keepBottom && (atBottom || !had)) T.scrollTop = T.scrollHeight;
+  fThread();
+}
+$('rel').addEventListener('click', function(){
+  var id = R.id; if (!id) return;
+  closeRoom();
+  var r = null;
+  S.mine = S.mine.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
+  if (r) { r.owner = ''; S.wait.unshift(r); }
+  showTab('wait'); toastA('대기로 돌려놨어요');
+  ask({ action:'s_release', auth: me, id: id, cid: cid() }).then(function(res){
+    if (!res || !res.ok) toastA((res && res.error) || '돌려놓지 못했어요');
+    S.gver = ''; poll();
+  }).catch(function(){ S.gver = ''; poll(); });
+});
+
+/* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════ */
+function autosize(){ ta.style.height = 'auto'; ta.style.height = Math.min(100, ta.scrollHeight + 3) + 'px'; fTa(); }
+ta.addEventListener('input', function(){ sendB.disabled = !ta.value.trim(); autosize(); });
+ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendB.click(); } });
+sendB.addEventListener('click', function(){
+  var v = ta.value.trim(); if (!v || !R.id) return;
+  ta.value = ''; sendB.disabled = true; autosize();
+  var c = cid(), id = R.id, m = { seq: 1e9 + Date.now(), at: new Date().toISOString(), who: me.emp, text: v, pending: true, cid: c };
+  R.msgs.push(m);
+  var had = {}; R.msgs.forEach(function(x){ if (x !== m) had[x.seq] = 1; });
+  drawThread(had, true); T.scrollTop = T.scrollHeight;
+  // 대기 대화에 답장 = 맡기 겸함(서버 규칙) → 목록도 그렇게 먼저 옮긴다 + 맨 위로
+  var row = findRow(id);
+  if (row) {
+    row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
+    S.wait = S.wait.filter(function(x){ return x !== row; }); S.mine = S.mine.filter(function(x){ return x !== row; });
+    row.owner = row.owner || me.emp; S.mine.unshift(row); R.owner = row.owner; setPst();
+  }
+  var t0 = Date.now();
+  function settle(r){   // 서버가 답한 결과(바로 왔든, 작업 번호로 물어서 왔든)
+    m.pending = false; m.unknown = false;
+    if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
+    else { m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : ''; if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at; }
+    if (R.id === id) drawThread({}, true);
+    S.gver = ''; poll();
+  }
+  // ⚠️응답을 못 받았다 ≠ 안 보냈다. 같은 답장을 다시 보내지 않고 5초마다 결과만 묻는다(학부모에게 두 번 가면 안 된다)
+  function askJob(){
+    if (Date.now() - t0 > 4 * 60000) { m.pending = false; m.unknown = true; if (R.id === id) drawThread({}, true); return; }
+    setTimeout(function(){
+      ask({ action:'s_job', auth: me, cid: c }).then(function(j){
+        if (j && j.ok && j.state === 'done') { settle(j.result); return; }
+        if (j && j.ok && j.state === 'none' && Date.now() - t0 > 60000) { m.pending = false; m.unknown = true; if (R.id === id) drawThread({}, true); return; }
+        askJob();
+      }, askJob);
+    }, 5000);
+  }
+  ask({ action:'s_reply', auth: me, id: id, text: v, cid: c }).then(function(r){
+    if (r && r.code === 'run') { askJob(); return; }
+    settle(r);
+  }, askJob);
+});
+
+function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2200); }
+
+/* ══════════ 시작 ══════════ */
+if (!me) dead('이 컴퓨터 알약에서 근태에 한 번 들어가면 문의가 보여요');
+else poll();
+// 「3분 넘음」은 시간이 지나며 바뀐다 — 서버를 안 불러도 30초마다 다시 그린다
+setInterval(function(){ if (!$('room').classList.contains('on')) render(); }, 30000);
+</script>
+</body>
+</html>

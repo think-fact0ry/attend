@@ -55,6 +55,15 @@ body.warn #t{color:var(--warn-weak-fg)}
 body.nc #nc{display:block}
 body.dim #pill{opacity:.45}
 body.moving #pill{cursor:move;opacity:.6}
+/* ── 문의(26) — 알약 오른쪽에 붙는 칸(디자인 확정본 = prototype/문의창_디자인5차 .pill .inqw, 왼쪽 고정·오른쪽으로 자람) ── */
+#inqw{position:relative;display:none;align-items:center;gap:9px;height:100%}
+body.inq #inqw{display:flex}
+#inqw .sep{width:1px;height:16px;background:var(--g200);flex:0 0 auto}
+#inqw .inq{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--g900);letter-spacing:-.4px;white-space:nowrap}
+#inqN{min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11.5px;display:none;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box;font-variant-numeric:tabular-nums}
+body.inqn #inqN{display:inline-flex}
+/* 관리자 보기 PC(유성, D17) = 근태 없이 「문의」만 */
+body.vonly #dot,body.vonly #t,body.vonly #fill,body.vonly #inqw .sep{display:none}
 
 /* ── 중간 위젯(공통) ── */
 #panel{display:none;position:relative;padding:14px 16px 16px;height:100%;box-sizing:border-box}
@@ -143,7 +152,7 @@ body.open #panel{display:block}
 </head>
 <body>
   <div id="pill">
-    <div id="fill"></div><span id="dot"></span><span id="t">근태</span><span id="nc" title="연결 안 됨"></span>
+    <div id="fill"></div><span id="dot"></span><span id="t">근태</span><span id="inqw"><span class="sep"></span><span class="inq">문의<span id="inqN">0</span></span></span><span id="nc" title="연결 안 됨"></span>
   </div>
 
   <div id="panel">
@@ -213,7 +222,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v90';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v93';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -304,9 +313,9 @@ if (window.chrome && window.chrome.webview) {
     // ⚠️사람이 바뀌면(공용 PC 계정 전환) 옛 사람의 화면을 들고 있지 않는다 — 다음 조회가 올 때까지
     //   남의 근무 시간이 알약에 떠 있게 된다. 도장 세션(act)도 그 사람 것이므로 같이 버린다.
     if (m.type === 'auth')    { var pe = auth && auth.emp; auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null;
-                                if (!auth || auth.emp !== pe) { snap = null; act = null; actAt = 0; }
+                                if (!auth || auth.emp !== pe) { snap = null; act = null; actAt = 0; inqDrop('att_inq'); }
                                 diag('auth 받음 ' + (auth ? ('O emp=' + auth.emp) : 'X(세션 없음)')); fetchTick(); }
-    if (m.type === 'signout') { auth = null; act = null; snap = null; render(); }
+    if (m.type === 'signout') { auth = null; act = null; snap = null; inqDrop('att_inq'); render(); }
     // ⚡`kind`가 실려 오면 = **앱에서 도장이 서버까지 다녀왔다**는 뜻 → 다시 물어보지 않고 바로 반영한다.
     //   구판은 여기서 tick 왕복(1.2~1.5초)을 한 번 더 돌아서, 앱 punch(1.5~2초) 뒤에도 초록이 늦게 켜졌다.
     //   서버 진실은 이어서 도는 fetchTick 이 덮는다(틀릴 일이 없다 — 앱이 성공 응답을 받은 뒤에만 온다).
@@ -326,6 +335,7 @@ if (window.chrome && window.chrome.webview) {
    ⚠️`storage`는 **쓴 문서 자신에겐 안 온다** — 위젯이 스스로 찍은 건 punch()가 직접 fetchTick을 부른다. */
 window.addEventListener('storage', function(e){
   if (e && e.key === 'att_bump') fetchTick();
+  if (e && e.key === 'att_inqv') inqPoll();
   // 로그인은 여기서 안 듣는다 — 앱의 `_hostAuth_`가 호스트에 밀고 호스트가 `auth`로 되돌려준다(경로 하나로 유지).
 });
 
@@ -340,8 +350,9 @@ $('pill').addEventListener('pointerdown', function(e){
 ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
   $('pill').addEventListener(ev, function(){ if (!moved) endHold(); });
 });
-$('pill').addEventListener('click', function(){
+$('pill').addEventListener('click', function(e){
   if (moved) { moved = false; return; }
+  if (document.body.classList.contains('vonly') || (e.target.closest && e.target.closest('#inqw'))) { openInbox(); return; }
   setOpen(true);
 });
 
@@ -450,6 +461,7 @@ function verify(){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
       startActSession(r);
+      inqSave(r.inq);
       // 확인됐다는 걸 **독립 화면**으로 보여준다(가운데 큰 체크 + ooo님 안녕하세요).
       //   구판은 제목 글자만 바꿔서 눈에 안 띄었다(유성 "안 나와").
       pin = ''; $('gH1').textContent = '비밀번호를 눌러주세요';
@@ -534,13 +546,14 @@ function fetchTick(){
       if (punching) { diag('조회 응답 무시 — 도장 중'); schedule(true); return; }
       if (!r || !r.ok) {
         diag('조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
-        if (r && r.code === 'auth') { auth = null; act = null; snap = null; toHost({ type:'need-auth' }); }
+        if (r && r.code === 'auth') { auth = null; act = null; snap = null; inqDrop('att_inq'); toHost({ type:'need-auth' }); }
         // ⚠️미뤄둔 조회는 **실패 분기에서도** 소비한다 — 안 하면 `pendingTick`이 true로 굳어 다음 겹침을 또 삼킨다.
         if (pendingTick) { pendingTick = false; render(); fetchTick(); return; }
         render(); schedule(false); return;
       }
       diag('조회 ok · 출근 ' + (r.open ? '있음(' + r.open + ')' : '없음') + ' · 근무일 ' + (r.work ? 'Y' : 'N'));
       snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+      inqSave(r.inq);
       if (bootRep) sendBoot();   // 네트워크가 살아난 걸 방금 확인했다 — 못 보낸 시작 보고를 지금 보낸다
       render();
       if (pendingTick) { pendingTick = false; fetchTick(); return; }   // 겹쳐서 미뤄둔 조회를 지금 돌린다
@@ -673,6 +686,7 @@ function punch(kind){
       //   못 받았으면(구 서버·조립 실패) 예전처럼 한 번 더 묻는다 — 안전한 실패.
       if (r.tick && r.tick.ok) {
         snap = r.tick; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+        inqSave(r.tick.inq);
         render(); schedule(true);
       } else fetchTick();
     })
@@ -707,18 +721,93 @@ function punchFailed(prev, msg){
   toHost({ type:'alert', msg: msg });
 }
 
+/* ══════════ 문의 알리미(26) — 1-b 2026-10-09 ══════════
+   정본 = docs/4_설계_2026-10-08_문의알리미_1단계.md(D2·D3·D5·D10·D17) · 서버 = scripts/26_문의알리미.
+   · 신원: 19가 login/tick/punch 응답에 싣는 inq 서명(att_inq) — 26이 같은 INQ_KEY로 로컬 확인(26→19 호출 0).
+     관리자 보기(att_inqv, 근태 관리자 화면에서 켬)가 있으면 **그 PC는 보기 전용**이 이긴다(유성 PC, D17).
+   · 박동: 행정 서명일 때만 on(=지금 출근 중)을 싣는다 → 26이 채팅/메일 모드를 정한다. 받은함 페이지는 on을 안 실음.
+   · 세는 것 = 마지막 말이 학부모인 대화(=답장 전). 행정은 대기+내 대화, 보기 전용은 전체.
+   · ⚠️흔들림·미리보기(피어나기)·소리는 이 창으로 못 한다(실측: 창 = DWM 라운드 사각 하나, 투명 영역 없음·창 이동은 호스트만)
+     → 1-c exe가 type:'inq'를 받아 처리. 여기선 새 학부모 줄이 생길 때 그 신호만 보낸다. */
+var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
+var INQ_FAST = 10000, INQ_SLOW = 60000;   // 출근 중 10초(D5) · 그 밖(퇴근 뒤·보기 전용) 60초 — 밤새 10초씩 GAS를 깨우지 않는다
+var inq = { n: 0, role: '', busy: false, at: 0, gver: '', rows: null, seen: null, t: null };
+function inqId(){
+  try { var v = JSON.parse(localStorage.getItem('att_inqv') || 'null'); if (v && v.sig) return v; } catch (e) { }
+  try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
+  return null;
+}
+function inqSave(sig){ if (sig && sig.sig) { try { localStorage.setItem('att_inq', JSON.stringify(sig)); } catch (e) { } } }
+function inqDrop(k){ try { localStorage.removeItem(k); localStorage.removeItem('att_inqc'); } catch (e) { } inq.gver = ''; inq.rows = null; inq.seen = null; inq.n = 0; }
+function inqAsk(body){
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opt = { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) };
+  if (ctl) opt.signal = ctl.signal;
+  var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, REQ_TIMEOUT_MS);
+  return fetch(INQ_GAS, opt).then(function(r){ clearTimeout(timer); return r.json(); }, function(e){ clearTimeout(timer); throw e; });
+}
+function inqPoll(){
+  clearTimeout(inq.t);
+  var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open);
+  inq.t = setTimeout(inqPoll, (duty || appOpen) ? INQ_FAST : INQ_SLOW);
+  var role = id ? id.role : '';
+  if (role !== inq.role) { inq.role = role; inq.gver = ''; inq.seen = null; render(); }
+  if (!id) { if (inq.n) { inq.n = 0; inq.rows = null; render(); } return; }
+  if (inq.busy && performance.now() - inq.at < REQ_TIMEOUT_MS * 2) return;   // 시한이 못 걸려도 영구히 막히지 않게(위 loop와 같은 결)
+  inq.busy = true; inq.at = performance.now();
+  var body = { action:'s_poll', auth: id, gver: inq.gver };
+  if (id.role === 'staff') body.on = duty;
+  inqAsk(body).then(function(r){
+    inq.busy = false;
+    if (!r || !r.ok) {
+      diag('문의 조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
+      if (r && r.code === 'auth') { inqDrop(id.role === 'viewer' ? 'att_inqv' : 'att_inq'); render(); }
+      return;
+    }
+    if (r.same) return;
+    inq.gver = r.gver;
+    inq.rows = r.all || (r.wait || []).concat(r.mine || []);
+    try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
+    inqCount(id);
+  }).catch(function(){ inq.busy = false; });
+}
+function inqCount(id){
+  var rows = inq.rows || [], seen = {}, fresh = 0, first = !inq.seen;
+  rows.forEach(function(x){ seen[x.id] = x.lastAt; if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh++; });
+  inq.seen = seen;
+  inq.n = rows.filter(function(x){ return x.lastWho === 'v'; }).length;
+  render();
+  // 새 학부모 줄 → 호스트 로그 한 줄(1-c에서 소리·흔들림이 이 신호를 받는다). 보기 전용은 숫자만(D10)
+  if (fresh && id.role === 'staff') toHost({ type:'inq', m: '새 ' + fresh + ' / 답장 전 ' + inq.n });
+}
+/* 받은함 = 앱 창 안의 새 페이지(attend/inbox/, D9). exe가 아직 「받은함 열기」를 모르므로(1-c)
+   att_go 표시를 남기고 앱 창을 연다 → 앱이 부팅하며 보고 받은함으로 간다. 앱 창이 이미 열려 있으면
+   'open'을 보내지 않는다(호스트의 열기는 토글이라 창이 닫힌다) — 열린 앱이 att_go를 보고 스스로 넘어간다. */
+function openInbox(){
+  try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { }
+  if (!appOpen) toHost({ type:'open' });
+}
+
 /* ══════════ 그리기 ══════════ */
 function sendState(){
   var v = view();
   var offline = !!auth && (performance.now() - (lastOkAt || bootAt) > OFFLINE_MARK_MS);
-  var w = open ? 236 : (15 + 8 + 9 + $('t').offsetWidth + 15 + (offline ? 14 : 0));
+  var w = open ? 236 : pillW(offline);
   var h = open ? panelH() : H_PILL;
   var sig = Math.ceil(w) + 'x' + h + '|' + (v.on?1:0) + '|' + (v.warn?1:0) + '|' + (v.dim?1:0);
   if (sig === lastSent) return;
   lastSent = sig;
   toHost({ type:'state', w:Math.ceil(w), h:h, on:v.on, warn:v.warn, dim:v.dim });
 }
-var lastText = null, lastGauge = null;
+/* 알약 폭 = 좌우 여백 15씩 + 점 8 + 사이 9 + 글자 (+ 연결 끊김 점 9+5) (+ 문의 칸 9+칸 폭). 관리자 보기 PC는 문의 칸만. */
+function pillW(offline){
+  var b = document.body, vonly = b.classList.contains('vonly');
+  var w = 15 + 15 + (offline ? 14 : 0);
+  if (!vonly) w += 8 + 9 + $('t').offsetWidth;
+  if (b.classList.contains('inq')) w += (vonly ? 0 : 9) + $('inqw').offsetWidth;
+  return w;
+}
+var lastText = null, lastGauge = null, lastInqN = null;
 function render(){
   var v = view();
   var b = document.body;
@@ -728,6 +817,11 @@ function render(){
   // 1초 루프가 매번 같은 값을 다시 써서 레이아웃을 무의미하게 무르게 하지 않는다(값이 바뀔 때만).
   if (v.text !== lastText) { lastText = v.text; $('t').textContent = v.text; }
   if (v.gauge !== lastGauge) { lastGauge = v.gauge; $('fill').style.width = v.gauge + '%'; }
+  var vonly = inq.role === 'viewer';
+  b.classList.toggle('vonly', vonly);
+  b.classList.toggle('inq', vonly || inq.n > 0);
+  b.classList.toggle('inqn', inq.n > 0);
+  if (inq.n !== lastInqN) { lastInqN = inq.n; $('inqN').textContent = inq.n > 99 ? '99+' : String(inq.n); }
 
   if (open && step === 'act') {
     var working = !!(snap && snap.open);
@@ -785,7 +879,7 @@ function loop(){
 }
 
 document.fonts && document.fonts.ready.then(function(){ lastSent = ''; render(); });
-render(); loop(); schedule();
+render(); loop(); schedule(); inqPoll();
 toHost({ type:'ready', m: PILL_VER });   // 호스트가 `알약: ready (v88)`로 남긴다 — 도는 판을 로그에서 바로 확인
 </script>
 </body>
