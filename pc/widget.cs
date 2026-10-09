@@ -41,7 +41,7 @@ static class Cfg {
     // ── 판 번호·자동 업데이트(2026-10-09, 문의 알리미 1-c — 유성 「업데이트해도 재설치 안 하게」) ──
     //   ⚠️이 파일을 고치면 **SHELL_VER를 올리고** `node tools/위젯배포/publish.js`로 올린다(안 올리면 스크립트가 거부).
     //   각 PC가 6시간마다 attend/pc/ver.txt를 보고, 서명이 맞는 더 높은 판이면 받아서 **그 PC에서 만들고** 쉬는 틈에 바꿔 끼운다.
-    public const int SHELL_VER = 2;
+    public const int SHELL_VER = 3;   // 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
     public const string PC_URL = "https://think-fact0ry.github.io/attend/pc/";
     // 서명 확인용 **공개** 열쇠(RSA 3072). 비밀 열쇠는 레포 밖(유성 노트북 %USERPROFILE%\.saenggak\pc-sign.pem) —
     //   깃허브 계정만 털려서는 가짜 판을 못 만든다. 열쇠를 바꾸면 이 줄이 바뀌므로 전 PC 재설치 1회.
@@ -98,6 +98,7 @@ static class Native {
     // 마지막 입력(키보드·마우스) 시각 — 업데이트를 사람이 안 쓰는 틈에만 적용하려고(1-c)
     [StructLayout(LayoutKind.Sequential)] public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
     [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO p);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);   // 창이 놓인 모니터의 배율(96=100%)
 
     // 프로세스끼리 한 마디 주고받기(2026-08-05) — 작업표시줄에 고정한 아이콘을 눌렀을 때
     //   **이미 떠 있는 알약**에게 "네가 나와라"를 전한다. 파이프·소켓을 들일 일이 아니다.
@@ -454,7 +455,16 @@ class Pill : Form {
     NotifyIcon tray;
     System.Windows.Forms.Timer tick;
     AppWin app;
-    int pillW = 120;
+    int pillW = 120, cssH = Cfg.PILL_H;   // ⚠️둘 다 **CSS 픽셀**(페이지가 보낸 값). 창 크기는 PhysSize로 배율을 곱한다
+    // 🔴2026-10-09 유성 노트북(125%, DPI 120) 실측: 창은 CSS 값 그대로 70×34 **물리** 픽셀인데 페이지는 125%로 그려져
+    //   글자가 오른쪽 아래로 밀리고 잘렸다(키패드 패널도 같은 이유로 잘림). exe가 PerMonitorV2라 배율은 우리가 곱해야 한다.
+    //   앱 창(AppWin)은 이미 곱하고 있었고 알약만 빠져 있었다 — 사무실 PC가 100%라 그동안 안 드러났다.
+    Size PhysSize(int w, int h) {
+        // 핸들이 아직 없으면(생성자) 1배로 — 곧 오는 첫 state가 진짜 배율로 다시 잰다(핸들을 일찍 만들지 않는다)
+        uint d = 0; try { if (IsHandleCreated) d = Native.GetDpiForWindow(Handle); } catch (Exception) { }
+        float sc = d > 0 ? d / 96f : 1f;
+        return new Size((int)Math.Ceiling(w * sc), (int)Math.Ceiling(h * sc));
+    }
     bool on = false, dim = false, warn = false, ready = false;
     System.Windows.Forms.Timer trayGuard;   // 트레이 아이콘 재적용(부팅 직후 등록 실패 대비)
     int trayGuardN = 0;
@@ -550,7 +560,9 @@ class Pill : Form {
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
         BackColor = Color.White;
-        ClientSize = new Size(pillW, Cfg.PILL_H);
+        ClientSize = PhysSize(pillW, Cfg.PILL_H);
+        // 모니터를 옮겨 배율이 바뀌면(PerMonitorV2) 같은 CSS 크기를 새 배율로 다시 잰다 — 페이지는 크기가 안 바뀌어서 다시 안 보낸다
+        DpiChanged += delegate { BeginInvoke((MethodInvoker)delegate { int b = Location.Y + Height; ClientSize = PhysSize(pillW, cssH); Location = new Point(Location.X, b - Height); placed = false; }); };
 
         web = new WebView2();
         web.Dock = DockStyle.Fill;
@@ -787,7 +799,8 @@ class Pill : Form {
             //   위로 자라야 알약이 제자리에 있는 것처럼 보인다.
             int bottom = Location.Y + Height;
             expanded = newH > Cfg.PILL_H;
-            ClientSize = new Size(pillW, newH);
+            cssH = newH;
+            ClientSize = PhysSize(pillW, newH);
             Location = new Point(Location.X, bottom - Height);
             if (borderChanged) ApplyBorder();
             // 펼친 동안·끄는 동안엔 자동 배치가 끼어들지 않는다.
