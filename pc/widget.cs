@@ -36,19 +36,25 @@ static class Cfg {
     public const int PILL_H = 34;
     public const int GAP = 8;
     // 알약 창의 제목 — 테두리가 없어 **화면엔 안 보이지만**, 두 번째 인스턴스가 우리를 찾아내는 이름이다.
-    //   앱 창 제목('생각공작소 근태')과 겹치면 엉뚱한 창을 찾으므로 다르게 둔다.
-    public const string PILL_TITLE = "생각공작소 근태 알약";
+    //   앱 창 제목('생각공작소 근태')과 겹치면 엉뚱한 창을 찾으므로 다르게 둔다. 시험판은 또 다르게(진짜 알약을 부르지 않게).
+    public static string PILL_TITLE { get { return Test ? "생각공작소 근태 알약 시험판" : "생각공작소 근태 알약"; } }
+    // ── 시험판(4판 10-10) — `근태위젯.exe --test` ──
+    //   지금 떠 있는 알약을 **안 건드리고** 새 판을 눈·귀로 확인하려고 둔다: 저장소 폴더·뮤텍스·창 이름·부르는 신호가 전부 따로이고,
+    //   업데이트 확인·바로가기 이름 바꾸기를 안 하며, 트레이에 「시험:」 메뉴가 붙는다. Main 첫 줄에서만 세운다.
+    public static bool Test = false;
+    // 사람이 보는 프로그램 이름(D12 「생각공작소」) — 오류 창·알림 풍선·트레이 글자. 앱 창 제목과 「근태」 메뉴는 행정 앱 이름 결정에 묶여 그대로.
+    public static string Title { get { return Test ? "생각공작소 시험판" : "생각공작소"; } }
     // ── 판 번호·자동 업데이트(2026-10-09, 문의 알리미 1-c — 유성 「업데이트해도 재설치 안 하게」) ──
     //   ⚠️이 파일을 고치면 **SHELL_VER를 올리고** `node tools/위젯배포/publish.js`로 올린다(안 올리면 스크립트가 거부).
     //   각 PC가 6시간마다 attend/pc/ver.txt를 보고, 서명이 맞는 더 높은 판이면 받아서 **그 PC에서 만들고** 쉬는 틈에 바꿔 끼운다.
-    public const int SHELL_VER = 3;   // 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
+    public const int SHELL_VER = 4;   // 4 = 문의 알림(소리·두 번 흔들림·미리보기)·앱 열기(닫지 않음)·이름 「생각공작소」 10-10 / 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
     public const string PC_URL = "https://think-fact0ry.github.io/attend/pc/";
     // 서명 확인용 **공개** 열쇠(RSA 3072). 비밀 열쇠는 레포 밖(유성 노트북 %USERPROFILE%\.saenggak\pc-sign.pem) —
     //   깃허브 계정만 털려서는 가짜 판을 못 만든다. 열쇠를 바꾸면 이 줄이 바뀌므로 전 PC 재설치 1회.
     public const string SIGN_PUB = "<RSAKeyValue><Modulus>xvr81ueM/4A9/i4xtaOXkI6T/iQJSp+VKhEF+4iO4M+KN6mRRdOEcdZfqMgLyxaELJvUkDNtK4bi4wLfWJmzTO6MJfWil721BU5gcAJOsB5zHkPprnzZwrk1X1eT4oFUwShUQ7xRkQvxytxNMbC2kfD6lr4d0VTacpH07zCRhNHG4VbeBLVUdI8VLKFJw45Y5Lp8nsLtxK/Cd2g9Evu+ffrd8Mb53JmS6lbYcOSeExbyoZ/7MML+tFZvXiJyG4l5obw48TM2bigPRSQO1eeF28a/Ejmwk/Jg20eIF0duDfihnBVH6VV/0EAAw0hj4kph4z12zShch3enc+2B+h5vJalLJmEDmVpsR2ceToib/f+iufC7sGl/UcgVLlQBPx7k039HV+UijO8j2eS2dyGRpob9CFHxnbw7fOzfiPH5sQyK4kTckbqt2exEr8klhbhIYwtayNxVD1u0Yovq3vO5t+Af5zy5/IhCg/KZJaVESq3E03r0yH4SsdBWlSvtJvuV</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
     public static string ExeDir() { return Path.GetDirectoryName(Application.ExecutablePath); }
     public static string DataDir() {
-        string p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "생각공작소\\근태위젯");
+        string p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "생각공작소\\근태위젯" + (Test ? "_시험" : ""));
         Directory.CreateDirectory(p);
         return p;
     }
@@ -99,6 +105,7 @@ static class Native {
     [StructLayout(LayoutKind.Sequential)] public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
     [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO p);
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);   // 창이 놓인 모니터의 배율(96=100%)
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();     // 지금 사람이 쓰는 창 — 앱 창이면 「보고 있음」(4판 알림 판정)
 
     // 프로세스끼리 한 마디 주고받기(2026-08-05) — 작업표시줄에 고정한 아이콘을 눌렀을 때
     //   **이미 떠 있는 알약**에게 "네가 나와라"를 전한다. 파이프·소켓을 들일 일이 아니다.
@@ -113,7 +120,10 @@ static class Native {
 //   뿌린다. 부팅 중 셸이 아직 트레이를 못 만든 시점에 우리가 아이콘을 넣었다면 그 등록은 실패했을 수 있고,
 //   이 신호가 "지금 다시 넣어라"는 유일한 공식 통보다.
 static class Msg {
-    public static readonly int Show = Native.RegisterWindowMessage("생각공작소_근태위젯_SHOW");
+    // ⚠️Show는 **처음 쓸 때** 만든다(4판). `static readonly` 초기화는 런타임이 Main보다 먼저 돌릴 수 있어서
+    //   `--test`를 읽기 전에 진짜 알약과 같은 이름으로 굳을 수 있다 → 시험판이 진짜 알약을 부르게 된다.
+    static int show = 0;
+    public static int Show { get { if (show == 0) show = Native.RegisterWindowMessage("생각공작소_근태위젯_SHOW" + (Cfg.Test ? "_시험" : "")); return show; } }
     public static readonly int TaskbarCreated = Native.RegisterWindowMessage("TaskbarCreated");
 }
 
@@ -249,6 +259,20 @@ static class J {
         return (s != null && int.TryParse(s, out v)) ? v : dflt;
     }
     public static string Esc(string s) { return (s == null ? "" : s.Replace("\\", "\\\\").Replace("\"", "\\\"")); }
+    // 따옴표까지 붙인 JSON 문자열 — Esc와 달리 줄바꿈·제어 문자도 이스케이프한다(4판 미리보기: 학부모 글에 줄바꿈이 섞여 와도 JSON이 안 깨지게)
+    public static string Q(string s) {
+        var sb = new StringBuilder("\"");
+        foreach (char c in (s ?? "")) {
+            if (c == '"') sb.Append("\\\"");
+            else if (c == '\\') sb.Append("\\\\");
+            else if (c == '\n') sb.Append("\\n");
+            else if (c == '\r') sb.Append("\\r");
+            else if (c == '\t') sb.Append("\\t");
+            else if (c < 0x20 || c == (char)0x2028 || c == (char)0x2029) sb.Append("\\u" + ((int)c).ToString("x4"));
+            else sb.Append(c);
+        }
+        return sb.Append('"').ToString();
+    }
 }
 
 // ── 자동 업데이트 (2026-10-09, 1-c) ─────────────────────────────
@@ -449,6 +473,179 @@ static class Upd {
     }
 }
 
+// ── 프로그램 이름 「생각공작소」(D12, 4판 10-10) ─────────────────
+//   옛 설치는 시작 메뉴·자동 실행 바로가기를 「생각공작소 근태」로 만들었다. 재설치 없이 바꾸려고 켤 때마다 한 번 본다(멱등 — 옛 것이 없으면 아무것도 안 함).
+//   ⚠️작업 표시줄 고정 아이콘은 안 건드린다 — 그건 바로가기의 **사본**(User Pinned)이라 이름을 바꿔도 화면이 안 따라오고
+//     손대면 고정이 풀릴 수 있다(08-06 「고정 아이콘은 상태를 못 따라간다」와 같은 자리).
+static class Names {
+    public const string OLD_LNK = "생각공작소 근태.lnk", NEW_LNK = "생각공작소.lnk";
+    public static void Fix() {
+        foreach (Environment.SpecialFolder f in new Environment.SpecialFolder[] { Environment.SpecialFolder.Startup, Environment.SpecialFolder.Programs }) {
+            try {
+                string dir = Environment.GetFolderPath(f), o = Path.Combine(dir, OLD_LNK), n = Path.Combine(dir, NEW_LNK);
+                if (!File.Exists(o)) continue;
+                if (File.Exists(n)) File.Delete(o); else File.Move(o, n);
+                AppWin.EdgeLog("바로가기 이름 → 생각공작소 (" + f + ")");
+            } catch (Exception ex) { AppWin.EdgeLog("바로가기 이름 바꾸기 실패 " + ex.Message); }
+        }
+    }
+}
+
+// ── 새 문의 소리(4판 10-10, 유성 픽 「B 띵동」) ─────────────────
+//   파일이 아니라 **코드로 만든다**: 3판 업데이트는 exe·아이콘·DLL만 바꿔 끼워(`Upd.DestOf`) 새 소리 파일을 못 실어 나른다.
+//   식 = prototype/19_문의알리미_1c마무리_계획_프리뷰.html 「들어 보기」와 같다(사인 + 2배음 0.12, 어택 4ms, 지수 감쇠, 정점 0.5로 맞춤).
+//   크기는 윈도우 볼륨을 따른다. 재생은 비동기(SoundPlayer.Play) — 알약이 멈추지 않는다.
+static class Chime {
+    public const int SR = 44100;
+    public const double LEN = 1.0, ATTACK = 0.004, H2 = 0.12, PEAK = 0.5, FADE = 0.06;
+    public static readonly double[][] NOTES = { new double[] { 1318.51, 0.00, 0.14 }, new double[] { 1046.50, 0.16, 0.30 } };   // {주파수 Hz, 시작 초, 감쇠 초}
+    static System.Media.SoundPlayer player;
+    public static short[] Samples() {
+        int n = (int)Math.Ceiling(LEN * SR);
+        var acc = new double[n];
+        foreach (double[] no in NOTES) {
+            int s0 = (int)Math.Floor(no[1] * SR);
+            for (int i = s0; i < n; i++) {
+                double t = (i - s0) / (double)SR;
+                double env = t < ATTACK ? t / ATTACK : Math.Exp(-(t - ATTACK) / no[2]);
+                acc[i] += env * (Math.Sin(2 * Math.PI * no[0] * t) + H2 * Math.Sin(4 * Math.PI * no[0] * t));
+            }
+        }
+        double pk = 0; foreach (double v in acc) pk = Math.Max(pk, Math.Abs(v));
+        var o = new short[n];
+        for (int i = 0; i < n; i++) o[i] = (short)Math.Round(pk > 0 ? acc[i] / pk * PEAK * 32767 : 0);
+        // 끝 0.06초는 0으로 줄인다 — 1.0초에서 감쇠 중인 음을 그냥 자르면 스피커에서 「딸깍」이 난다
+        int fade = (int)(FADE * SR);
+        for (int i = 0; i < fade && i < n; i++) o[n - 1 - i] = (short)Math.Round(o[n - 1 - i] * (i / (double)fade));
+        return o;
+    }
+    public static byte[] Wav() {
+        short[] s = Samples();
+        var ms = new MemoryStream();
+        var w = new BinaryWriter(ms);
+        w.Write(Encoding.ASCII.GetBytes("RIFF")); w.Write(36 + s.Length * 2); w.Write(Encoding.ASCII.GetBytes("WAVE"));
+        w.Write(Encoding.ASCII.GetBytes("fmt ")); w.Write(16); w.Write((short)1); w.Write((short)1); w.Write(SR); w.Write(SR * 2); w.Write((short)2); w.Write((short)16);
+        w.Write(Encoding.ASCII.GetBytes("data")); w.Write(s.Length * 2);
+        foreach (short v in s) w.Write(v);
+        w.Flush();
+        return ms.ToArray();
+    }
+    public static void Play() {
+        try {
+            if (player == null) { player = new System.Media.SoundPlayer(new MemoryStream(Wav())); player.Load(); }
+            player.Play();
+        } catch (Exception ex) { AppWin.EdgeLog("소리 실패 " + ex.Message); }
+    }
+}
+
+// ── 문의 알림 계산(4판 10-10) — 창·소리를 건드리지 않는 순수 계산만. `--logic`이 그대로 불러 검사한다 ──
+//   정본 = 디자인 원칙 §4.18(두 번 흔들림 5px·알약 왼쪽 위에서 피어남) + prototype/문의창_디자인5차_프리뷰.html 실값.
+static class Alert {
+    // 두 번 흔들림 = 5차 `@keyframes shake` 그대로(1.18초, 사이 0.18초 쉼). {진행 비율, CSS px}
+    public const int SHAKE_MS = 1180;
+    public static readonly double[][] SHAKE = {
+        new double[] { 0, 0 }, new double[] { .08, -5 }, new double[] { .17, 5 }, new double[] { .25, -3 }, new double[] { .34, 3 }, new double[] { .42, 0 },
+        new double[] { .58, 0 }, new double[] { .66, -5 }, new double[] { .74, 5 }, new double[] { .83, -3 }, new double[] { .91, 3 }, new double[] { 1, 0 } };
+    public static double ShakeAt(double p) {
+        if (p <= 0 || p >= 1) return 0;
+        for (int i = 1; i < SHAKE.Length; i++) {
+            if (p <= SHAKE[i][0]) {
+                double a = SHAKE[i - 1][0], b = SHAKE[i][0], f = (p - a) / (b - a);
+                return SHAKE[i - 1][1] + (SHAKE[i][1] - SHAKE[i - 1][1]) * f;
+            }
+        }
+        return 0;
+    }
+    // CSS cubic-bezier(x1,y1,x2,y2) — 시간 비율 x에서의 진행 값. x(t)가 단조라 이분법으로 t를 찾는다.
+    public static double Bezier(double x1, double y1, double x2, double y2, double x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        double lo = 0, hi = 1, t = x;
+        for (int i = 0; i < 40; i++) {
+            double cx = Bz(x1, x2, t);
+            if (Math.Abs(cx - x) < 1e-7) break;
+            if (cx < x) lo = t; else hi = t;
+            t = (lo + hi) / 2;
+        }
+        return Bz(y1, y2, t);
+    }
+    static double Bz(double a, double b, double t) { double u = 1 - t; return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t; }
+    // 판정표(정본 = 계획 프리뷰 §3 「언제 울리나」) — **몸 상태만** 거른다. 출근 중·역할·3분 같은 정책은 웹(알약 페이지)이 정해 want로 보낸다.
+    //   visible=false(전체 화면이라 알약이 숨음) → 아무것도 / 앱 창이 맨 앞(보고 있음) → 흔들림만 / 패널 펼침(키패드 누르는 중) → 소리만
+    public static void Decide(bool wantSound, bool wantPeek, bool wantShake, bool visible, bool expanded, bool appFront, out bool sound, out bool peek, out bool shake) {
+        sound = wantSound && visible && !appFront;
+        peek = wantPeek && visible && !expanded && !appFront;
+        shake = wantShake && visible && !expanded;
+    }
+    // 미리보기 카드 = CSS 260×62(5차 .peek 폭 + 두 줄). 알약 왼쪽 위에 GAP만큼 띄워 붙인다.
+    //   위에 자리가 없으면(작업 표시줄이 위에 있거나 알약을 위로 옮김) 아래로, 오른쪽이 넘치면 안으로 민다.
+    public const int PEEK_W = 260, PEEK_H = 62;
+    public static Rectangle PeekRect(Rectangle pill, Size peek, Rectangle work, int gap, out bool above) {
+        int x = pill.Left, y = pill.Top - gap - peek.Height;
+        above = true;
+        if (y < work.Top) { y = pill.Bottom + gap; above = false; }
+        if (x + peek.Width > work.Right) x = work.Right - peek.Width;
+        if (x < work.Left) x = work.Left;
+        return new Rectangle(x, y, peek.Width, peek.Height);
+    }
+}
+
+// ── `근태위젯.exe --logic` = 위 계산의 자가 검사(4판 10-10) ───────
+//   tests/위젯알림.test.js가 **실제로 만든 exe**로 부른다(정규식 검사는 계산 결과를 못 본다). 창·뮤텍스·저장소 0 — 출력만.
+static class Logic {
+    static int fails = 0;
+    static Stream outS;
+    // 표준 출력에 **UTF-8 바이트를 직접** 쓴다 — 창 프로그램(winexe)은 콘솔이 없어 Console.OutputEncoding이 안 먹고 949로 깨졌다(10-10 실측)
+    static void Ok(string name, bool cond) {
+        if (!cond) fails++;
+        try {
+            if (outS == null) outS = Console.OpenStandardOutput();
+            byte[] b = Encoding.UTF8.GetBytes((cond ? "PASS " : "FAIL ") + name + "\n");
+            outS.Write(b, 0, b.Length); outS.Flush();
+        } catch (Exception) { }
+    }
+    static bool Near(double a, double b) { return Math.Abs(a - b) < 1e-6; }
+    public static int Run() {
+        Ok("흔들림 0%·42%·58%·100% = 0", Near(Alert.ShakeAt(0), 0) && Near(Alert.ShakeAt(.42), 0) && Near(Alert.ShakeAt(.58), 0) && Near(Alert.ShakeAt(1), 0));
+        Ok("흔들림 8%·66% = -5px, 17%·74% = +5px", Near(Alert.ShakeAt(.08), -5) && Near(Alert.ShakeAt(.66), -5) && Near(Alert.ShakeAt(.17), 5) && Near(Alert.ShakeAt(.74), 5));
+        Ok("흔들림 25%·83% = -3px, 34%·91% = +3px", Near(Alert.ShakeAt(.25), -3) && Near(Alert.ShakeAt(.83), -3) && Near(Alert.ShakeAt(.34), 3) && Near(Alert.ShakeAt(.91), 3));
+        Ok("흔들림 사이 쉼(50% = 0)", Near(Alert.ShakeAt(.5), 0));
+        Ok("흔들림 4% = -2.5px(사이는 이어진다)", Near(Alert.ShakeAt(.04), -2.5));
+        double mx = 0; for (int i = 0; i <= 1000; i++) mx = Math.Max(mx, Math.Abs(Alert.ShakeAt(i / 1000.0)));
+        Ok("흔들림 폭은 5px를 안 넘는다", mx <= 5 + 1e-9 && mx >= 5 - 1e-9);
+        bool s, p, k;
+        Alert.Decide(true, true, true, true, false, false, out s, out p, out k); Ok("판정: 평소 = 소리·미리보기·흔들림", s && p && k);
+        Alert.Decide(true, true, true, true, false, true, out s, out p, out k); Ok("판정: 앱 창 맨 앞 = 흔들림만", !s && !p && k);
+        Alert.Decide(true, true, true, true, true, false, out s, out p, out k); Ok("판정: 패널 펼침 = 소리만", s && !p && !k);
+        Alert.Decide(true, true, true, false, false, false, out s, out p, out k); Ok("판정: 전체 화면(숨김) = 아무것도", !s && !p && !k);
+        Alert.Decide(false, true, true, true, false, false, out s, out p, out k); Ok("판정: 웹이 소리를 안 원하면(3분 지남) 소리 없음", !s && p && k);
+        Alert.Decide(false, false, false, true, false, false, out s, out p, out k); Ok("판정: 웹이 아무것도 안 원하면 아무것도", !s && !p && !k);
+        bool above;
+        Rectangle r = Alert.PeekRect(new Rectangle(1000, 1000, 120, 34), new Size(260, 62), new Rectangle(0, 0, 1920, 1040), 8, out above);
+        Ok("미리보기: 알약 왼쪽 위 8px 위(왼쪽 끝 맞춤)", above && r.Left == 1000 && r.Bottom == 1000 - 8);
+        r = Alert.PeekRect(new Rectangle(1000, 20, 120, 34), new Size(260, 62), new Rectangle(0, 0, 1920, 1040), 8, out above);
+        Ok("미리보기: 위에 자리가 없으면 알약 아래", !above && r.Top == 20 + 34 + 8);
+        r = Alert.PeekRect(new Rectangle(1800, 1000, 100, 34), new Size(260, 62), new Rectangle(0, 0, 1920, 1040), 8, out above);
+        Ok("미리보기: 오른쪽이 넘치면 화면 안으로", r.Right == 1920);
+        r = Alert.PeekRect(new Rectangle(-50, 1000, 100, 34), new Size(260, 62), new Rectangle(0, 0, 1920, 1040), 8, out above);
+        Ok("미리보기: 왼쪽이 넘치면 화면 안으로", r.Left == 0);
+        Ok("피어나기 곡선: 0 → 0, 1 → 1", Near(Alert.Bezier(.3, 1.35, .5, 1, 0), 0) && Near(Alert.Bezier(.3, 1.35, .5, 1, 1), 1));
+        double over = 0; for (int i = 0; i <= 200; i++) over = Math.Max(over, Alert.Bezier(.3, 1.35, .5, 1, i / 200.0));
+        Ok("피어나기 곡선: 살짝 넘쳤다 돌아온다(1.0 초과, 1.2 미만)", over > 1.0 && over < 1.2);
+        bool mono = true; double prev = -1; for (int i = 0; i <= 200; i++) { double v = Alert.Bezier(.25, .1, .25, 1, i / 200.0); if (v < prev - 1e-9) mono = false; prev = v; }
+        Ok("사라짐 곡선(ease): 되돌아가지 않는다", mono);
+        byte[] w = Chime.Wav();
+        Ok("소리: RIFF/WAVE 머리", Encoding.ASCII.GetString(w, 0, 4) == "RIFF" && Encoding.ASCII.GetString(w, 8, 4) == "WAVE");
+        Ok("소리: 44.1kHz 모노 16비트 1.0초", BitConverter.ToInt32(w, 24) == 44100 && BitConverter.ToInt16(w, 22) == 1 && BitConverter.ToInt16(w, 34) == 16 && BitConverter.ToInt32(w, 40) == 44100 * 2);
+        short[] sm = Chime.Samples(); int pk = 0; foreach (short v in sm) pk = Math.Max(pk, Math.Abs((int)v));
+        Ok("소리: 정점 = 절반 크기(" + pk + ")", pk >= 16300 && pk <= 16384);
+        Ok("소리: 두 번째 음은 0.16초에 시작(그 전엔 첫 음만 감쇠 중)", Math.Abs((int)sm[(int)(0.155 * Chime.SR)]) < 16384 * 0.4);
+        Ok("소리: 끝은 거의 조용(딸깍 없음)", Math.Abs((int)sm[sm.Length - 1]) < 400);
+        Ok("JSON 문자열: 줄바꿈·따옴표·역슬래시·제어 문자", J.Q("a\"b\\c\nd\re\tf" + (char)1) == "\"a\\\"b\\\\c\\nd\\re\\tf\\u0001\"");
+        return fails == 0 ? 0 : 1;
+    }
+}
+
 // ══════════════════════════════════════════════════════════════
 class Pill : Form {
     WebView2 web;
@@ -487,6 +684,7 @@ class Pill : Form {
     System.Windows.Forms.Timer dragTimer;
     Point grabOffset;
     void BeginUserDrag() {
+        StopShake();   // 흔들리는 도중 잡으면 흔들림 자리(±5px)가 아니라 제자리에서 끈다
         userDrag = true; dragging = true;
         grabOffset = new Point(Cursor.Position.X - Location.X, Cursor.Position.Y - Location.Y);
         if (dragTimer == null) {
@@ -562,7 +760,7 @@ class Pill : Form {
         BackColor = Color.White;
         ClientSize = PhysSize(pillW, Cfg.PILL_H);
         // 모니터를 옮겨 배율이 바뀌면(PerMonitorV2) 같은 CSS 크기를 새 배율로 다시 잰다 — 페이지는 크기가 안 바뀌어서 다시 안 보낸다
-        DpiChanged += delegate { BeginInvoke((MethodInvoker)delegate { int b = Location.Y + Height; ClientSize = PhysSize(pillW, cssH); Location = new Point(Location.X, b - Height); placed = false; }); };
+        DpiChanged += delegate { BeginInvoke((MethodInvoker)delegate { StopShake(); int b = Location.Y + Height; ClientSize = PhysSize(pillW, cssH); Location = new Point(Location.X, b - Height); placed = false; }); };
 
         web = new WebView2();
         web.Dock = DockStyle.Fill;
@@ -581,12 +779,15 @@ class Pill : Form {
             ApplyBorder();
             Reposition();
             tick.Start();
-            Log("── 시작 (부팅 후 " + Boot.UpSec + "초 · 판 " + Cfg.SHELL_VER + ")");
-            // 자동 업데이트 확인: 켠 뒤 3분(부팅 직후 네트워크·CPU를 피함), 그 뒤 6시간마다
-            updTimer = new System.Windows.Forms.Timer();
-            updTimer.Interval = 3 * 60 * 1000;
-            updTimer.Tick += delegate { updTimer.Interval = 6 * 60 * 60 * 1000; Upd.CheckAsync(); };
-            updTimer.Start();
+            Log("── 시작 (부팅 후 " + Boot.UpSec + "초 · 판 " + Cfg.SHELL_VER + (Cfg.Test ? " · 시험판" : "") + ")");
+            if (!Cfg.Test) Names.Fix();   // 옛 바로가기 이름 「생각공작소 근태」 → 「생각공작소」(재설치 없이, 4판)
+            // 자동 업데이트 확인: 켠 뒤 3분(부팅 직후 네트워크·CPU를 피함), 그 뒤 6시간마다. 시험판은 안 한다(자기 폴더를 바꿔 끼우면 안 됨)
+            if (!Cfg.Test) {
+                updTimer = new System.Windows.Forms.Timer();
+                updTimer.Interval = 3 * 60 * 1000;
+                updTimer.Tick += delegate { updTimer.Interval = 6 * 60 * 60 * 1000; Upd.CheckAsync(); };
+                updTimer.Start();
+            }
             // 막 새 판으로 바뀌었다 → 3분 안에 알약이 떠야(ready) 확정. 못 뜨면 옛 판으로
             if (Upd.Unconfirmed()) {
                 Log("새 판 첫 실행 — 알약이 뜨면 확정");
@@ -615,7 +816,7 @@ class Pill : Form {
                     try {
                         BeginInvoke((MethodInvoker)delegate {
                             if (t.IsFaulted || t.Result == null) {
-                                MessageBox.Show("WebView2 런타임을 찾지 못했어요.\n엣지가 설치돼 있는지 확인해 주세요.", "생각공작소 근태");
+                                MessageBox.Show("WebView2 런타임을 찾지 못했어요.\n엣지가 설치돼 있는지 확인해 주세요.", Cfg.Title);
                                 Application.Exit();
                                 return;
                             }
@@ -654,9 +855,16 @@ class Pill : Form {
         menu.MenuItems.Add(new MenuItem("끝내기", delegate {
             tray.Visible = false; Application.Exit();
         }));
+        // 시험판에만 — 문의가 실제로 안 와도 4판 알림을 눈·귀로 확인한다(글은 데모 문장, 판정은 진짜와 같은 OnNotify를 탄다)
+        if (Cfg.Test) {
+            menu.MenuItems.Add(new MenuItem("-"));
+            menu.MenuItems.Add(new MenuItem("시험: 새 문의", delegate { OnNotify(TEST_NEW); }));
+            menu.MenuItems.Add(new MenuItem("시험: 3분 지남", delegate { OnNotify(TEST_LATE); }));
+            menu.MenuItems.Add(new MenuItem("시험: 앱 열기(닫지 않음)", delegate { ShowApp(); }));
+        }
         tray = new NotifyIcon();
         tray.Icon = (trayOff != null ? trayOff : (trayOff = MakeIcon(false)));   // 시작=미출근(조회 전엔 회색이 정직)
-        tray.Text = "생각공작소";   // D12 — 근태만이 아니라 문의도 받는 「생각공작소 프로그램」(내부 이름·폴더는 유지)
+        tray.Text = Cfg.Title;   // D12 — 근태만이 아니라 문의도 받는 「생각공작소 프로그램」(내부 이름·폴더는 유지)
         tray.ContextMenu = menu;
         tray.Visible = true;
         Program.BeforeExit = delegate { try { tray.Visible = false; } catch (Exception) { } };
@@ -722,7 +930,7 @@ class Pill : Form {
     }
 
     void OnWebReady(object s, CoreWebView2InitializationCompletedEventArgs e) {
-        if (!e.IsSuccess) { MessageBox.Show("위젯을 띄우지 못했어요.\n" + e.InitializationException, "생각공작소 근태"); return; }
+        if (!e.IsSuccess) { MessageBox.Show("위젯을 띄우지 못했어요.\n" + e.InitializationException, Cfg.Title); return; }
         var c = web.CoreWebView2;
         c.Settings.AreDefaultContextMenusEnabled = false;
         c.Settings.AreDevToolsEnabled = false;
@@ -773,12 +981,14 @@ class Pill : Form {
         // 알약 쪽 로그가 **하나도 없던 것**이 2026-08-06 진단의 공백이었다(앱 창만 남기고 있었다).
         //   `state`는 초당 여러 번 오므로 뺀다 — 나머지는 드물게 오고 전부 진단 가치가 있다.
         if (type != "state") Log("알약: " + (type == null ? "(type 없음)" : type) + J.Tail(j, "m"));
-        if (type == "ready") { if (Upd.Unconfirmed()) { if (confirmT != null) confirmT.Stop(); Upd.Confirm(); } ready = true; PushAuth(); SendBoot(); appOpenSent = false; PushAppState(); return; }   // Send는 ready 전엔 조용히 버려진다 → 페이지가 뜬 뒤 현재 상태를 **강제로** 한 번 맞춰준다(새 페이지는 appOpen=false로 시작하므로, 트레이 '다시 읽기'·재시작 포함)
+        if (type == "ready") { if (Upd.Unconfirmed()) { if (confirmT != null) confirmT.Stop(); Upd.Confirm(); } ready = true; PushAuth(); SendBoot(); SendCaps(); appOpenSent = false; PushAppState(); WarmPeek(); return; }   // Send는 ready 전엔 조용히 버려진다 → 페이지가 뜬 뒤 현재 상태를 **강제로** 한 번 맞춰준다(새 페이지는 appOpen=false로 시작하므로, 트레이 '다시 읽기'·재시작 포함)
         if (type == "diag") return;   // 페이지가 남기고 싶은 한 줄(위에서 이미 기록했다)
         if (type == "open") { ToggleApp(Cfg.APP_URL); return; }
+        if (type == "show-app") { ShowApp(); return; }   // 4판: 닫지 않고 열기(받은함 열기·미리보기 누름) — open은 토글이라 열린 창에 보내면 닫힌다
+        if (type == "notify") { OnNotify(j); return; }   // 4판: 새 문의·3분 지남 → 소리·미리보기·두 번 흔들림(판정 = Alert.Decide)
         if (type == "need-auth") { Session.Clear(); return; }
         if (type == "alert") {   // 도장이 실패했을 때 — 위젯은 이미 접혀 있으므로 트레이 풍선으로 알린다
-            try { tray.ShowBalloonTip(4000, "생각공작소 근태", J.Str(j, "msg"), ToolTipIcon.Warning); } catch (Exception) { }
+            try { tray.ShowBalloonTip(4000, Cfg.Title, J.Str(j, "msg"), ToolTipIcon.Warning); } catch (Exception) { }
             return;
         }
         if (type == "drag") { BeginUserDrag(); return; }   // 3초 꾹 누름 → 마우스를 따라 옮긴다
@@ -787,6 +997,7 @@ class Pill : Form {
         //   → 이 메시지가 없으면 1초 백스톱 폴링이 발견할 때까지 잠금 화면이 남는다.
         if (type == "locked") { if (app != null && !app.IsDisposed) app.FadeClose(); return; }
         if (type == "state") {
+            if (shaking) StopShake();   // 흔들림 자리(±5px)에서 재면 제자리가 밀린다 — 먼저 제자리로
             int w = J.Int(j, "w", pillW);
             int h = J.Int(j, "h", Cfg.PILL_H);
             bool nOn = J.Bool(j, "on"), nWarn = J.Bool(j, "warn"), nDim = J.Bool(j, "dim");
@@ -887,7 +1098,111 @@ class Pill : Form {
         PushAppState();   // 어느 경로로 열렸든(알약·트레이·작업표시줄 고정·두 번째 인스턴스) 알약 버튼이 '닫기'가 된다
     }
 
+    // ══ 4판 문의 알림(2026-10-10) ═══════════════════════════════════
+    //   정책(출근 중인가·행정인가·새 문의인가 3분 지남인가·보여 줄 글)은 **알약 페이지**가 정해 notify로 보낸다 — 웹은 push 한 번이면 바뀐다.
+    //   exe는 **자기만 아는 몸 상태**(알약이 숨었나·패널을 펼쳤나·앱 창이 맨 앞인가)로만 거른다 = Alert.Decide.
+    //   ⚠️글(text·title)은 로그에 안 쓴다 — 학부모 문의 내용이 PC 파일(edge.log)에 남는다. 위 일반 로그가 꼬리로 쓰는 칸은 m뿐이라
+    //     웹도 글을 m에 싣지 않는다(10-10 계획 「새 발견」).
+    const string TEST_NEW = "{\"type\":\"notify\",\"kind\":\"new\",\"sound\":true,\"peek\":true,\"shake\":true,\"title\":\"홈페이지 문의\",\"text\":\"아이가 다음 달부터 오감 수업 받을 수 있을까요?\"}";
+    const string TEST_LATE = "{\"type\":\"notify\",\"kind\":\"late\",\"sound\":false,\"peek\":true,\"shake\":true,\"title\":\"홈페이지 문의\",\"text\":\"아이가 다음 달부터 오감 수업 받을 수 있을까요?\"}";
+    void OnNotify(string j) {
+        string kind = J.Str(j, "kind") ?? "new";
+        bool front = AppFront(), sound, pk, sh;
+        Alert.Decide(J.Bool(j, "sound"), J.Bool(j, "peek"), J.Bool(j, "shake"), Visible, expanded, front, out sound, out pk, out sh);
+        Log("알림 " + kind + ": 소리 " + (sound ? "O" : "X") + " 미리보기 " + (pk ? "O" : "X") + " 흔들림 " + (sh ? "O" : "X")
+            + (!Visible ? " (전체 화면이라 숨김)" : (front ? " (앱 창 맨 앞)" : (expanded ? " (패널 펼침)" : ""))));
+        if (sound) Chime.Play();
+        if (pk) ShowPeek(J.Str(j, "title"), J.Str(j, "text"));   // 흔들기 전에 — 미리보기 자리는 알약의 제자리에서 잰다
+        if (sh) Shake();
+    }
+    // 사람이 지금 앱 창을 보고 있나(그 창이 실제 전경 창). 최소화·닫힘·뒤에 깔림 = 아니다
+    bool AppFront() {
+        try { return AppOpen && app.WindowState != FormWindowState.Minimized && Native.GetForegroundWindow() == app.Handle; } catch (Exception) { return false; }
+    }
+    // 「닫지 않고 열기, 열려 있으면 앞으로」(4판). 알약 페이지의 받은함 열기·미리보기 누름이 쓴다(open은 토글이라 열린 창에 보내면 닫힌다).
+    //   ⚠️주소로 이동하지 않는다 — 열린 창이면 하던 화면(쓰던 휴가 신청 등)을 그대로 두고 앞으로만. 갈 곳은 웹이 정한다
+    //     (지금은 att_go 표시를 앱이 1초마다 본다). 행정 앱 구조가 바뀌어도 exe를 다시 배포할 일이 없게(10-10 세션 경계).
+    void ShowApp() {
+        if (AppOpen) {
+            if (app.WindowState == FormWindowState.Minimized) app.WindowState = FormWindowState.Normal;
+            if (app.IsGone()) app.FitToScreen();
+            app.Activate();
+            app.BringToFront();
+            PushAppState();
+            return;
+        }
+        OpenApp(Cfg.APP_URL);
+    }
+    // 알약이 뜰 때마다 「이 exe가 할 줄 아는 것」을 알린다 — boot는 프로세스당 한 번이라 다시 읽기·날짜 넘김 뒤의 페이지는 판을 모른다.
+    //   페이지는 이걸 받은 뒤에만 notify·show-app을 쓴다(3판 exe에 보내면 show-app은 무시, open 토글이 창을 닫는 사고).
+    void SendCaps() { Send("{\"type\":\"caps\",\"v\":" + Cfg.SHELL_VER + ",\"notify\":true,\"showApp\":true}"); }
+
+    // ── 두 번 흔들림(원칙 §4.18) — **창 자체를** 움직인다(알약 창은 투명 영역이 없어 웹 CSS로는 못 함, 10-09 실측) ──
+    //   흔드는 동안엔 1초 자리 맞추기(OnTick)·크기 변경(state)·끌기가 끼어들지 않고, 끝나면 정확히 처음 자리로 돌아온다.
+    bool shaking = false;
+    Point shakeBase;
+    System.Windows.Forms.Timer shakeT;
+    Stopwatch shakeSw;
+    void Shake() {
+        if (shaking || dragging || expanded || !Visible) return;
+        shaking = true; shakeBase = Location; shakeSw = Stopwatch.StartNew();
+        if (shakeT == null) {
+            shakeT = new System.Windows.Forms.Timer();
+            shakeT.Interval = 15;
+            shakeT.Tick += delegate {
+                double p = shakeSw.ElapsedMilliseconds / (double)Alert.SHAKE_MS;
+                if (p >= 1 || dragging || expanded) { StopShake(); return; }
+                Location = new Point(shakeBase.X + (int)Math.Round(Alert.ShakeAt(p) * Dpi()), shakeBase.Y);
+            };
+        }
+        shakeT.Start();
+    }
+    void StopShake() {
+        if (shakeT != null) shakeT.Stop();
+        if (!shaking) return;
+        shaking = false;
+        Location = shakeBase;
+        if (Cfg.Test) Log("흔들림 끝 — 제자리 " + Location.X + "," + Location.Y);
+    }
+    float Dpi() { uint d = 0; try { if (IsHandleCreated) d = Native.GetDpiForWindow(Handle); } catch (Exception) { } return d > 0 ? d / 96f : 1f; }
+
+    // ── 미리보기 창 — 한 번 만들어 두고 다시 쓴다(WebView2 준비에 1초 안팎이라 첫 문의에서 늦지 않게, 알약이 뜬 8초 뒤 미리 데운다) ──
+    PeekWin peek;
+    System.Windows.Forms.Timer warmT;
+    void WarmPeek() {
+        if (warmT != null || Env == null) return;
+        warmT = new System.Windows.Forms.Timer();
+        warmT.Interval = 8000;
+        warmT.Tick += delegate {
+            warmT.Stop();
+            if (peek != null && !peek.IsDisposed) return;
+            try { peek = new PeekWin(Env, this); peek.Warm(); } catch (Exception ex) { Log("미리보기 준비 실패 " + ex.Message); }
+        };
+        warmT.Start();
+    }
+    void ShowPeek(string title, string text) {
+        if (Env == null) return;
+        if (peek == null || peek.IsDisposed) peek = new PeekWin(Env, this);
+        float sc = Dpi();
+        Size ps = new Size((int)Math.Ceiling(Alert.PEEK_W * sc), (int)Math.Ceiling(Alert.PEEK_H * sc));
+        bool above;
+        Rectangle r = Alert.PeekRect(new Rectangle(shaking ? shakeBase : Location, Size), ps, Screen.FromControl(this).WorkingArea, (int)Math.Round(Cfg.GAP * sc), out above);
+        peek.Pop(r, above, string.IsNullOrEmpty(title) ? "문의" : title, text ?? "");
+    }
+    public void OnPeekClick() {
+        Log("미리보기 누름 → 앱 앞으로");
+        Send("{\"type\":\"peek-click\"}");   // 갈 곳(받은함 등)은 알약 페이지가 정한다 — 페이지가 att_go를 남기고 show-app을 또 보내도 같은 결과
+        ShowApp();
+    }
+
     void OnTick(object s, EventArgs e) {
+        // 시험판 전용: 저장소 폴더에 `시험알림.txt`(내용 new 또는 late)를 두면 그 알림을 한 번 낸다 — 트레이 메뉴 없이 Claude가 로그로 먼저 확인하는 길
+        if (Cfg.Test) {
+            try {
+                string mk = Path.Combine(Cfg.DataDir(), "시험알림.txt");
+                if (File.Exists(mk)) { string k = File.ReadAllText(mk).Trim(); File.Delete(mk); OnNotify(k == "late" ? TEST_LATE : TEST_NEW); }
+            } catch (Exception) { }
+        }
         // 새 판이 준비돼 있고 지금 아무도 안 쓰면 바꿔 끼운다(패널 접힘·앱 창 닫힘·끄는 중 아님·손 1분 안 닿음)
         if (Upd.Ready != null && !expanded && !dragging && !AppOpen && IdleMs() > 60000) { Upd.Apply(); return; }
         // 자정을 넘겼으면 세션을 버리고 페이지에도 알린다(하루 단위 리셋 — 유성 확정)
@@ -908,7 +1223,7 @@ class Pill : Form {
         if (!TopMost) TopMost = true;
         Native.SetWindowPos(Handle, Native.HWND_TOPMOST, 0, 0, 0, 0,
             Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
-        if (dragging || expanded) return;   // 끄는 중·펼친 중엔 **자리**만 안 건드린다(위 항상-위는 계속 유지)
+        if (dragging || expanded || shaking) return;   // 끄는 중·펼친 중·흔들리는 중엔 **자리**만 안 건드린다(위 항상-위는 계속 유지)
         // 좌표를 매 초 다시 계산한다 → DPI 변경·해상도 변경·작업표시줄 이동·모니터 착탈을
         //   한 줄도 처리하지 않고 자동 회복한다(부팅 직후 트레이가 아직 안 잡히는 경우 포함).
         Reposition();
@@ -977,6 +1292,7 @@ class Pill : Form {
             y = scr.WorkingArea.Bottom - Height - Cfg.GAP;
             x = scr.WorkingArea.Right - Width - Cfg.GAP;
         }
+        if (Cfg.Test) x -= (int)Math.Round(300 * Dpi());   // 시험판은 진짜 알약 왼쪽에(둘이 겹치지 않게)
         // 화면 밖으로 나가면 조용히 틀리지 말고 우하단으로 되돌린다
         if (x < scr.Bounds.Left || x + Width > scr.Bounds.Right) x = scr.WorkingArea.Right - Width - Cfg.GAP;
         if (y < scr.Bounds.Top || y + Height > scr.Bounds.Bottom) y = scr.WorkingArea.Bottom - Height - Cfg.GAP;
@@ -1037,7 +1353,7 @@ class AppWin : Form {
 
     public AppWin(CoreWebView2Environment env, Pill p) {
         pill = p;
-        Text = "생각공작소 근태";
+        Text = "생각공작소 근태" + (Cfg.Test ? " 시험판" : "");
         // 작업표시줄 버튼은 **남긴다** — 이게 없으면 Alt+Tab·최소화가 죽는다. 없애기로 한 건
         //   '고정된 런처 아이콘'(진입점 중복)이지 '열려 있는 창'이 아니다.
         ShowInTaskbar = true;
@@ -1182,7 +1498,7 @@ class AppWin : Form {
     protected override void OnFormClosed(FormClosedEventArgs e) { if (lockPoll != null) lockPoll.Stop(); base.OnFormClosed(e); }
 
     void OnReady(object s, CoreWebView2InitializationCompletedEventArgs e) {
-        if (!e.IsSuccess) { MessageBox.Show("앱을 띄우지 못했어요.\n" + e.InitializationException, "생각공작소 근태"); return; }
+        if (!e.IsSuccess) { MessageBox.Show("앱을 띄우지 못했어요.\n" + e.InitializationException, Cfg.Title); return; }
         var c = web.CoreWebView2;
         c.Settings.AreDefaultContextMenusEnabled = false;
         c.Settings.AreDevToolsEnabled = false;
@@ -1373,6 +1689,161 @@ class AppWin : Form {
 }
 
 // ══════════════════════════════════════════════════════════════
+// 미리보기 창(4판 10-10 — 디자인 5차 M1 「알약 왼쪽 위에서 피어난다」, 원칙 §4.18)
+//   새 문의가 오면 알약 왼쪽 위에 작은 카드(CSS 260×62)가 피어났다가 4.5초 뒤 사라진다. 누르면 앱이 앞으로(갈 곳은 알약 페이지가 정함).
+//   ⚠️카드 그림은 exe 안(NavigateToString)에 둔다 — attend/widget/ 아래 파일로 두면 오프라인 때 sw가 그 주소에 **알약 페이지**를
+//     대신 줘서(sw.js 폴백 규칙) 이 창에서 두 번째 알약이 돌며 GAS를 두드린다. 글(「홈페이지 문의」·첫 줄)은 알약 페이지가 notify로 보낸다.
+//   ⚠️투명 창이 아니라(WebView2는 알파 0/255만) **창 크기를 키워** 피어남을 흉내 낸다: WebView2는 처음부터 제 크기로 두고
+//     폼만 0.15배 → 1배(5차 곡선, 살짝 넘침)로 키워 잘라 보인다 = 매 프레임 WebView2 크기를 안 바꾼다(매끄러움은 실기기 눈 확인 대상).
+//   모서리·테두리·그림자는 알약처럼 윈도우가 그린다(DWM — 반지름이 5차의 14px보다 작다, 계획 프리뷰 「실제 창과 다른 점」).
+class PeekWin : Form {
+    WebView2 web;
+    Pill pill;
+    bool pageReady = false, showing = false, growing = false, queued = false;
+    string qTitle = "", qText = "";
+    Rectangle full;
+    bool above = true;
+    System.Windows.Forms.Timer anim, life;
+    Stopwatch sw = new Stopwatch();
+
+    protected override CreateParams CreateParams {
+        get {
+            CreateParams cp = base.CreateParams;
+            cp.ExStyle |= 0x08000000;  // WS_EX_NOACTIVATE — 쓰던 창의 포커스를 안 뺏는다(현아쌤이 타자 치던 중이어도)
+            cp.ExStyle |= 0x00000080;  // WS_EX_TOOLWINDOW — 작업 표시줄·Alt+Tab에 안 뜬다
+            cp.ExStyle |= 0x00000008;  // WS_EX_TOPMOST
+            return cp;
+        }
+    }
+    protected override bool ShowWithoutActivation { get { return true; } }
+
+    public PeekWin(CoreWebView2Environment env, Pill p) {
+        pill = p;
+        Text = "생각공작소 미리보기";
+        FormBorderStyle = FormBorderStyle.None;
+        ShowInTaskbar = false;
+        TopMost = true;
+        StartPosition = FormStartPosition.Manual;
+        BackColor = Color.White;
+        Bounds = new Rectangle(-32000, -32000, 1, 1);
+        web = new WebView2();
+        web.DefaultBackgroundColor = Color.White;
+        web.Location = Point.Empty;
+        web.Size = new Size(Alert.PEEK_W, Alert.PEEK_H);
+        Controls.Add(web);
+        web.CoreWebView2InitializationCompleted += OnReady;
+        web.EnsureCoreWebView2Async(env);
+        anim = new System.Windows.Forms.Timer(); anim.Interval = 15; anim.Tick += delegate { Step(); };
+        life = new System.Windows.Forms.Timer(); life.Interval = 4500; life.Tick += delegate { life.Stop(); BeginHide(); };
+    }
+    protected override void OnHandleCreated(EventArgs e) {
+        base.OnHandleCreated(e);
+        int pref = Native.DWMWCP_ROUND;
+        Native.DwmSetWindowAttribute(Handle, Native.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, 4);
+        int bgr = 0xEBE8E5;   // 테두리 g200 #e5e8eb (COLORREF = 0x00BBGGRR)
+        Native.DwmSetWindowAttribute(Handle, Native.DWMWA_BORDER_COLOR, ref bgr, 4);
+    }
+    // 미리 데우기 — 화면 밖에 1×1로 한 번 띄워 WebView2를 준비시키고, 페이지가 ready를 보내면 숨긴다(숨긴 폼은 WebView2가 안 깨어난다)
+    public void Warm() { if (!Visible && !showing) { Bounds = new Rectangle(-32000, -32000, 1, 1); Show(); } }
+
+    void OnReady(object s, CoreWebView2InitializationCompletedEventArgs e) {
+        if (!e.IsSuccess) { AppWin.EdgeLog("미리보기 창 준비 실패: " + e.InitializationException.Message); return; }
+        var c = web.CoreWebView2;
+        c.Settings.AreDefaultContextMenusEnabled = false;
+        c.Settings.AreDevToolsEnabled = false;
+        c.Settings.IsStatusBarEnabled = false;
+        c.Settings.IsZoomControlEnabled = false;
+        c.WebMessageReceived += OnMessage;
+        // 이 창의 WebView2가 죽으면 창째 닫는다 — 알약이 다음 문의 때 새로 만든다(살리려다 반쯤 산 창이 남는 것보다 단순하다)
+        c.ProcessFailed += delegate (object o, CoreWebView2ProcessFailedEventArgs pe) {
+            AppWin.EdgeLog("미리보기 창 WebView2 죽음: " + pe.ProcessFailedKind + " — 다음 문의 때 새로 만듦");
+            try { BeginInvoke((MethodInvoker)delegate { anim.Stop(); life.Stop(); Close(); }); } catch (Exception) { }
+        };
+        c.NavigateToString(PEEK_HTML);
+    }
+    void OnMessage(object s, CoreWebView2WebMessageReceivedEventArgs e) {
+        string j;
+        try { j = e.TryGetWebMessageAsString(); } catch (Exception) { return; }
+        string type = J.Str(j ?? "", "type");
+        if (type == "ready") {
+            pageReady = true;
+            AppWin.EdgeLog("미리보기 준비됨");
+            if (queued) { queued = false; Pop(full, above, qTitle, qText); }
+            else if (!showing) Hide();
+            return;
+        }
+        if (type == "click") { HideNow(); pill.OnPeekClick(); return; }
+    }
+
+    // 띄운다. 이미 떠 있으면 글만 바꾸고 4.5초를 다시 센다(다시 피어나지 않음 — 5차 peek()와 같은 결)
+    public void Pop(Rectangle r, bool up, string title, string text) {
+        full = r; above = up;
+        web.Size = r.Size;
+        if (!pageReady) {   // 아직 준비 중(데우기 전 첫 문의) — 받아 두었다가 ready 때 띄운다
+            queued = true; qTitle = title; qText = text;
+            if (!Visible) { Bounds = new Rectangle(-32000, -32000, 1, 1); Show(); }
+            return;
+        }
+        bool shrinking = anim.Enabled && !growing;
+        Post("{\"type\":\"show\",\"title\":" + J.Q(title) + ",\"text\":" + J.Q(text) + ",\"again\":" + (showing && !shrinking ? "true" : "false") + "}");
+        life.Stop(); life.Start();
+        if (showing && !shrinking) return;
+        showing = true; growing = true; sw.Reset(); sw.Start();
+        Apply(.15);
+        if (!Visible) Show();
+        Native.SetWindowPos(Handle, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+        anim.Start();
+        AppWin.EdgeLog("미리보기 뜸 " + full.X + "," + full.Y + " " + full.Width + "×" + full.Height + (above ? " 알약 위" : " 알약 아래"));   // 자리만(글은 안 씀)
+    }
+    // 배율 s(0.15~약 1.1)만큼의 창 — 알약 쪽 모서리를 붙잡고 자란다(위에 뜨면 아래 왼쪽 = 5차 transform-origin:left bottom)
+    void Apply(double s) {
+        int w = Math.Max(1, (int)Math.Round(full.Width * s)), h = Math.Max(1, (int)Math.Round(full.Height * s));
+        SetBounds(full.Left, above ? full.Bottom - h : full.Top, w, h);
+        web.Location = new Point(0, above ? h - full.Height : 0);
+    }
+    void Step() {
+        double t = sw.ElapsedMilliseconds / (growing ? 500.0 : 300.0);
+        if (t >= 1) {
+            anim.Stop();
+            if (growing) Apply(1); else HideNow();
+            return;
+        }
+        double p = growing ? Alert.Bezier(.3, 1.35, .5, 1, t) : 1 - Alert.Bezier(.25, .1, .25, 1, t);
+        Apply(.15 + .85 * p);
+    }
+    void BeginHide() {
+        if (!showing) return;
+        Post("{\"type\":\"hide\"}");   // 글은 먼저 흐려지고(0.25초) 창은 0.3초에 걸쳐 줄어든다(5차 .peek 퇴장 값)
+        growing = false; sw.Reset(); sw.Start(); anim.Start();
+    }
+    void HideNow() {
+        anim.Stop(); life.Stop(); showing = false; growing = false;
+        Post("{\"type\":\"hide\"}");
+        Hide();
+    }
+    void Post(string json) { try { if (web.CoreWebView2 != null) web.CoreWebView2.PostWebMessageAsString(json); } catch (Exception) { } }
+
+    // 카드 = 5차 .peek 실값(.s 12px g600 + 빨간 점 7px / .m 14px 600 g900 한 줄 말줄임). 폰트·색은 알약 페이지와 같은 Pretendard·토큰.
+    const string PEEK_HTML =
+      "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">" +
+      "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css\">" +
+      "<style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}" +
+      "body{font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;word-break:keep-all;padding:11px 13px;box-sizing:border-box;cursor:pointer;-webkit-user-select:none;user-select:none}" +
+      "#c{opacity:0;transition:opacity .25s}#c.on{opacity:1;transition-delay:.18s}" +
+      ".s{font-size:12px;line-height:18px;color:#6b7684;display:flex;align-items:center;gap:6px}" +
+      ".s i{width:7px;height:7px;border-radius:50%;background:#f04452;flex:none}" +
+      ".m{font-size:14px;font-weight:600;line-height:20px;color:#191f28;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+      "</style></head><body><div id=\"c\"><div class=\"s\"><i></i><span id=\"t\"></span></div><div class=\"m\" id=\"x\"></div></div><script>" +
+      "var P=function(o){window.chrome.webview.postMessage(JSON.stringify(o));},c=document.getElementById('c');" +
+      "window.chrome.webview.addEventListener('message',function(e){var d;try{d=JSON.parse(e.data);}catch(_e){return;}" +
+      "if(d.type==='show'){document.getElementById('t').textContent=d.title||'';document.getElementById('x').textContent=d.text||'';" +
+      "if(!d.again){c.classList.remove('on');void c.offsetWidth;c.classList.add('on');}}" +
+      "else if(d.type==='hide'){c.classList.remove('on');}});" +
+      "document.addEventListener('click',function(){P({type:'click'});});P({type:'ready'});" +
+      "</script></body></html>";
+}
+
+// ══════════════════════════════════════════════════════════════
 static class Program {
     // 다시 켜기(업데이트 적용·되돌리기·처리 못 한 예외) — 새 프로세스는 `--wait <나>`로 내가 끝날 때까지 기다렸다가
     //   뮤텍스를 잡는다(안 기다리면 「이미 떠 있음」으로 조용히 물러난다).
@@ -1380,7 +1851,7 @@ static class Program {
     public static void Relaunch() {
         try { if (BeforeExit != null) BeforeExit(); } catch (Exception) { }
         try {
-            Process.Start(Application.ExecutablePath, "--wait " + Process.GetCurrentProcess().Id);
+            Process.Start(Application.ExecutablePath, "--wait " + Process.GetCurrentProcess().Id + (Cfg.Test ? " --test" : ""));   // 시험판은 시험판으로(안 붙이면 진짜 알약으로 떠서 진짜와 부딪힌다)
         } catch (Exception ex) { AppWin.EdgeLog("다시 켜기 실패: " + ex.Message + " — 지킴이(5분)가 켠다"); }
         Environment.Exit(0);
     }
@@ -1397,6 +1868,9 @@ static class Program {
     static int Main(string[] args) {
         // 업데이트가 새로 만든 exe를 시험할 때 — 아무것도 띄우지 않고 부품 로드만 보고 끝(Upd.SelfTest)
         if (Array.IndexOf(args, "--selftest") >= 0) return Upd.SelfTestMain();
+        // 4판 계산 자가 검사(tests/위젯알림.test.js가 부른다) — 창·뮤텍스·저장소 0, 결과는 표준 출력
+        if (Array.IndexOf(args, "--logic") >= 0) return Logic.Run();
+        Cfg.Test = Array.IndexOf(args, "--test") >= 0;   // 시험판 — 뮤텍스·저장소·창 이름·부르는 신호가 전부 이걸 본다(그래서 맨 먼저)
         int wi = Array.IndexOf(args, "--wait"), pid;
         if (wi >= 0 && wi + 1 < args.Length && int.TryParse(args[wi + 1], out pid)) {
             try { Process.GetProcessById(pid).WaitForExit(20000); } catch (Exception) { }   // 이미 끝났으면 예외 = 그냥 진행
@@ -1405,7 +1879,7 @@ static class Program {
         bool watch = Array.IndexOf(args, "--watch") >= 0;
         // 단일 인스턴스 — 두 번 실행하면 알약이 두 개 뜬다
         bool fresh;
-        using (var mtx = new Mutex(true, "Global\\생각공작소_근태위젯", out fresh)) {
+        using (var mtx = new Mutex(true, "Global\\생각공작소_근태위젯" + (Cfg.Test ? "_시험" : ""), out fresh)) {
             if (!fresh && watch) return 0;
             if (!fresh) {
                 // 이미 돌고 있다 → **먼저 뜬 알약을 부르고** 조용히 물러난다.
