@@ -1141,7 +1141,6 @@ function adoptSync(r) {
   return c;
 }
 function adoptOrSync(r, cb) { // 쓰기 응답에 sync 페이로드가 얹혀 오면(2026-07-25 서버 계약) 추가 왕복 없이 채택, 아니면 예전처럼 sync
-  if (r && r.admin) { enterAdmin(); return; }   // 관리자(문자 인증으로 비밀번호를 새로 정한 경우 포함)
   if (r && r.events && r.settings) { var c = adoptSync(r); if (cb) cb(c); }
   else syncNow(cb);
 }
@@ -1152,7 +1151,6 @@ function syncNow(cb) {
       if (r.code === 'auth') { hostDiag('pin-server-rejected'); localStorage.removeItem('att_token'); loginGate(); return; } // 서버가 세션을 거절 = 남은 후보 둘 중 나머지
       toast(r.error); return;
     }
-    if (r.admin) { enterAdmin(); return; }   // 서버가 관리자라고 하면(다른 기기에서 저장된 세션 등) 근태 화면을 그리지 않는다
     var c = adoptSync(r);
     if (cb) cb(c);
   }).catch(function () { toast('연결이 안 돼요. 새로고침해 주세요'); });
@@ -1315,15 +1313,7 @@ document.addEventListener('click', function (e) { // 07-23 전 화면 캘린더�
 ['calBack', 'applyBack', 'myBack', 'ledgerBack', 'meBack'].forEach(function (id) { $(id).addEventListener('click', function () { go('main'); refreshMain(); }); });
 // T5(07-24): 관리자를 닫으면 '내 정보'(현아 개인 화면 — 비밀번호 바꾸기·로그아웃이 있는 곳)로 떨어졌다.
 //   유성이 관리자 보고 나올 때마다 남의 계정 설정 화면에 서게 되는 자리라 중립(메인)으로 복귀하고, 관리자 PIN도 메모리에서 지운다.
-$('adminClose').addEventListener('click', function () {
-  state.adminPin = ''; sessionStorage.removeItem('att_admin');
-  // 관리자(한유성) 세션엔 돌아갈 근태 메인이 없다 → 위젯 창이면 창을 닫고, 브라우저면 잠가서 다음 사람은 PIN부터(10-09)
-  if (isAdminUser()) {
-    if (window.chrome && window.chrome.webview) { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (e) { } return; }
-    localStorage.setItem('att_locked', '1'); loginGate(); return;
-  }
-  go('main'); refreshMain();
-}); // sessionStorage도 같이 — 메모리만 지우면 재부팅 시 되살아난다(2026-07-25)
+$('adminClose').addEventListener('click', function () { state.adminPin = ''; sessionStorage.removeItem('att_admin'); go('main'); refreshMain(); }); // sessionStorage도 같이 — 메모리만 지우면 재부팅 시 되살아난다(2026-07-25)
 
 /* ── [구] 등록 코드 — 2차 PIN 단일 진입 이후 `go('token')` 호출부가 없어 도달 불가(제거는 T6 정리 후보).
       state.db 조립만 adoptSync로 묶어 둔다(형태가 갈리면 나중에 조용히 어긋난다). ── */
@@ -2433,8 +2423,6 @@ function loginGate() {
         store.token = r.token; store.emp = r.emp;
         localStorage.removeItem('att_locked');
         h.close();
-        if (r.admin) { enterAdmin(); return; }      // 한유성 = 관리자 화면(근태·미기록일 없음, 10-09)
-        localStorage.removeItem('att_isadmin');
         adoptOrSync(r); // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 sync 한 번
       }).catch(function () { toast('연결이 안 돼요'); });
     }
@@ -2632,16 +2620,9 @@ function openAdminPin() {
     title: '관리자 PIN을 입력해주세요', digits: 6, back: true, // 유성 10차: '닫기' 텍스트 대신 좌상단 ← 아이콘
     onDone: function (p, h) {
       api('admin_summary', { adminPin: p }).then(function (r) {
-        if (!r.ok) { h.fail(r.code === 'pinlock' ? r.error : 'PIN이 맞지 않아요'); return; }
+        if (!r.ok) { h.fail('PIN이 맞지 않아요'); return; }
         state.adminPin = p; sessionStorage.setItem('att_admin', p);
         h.close(); go('admin'); renderAdmin(r);
-        // 한유성으로 로그인한 PC면 이 PC를 믿게 한다 → 다음부터 근태 PIN만으로 관리자(트레이 「관리자」로 들어온 남의 PC는 안 믿는다)
-        if (isAdminUser()) {
-          api('admin_trust', { adminPin: p, label: navigator.platform || '' }, true).then(function (t) {
-            if (t && t.ok && t.admDev) localStorage.setItem('att_admdev', t.admDev);
-            ensureInqView();
-          }).catch(function () { });
-        }
       }).catch(function () { toast('연결이 안 돼요'); });
     }
   });
@@ -2835,28 +2816,7 @@ $('pcGo').addEventListener('click', function () {
 });
 
 /* ── 관리자 ── */
-function adminApi(action, data, isWrite) { return api(action, Object.assign(adminAuth(), data || {}), isWrite); }
-/* ── 관리자 = 한유성 로그인(2026-10-09 유성 「한유성 로그인시 관리자로」 — 서버 _isAdminMember_) ──
-   관리자 비밀번호(6자리)를 이 세션에 넣었으면 그것, 아니면 **이 PC를 믿게 한 열쇠**(att_admdev, 서버 ATT_ADMIN_DEVS).
-   처음 쓰는 PC = 관리자 비밀번호 1회 → 열쇠 저장 → 그 뒤로는 근태 PIN 4자리만으로 관리자 화면.
-   ⚠️4자리만으로 관리자를 열지 않는 이유 = 근태 PIN 잠금은 기기 구분값(보내는 쪽이 정함)별이라 대입을 못 막는다(10-09 검토). */
-function adminAuth() { return state.adminPin ? { adminPin: state.adminPin } : { admDev: localStorage.getItem('att_admdev') || '' }; }
-function isAdminUser() { return localStorage.getItem('att_isadmin') === '1'; }
-function enterAdmin() {
-  localStorage.setItem('att_isadmin', '1');
-  if (!state.adminPin && !localStorage.getItem('att_admdev')) { go('admin'); openAdminPin(); return; }   // 처음 PC = 한 번만
-  go('admin');
-  adminApi('admin_summary').then(function (r) {
-    if (r.ok) { renderAdmin(r); ensureInqView(); return; }
-    if (r.code === 'admin') { localStorage.removeItem('att_admdev'); openAdminPin(); return; }   // 열쇠가 해제됐다 → 다시 1회
-    toast(r.error);
-  }).catch(function () { toast('연결이 안 돼요'); });
-}
-// 관리자 PC = 문의 보기도 같이 켠다(D17 — 따로 버튼 누를 필요 없게). 이미 있으면 그대로
-function ensureInqView() {
-  if (localStorage.getItem('att_inqv')) return;
-  api('inq_admin', adminAuth(), true).then(function (rr) { if (rr && rr.ok) localStorage.setItem('att_inqv', JSON.stringify(rr.inq)); }).catch(function () { });
-}
+function adminApi(action, data, isWrite) { return api(action, Object.assign({ adminPin: state.adminPin }, data || {}), isWrite); }
 // 관리자 쓰기 버튼 = 비행 중 잠금+점 로딩(T5 2026-07-24). 연타하면 cid가 매번 새로 생겨 멱등이 안 걸리고
 //   부여·정정·스왑이 그대로 두 번 기록된다(도장 쪽은 이미 낙관적 렌더가 막지만 관리자 버튼은 무방비였다).
 function busyBtn(el, fn) {
@@ -3100,7 +3060,7 @@ function renderAdmin(r) {
   });
   if ($('inqvOn')) $('inqvOn').addEventListener('click', function () {
     busyBtn(this, function () {
-      return api('inq_admin', adminAuth(), true).then(function (rr) {
+      return api('inq_admin', { adminPin: state.adminPin }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
         localStorage.setItem('att_inqv', JSON.stringify(rr.inq));
         toast('이 컴퓨터에서 문의 보기를 켰어요', true); loadAdmin();
@@ -3467,7 +3427,6 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
     loginGate(); if (wantAdmin) openAdminPin(); return;       // 2차: 무세션·잠금 둘 다 PIN 로그인(등록코드 폐기)
   }
   hostDiag('boot-ok');                                        // 통과했다는 것도 남긴다 — "안 뜬 것"과 "안 남은 것"을 가르려고
-  if (!DEMO && isAdminUser()) { enterAdmin(); return; }      // 한유성 세션 = 근태 메인을 거치지 않고 관리자 화면(10-09)
   go('main');
   mainSkeleton();
   if (wantAdmin) openAdminPin();
