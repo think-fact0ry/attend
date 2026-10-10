@@ -123,7 +123,8 @@ body.viewer .seg{display:none}
 .them .bub{background:var(--g100);color:var(--g900)}
 .them:not(.cont) .bub{border-top-left-radius:6px}
 .me .bub{background:var(--g800);color:#fff}
-.me .bub.last{border-bottom-right-radius:6px}
+/* 우리 쪽 마지막 말풍선의 오른쪽 아래만 6px이던 꼬리 모서리는 뺐다 — 「오른쪽이 일부 잘려 있는 듯」(유성 10-10). 실측으로는 잘린 곳 0
+   (실제 창 = 125%에서 CSS 368px, 말풍선 오른쪽 끝 354 = 대화 칸 안쪽 끝, 자르는 조상 끝 368), 오른쪽에서 모양이 다른 곳은 그 모서리 하나였다 */
 .meta2{font-size:11px;color:var(--g600);white-space:nowrap;margin-bottom:2px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
 .them .meta2{align-items:flex-start}
 .meta2 .rd{color:var(--green700);font-weight:600}
@@ -474,6 +475,7 @@ function meLabel(m, i){
   if (m.failed) return '<span class="bad">안 보내졌어요</span>';
   if (m.sms === 'sent') return '<span class="rd">문자로 보냈어요</span>';
   if (m.sms === 'fail') return '<span class="bad">문자 실패</span>';
+  if (m.sms === 'seen') return '<span class="rd">읽음</span>';   // 26: 1분 안에 학부모 화면이 그 답장을 받아 갔다(문자 취소). 'wait' = 아직 판정 전 → 아래 규칙
   var later = R.msgs.slice(i + 1).some(function(x){ return x.who === 'v'; });
   return (later || R.live) ? '<span class="rd">읽음</span>' : '<span>안 읽음</span>';
 }
@@ -512,7 +514,7 @@ function drawThread(had, keepBottom){
     } else {
       var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
       html += '<div class="row me' + (cont ? ' cont' : '') + nw + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
-        '<div class="mcol">' + name + '<div class="bub' + (lastOfRun ? ' last' : '') + '">' + linkHtml(m.text) + '</div></div></div>';
+        '<div class="mcol">' + name + '<div class="bub">' + linkHtml(m.text) + '</div></div></div>';
     }
     prevWho = who;
   });

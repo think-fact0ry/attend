@@ -263,6 +263,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
      머리(← 제목 −)도 받은함이 그린다: 대화방이 화면 맨 위까지 덮어야 해서 앱 머리를 위에 두면 두 줄로 쌓인다(계획 §4 제안 4). ── */
 #inqFrame{display:block;flex:1;width:100%;min-height:0;border:0;background:#fff}
 #s-inq.on{height:100vh;height:100dvh}
+/* 닫힌 시트 5개(퇴근 확인, PC 확인, 미기록일, 반려, 날짜)는 화면 바로 아래 1.6~28px에 숨어 있어 위로 30px 번지는 그림자가 맨 아래에 띠로 비친다(10-10 실측).
+   문의 채팅에선 그 띠가 답장 입력 줄에 얹혀 보여서 이 화면에서만 끈다(유성 10-10 「그 문의 채팅방으로 들어왔을때만 안 그렇게」). 열린 시트(.on)는 그대로 */
+#app:has(#s-inq.on) .vsheet:not(.on),#app:has(#s-inq.on) .csheet:not(.on){box-shadow:none}
 
 /* ── 신청 ── */
 .seg3{display:flex;gap:8px;margin-bottom:18px}
