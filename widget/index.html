@@ -32,7 +32,7 @@
   --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
   --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968; --g900:#191f28;
   --green100:#e9f8ee; --green600:#3a8a5f; --green700:#166841;
-  --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#c07f00; --red:#f04452;
+  --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00; --red:#f04452;
 }
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#fff}
 body{font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;
@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v96';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v97';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -332,6 +332,10 @@ if (window.chrome && window.chrome.webview) {
     if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at, v: m.v }; sendBoot(); }   // v = exe 판(1-c 10-09, 관리자 화면에서 PC별 판 확인)
     // 앱 창이 열리고 닫힐 때마다 호스트가 보내준다 → 버튼 글자를 실제 동작에 맞춘다(26차-11).
     if (m.type === 'appwin')  { var was = appOpen; appOpen = !!m.open; if (was !== appOpen) { diag('앱창 ' + (appOpen ? '열림 → 버튼=닫기' : '닫힘 → 버튼=열기')); render(); } }
+    // exe 4판부터: 알약이 뜰 때마다 「할 줄 아는 것」을 알려 준다 → 이걸 받은 뒤에만 notify·show-app을 쓴다(아래 문의 알림).
+    if (m.type === 'caps')    { caps = (m.v >= 4) ? m : null; }
+    // 미리보기 창을 누름 = 호스트가 이미 앱을 앞으로 띄웠다 → 갈 곳(받은함)만 남긴다(show-app을 또 보내지 않는다).
+    if (m.type === 'peek-click') { try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { } }
   });
 }
 
@@ -740,7 +744,7 @@ function punchFailed(prev, msg){
    · 박동: 행정 서명일 때만 on(=지금 출근 중)을 싣는다 → 26이 채팅/메일 모드를 정한다. 받은함 페이지는 on을 안 실음.
    · 세는 것 = 마지막 말이 학부모인 대화(=답장 전). 행정은 대기+내 대화, 보기 전용은 전체.
    · ⚠️흔들림·미리보기(피어나기)·소리는 이 창으로 못 한다(실측: 창 = DWM 라운드 사각 하나, 투명 영역 없음·창 이동은 호스트만)
-     → 1-c exe가 type:'inq'를 받아 처리. 여기선 새 학부모 줄이 생길 때 그 신호만 보낸다. */
+     → exe 4판이 `notify`를 받아 한다(아래 inqAlert). 'inq'는 로그 한 줄로 남긴다. */
 var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
 var INQ_FAST = 10000, INQ_SLOW = 60000;   // 출근 중 10초(D5) · 그 밖(퇴근 뒤·보기 전용) 60초 — 밤새 10초씩 GAS를 깨우지 않는다
 var inq = { n: 0, role: '', busy: false, at: 0, gver: '', rows: null, seen: null, t: null };
@@ -776,28 +780,72 @@ function inqPoll(){
       if (r && r.code === 'auth') { inqDrop(id.role === 'viewer' ? 'att_inqv' : 'att_inq'); render(); }
       return;
     }
-    if (r.same) return;
-    inq.gver = r.gver;
-    inq.rows = r.all || (r.wait || []).concat(r.mine || []);
-    try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
-    inqCount(id);
+    if (!r.same) {
+      inq.gver = r.gver;
+      inq.rows = r.all || (r.wait || []).concat(r.mine || []);
+      try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
+      inqCount(id);
+    }
+    inqLateCheck();   // 방금 받은 목록 기준으로만 본다(그 사이 답장했는데 「3분」이 울리지 않게)
   }).catch(function(){ inq.busy = false; });
 }
 function inqCount(id){
-  var rows = inq.rows || [], seen = {}, fresh = 0, first = !inq.seen;
-  rows.forEach(function(x){ seen[x.id] = x.lastAt; if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh++; });
+  var rows = inq.rows || [], seen = {}, fresh = [], first = !inq.seen;
+  rows.forEach(function(x){
+    seen[x.id] = x.lastAt;
+    if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined });
+  });
   inq.seen = seen;
   inq.n = rows.filter(function(x){ return x.lastWho === 'v'; }).length;
   render();
-  // 새 학부모 줄 → 호스트 로그 한 줄(1-c에서 소리·흔들림이 이 신호를 받는다). 보기 전용은 숫자만(D10)
-  if (fresh && id.role === 'staff') toHost({ type:'inq', m: '새 ' + fresh + ' / 답장 전 ' + inq.n });
+  // 새 학부모 줄 → 호스트 로그 한 줄. 보기 전용은 숫자만(D10)
+  if (fresh.length && id.role === 'staff') toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n });
+  inqAlert(rows, fresh);
 }
-/* 받은함 = 앱 창 안의 새 페이지(attend/inbox/, D9). exe가 아직 「받은함 열기」를 모르므로(1-c)
-   att_go 표시를 남기고 앱 창을 연다 → 앱이 부팅하며 보고 받은함으로 간다. 앱 창이 이미 열려 있으면
-   'open'을 보내지 않는다(호스트의 열기는 토글이라 창이 닫힌다) — 열린 앱이 att_go를 보고 스스로 넘어간다. */
+
+/* ── 문의 알림(exe 4판, 1-c 2026-10-10) ──
+   정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
+   · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
+   · 새 대화 = 소리 + 미리보기 + 두 번 흔들림 / 있던 대화에 학부모 새 줄 = 두 번 흔들림만(5차 「맨 아래 대화에 새 메시지」) /
+     학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리는 새 대화에만 — §5.1 소리 과용 금지).
+   · 행정이 출근 중일 때만(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로). 관리자 보기는 숫자만(D10).
+     3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
+   · ⚠️exe가 `caps`(v4)를 보낸 뒤에만 보낸다 — 3판 exe는 notify를 모르고, open은 토글이라 열린 앱 창을 닫는다.
+   · ⚠️학부모 글은 `text`에만 싣는다 — 호스트가 `m` 칸을 PC 로그 파일(edge.log)에 쓴다. */
+var caps = null;
+var INQ_LATE_MS = 3 * 60 * 1000;
+var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC가 본 때 + 3분, p: 미리보기 }
+function inqDuty(){ var id = inqId(); return !!(id && id.role === 'staff' && snap && snap.open); }
+function inqNotify(kind, preview){
+  if (!caps || !caps.notify) return;
+  toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: kind !== 'more', shake: true,
+           title: '홈페이지 문의', text: String(preview || '').split('\n')[0] });
+}
+function inqAlert(rows, fresh){
+  if (!inqDuty()) { inqLate = {}; return; }
+  var now = Date.now();
+  // 답장했거나(마지막 말이 우리) 목록에서 빠진 대화는 3분 대기에서 뺀다
+  var by = {}; rows.forEach(function(x){ by[x.id] = x; });
+  Object.keys(inqLate).forEach(function(k){ var x = by[k]; if (!x || x.lastWho !== 'v' || x.lastAt !== inqLate[k].at) delete inqLate[k]; });
+  if (!fresh.length) return;
+  fresh.forEach(function(f){ inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, p: f.row.preview }; });
+  // 여러 줄이 한 번에 오면 알림은 한 번 — 새 대화가 있으면 그것(목록이 최근순이라 첫 것이 가장 최근)
+  var room = fresh.filter(function(f){ return f.room; })[0];
+  if (room) inqNotify('new', room.row.preview); else inqNotify('more', fresh[0].row.preview);
+}
+function inqLateCheck(){
+  if (!inqDuty()) { inqLate = {}; return; }
+  var now = Date.now(), due = null;
+  Object.keys(inqLate).forEach(function(k){ if (inqLate[k].due <= now) { if (!due) due = inqLate[k]; delete inqLate[k]; } });
+  if (due) inqNotify('late', due.p);
+}
+/* 받은함 = 앱 창 안의 새 페이지(attend/inbox/, D9). att_go 표시를 남기면 앱이 1초 안에 보고 받은함으로 간다.
+   · exe 4판(caps 받음) = show-app: 닫지 않고 열기, 이미 열려 있으면 앞으로(하던 화면은 앱이 att_go로 판단).
+   · 3판 = 앱 창이 닫혀 있을 때만 'open'(호스트의 열기는 토글이라 열린 창에 보내면 닫힌다). 열려 있으면 앱이 att_go를 보고 스스로 넘어간다. */
 function openInbox(){
   try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { }
-  if (!appOpen) toHost({ type:'open' });
+  if (caps && caps.showApp) toHost({ type:'show-app' });
+  else if (!appOpen) toHost({ type:'open' });
 }
 
 /* ══════════ 그리기 ══════════ */

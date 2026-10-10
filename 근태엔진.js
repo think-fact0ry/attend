@@ -219,7 +219,7 @@ var AttEngine = (function () {
       return {
         date: dateStr, plan: plan, segments: [], open: null, firstIn: null, lastOut: null,
         workedMin: plan.work ? plan.planMin : 0, late: false, lateMin: 0, leaves: [], leaveMin: 0,
-        amended: false, missingOut: false, absent: false, deficitMin: 0, overtimeMin: 0,
+        amended: false, missingOut: false, absent: false, deficitMin: 0, overtimeMin: 0, offdayMin: 0,
         closed: dateStr < todayStr, external: true, externalPlace: extPlace, remoteOut: false
       };
     }
@@ -284,11 +284,18 @@ var AttEngine = (function () {
       var overMin = Math.max(0, workedMin - plan.planMin);
       overtimeMin = overMin <= settings.graceMin ? 0 : overMin;      // 채우려다 몇 분 넘긴 건 연장 아님(같은 오차)
     }
+    // 휴무일·공휴일 근무(2026-10-10 판정 A, 유성 「추가일 수도, 대신일 수도」) = 소정이 없는 날 일한 시간.
+    //   19 @48부터 그날도 찍히는데 위 연장은 근무일만 세서 월마감 어디에도 안 나왔다 → **따로** 센다(어떻게 셈할지는 월마감에서 사람이 본다).
+    //   ⚠️이 파일은 attend(공개 레포)에 그대로 복사된다 — 계약·임금 근거는 여기 쓰지 말고 비공개 Code.js `_closeMonth_` 주석에.
+    //   근무분엔 원래대로 들어가고 연장·미달·지각과 섞지 않는다. 규칙은 미승인 연장과 같다 = 마감된 날만(실시간 신호 0)·퇴근 미체크 제외·같은 오차(graceMin 이하=0).
+    //   바꾼 날인지(그 주에 쉰 근무일이 있나)는 monthView가 붙인다 — 확정은 관리자 「근무일 바꾸기」(파생이라 지난 날까지 다시 셈).
+    var offdayMin = 0;
+    if (!plan.work && plan.why !== '시작전' && closed && !missingOut) offdayMin = workedMin <= settings.graceMin ? 0 : workedMin;
     return {
       date: dateStr, plan: plan, segments: segs, open: open, firstIn: firstIn,
       lastOut: outs.length ? outs[outs.length - 1] : null, workedMin: workedMin,
       late: late, lateMin: lateMin, leaves: leaves, leaveMin: leaveMin, amended: amended,
-      missingOut: missingOut, absent: absent, deficitMin: deficitMin, overtimeMin: overtimeMin,
+      missingOut: missingOut, absent: absent, deficitMin: deficitMin, overtimeMin: overtimeMin, offdayMin: offdayMin,
       closed: closed, external: false, externalPlace: '', remoteOut: remoteOut
     };
   }
@@ -461,7 +468,7 @@ var AttEngine = (function () {
     var reqIdx = requestIndex(events);
     var days = monthDates(ym), out = [], planTotal = 0, workedTotal = 0;
     var lateCount = 0, absentCount = 0, leaveCount = 0, leaveMinTotal = 0, overtimeTotal = 0, deficitTotal = 0;
-    var amendCount = 0, missingOutCount = 0, remoteOutCount = 0;
+    var amendCount = 0, missingOutCount = 0, remoteOutCount = 0, offdayTotal = 0, offdays = [];
     for (var i = 0; i < days.length; i++) {
       var st = dayStatus(days[i], events, settings, swaps, corr, todayStr, days[i] === todayStr ? nowHms : null);
       if (st.plan.work) planTotal += st.plan.planMin;
@@ -473,6 +480,7 @@ var AttEngine = (function () {
       if (st.missingOut) missingOutCount++;
       if (st.remoteOut) remoteOutCount++;
       overtimeTotal += st.overtimeMin; deficitTotal += st.deficitMin;
+      if (st.offdayMin) { offdayTotal += st.offdayMin; offdays.push({ date: days[i], min: st.offdayMin, maybeSwap: false }); }
       // 그 날짜 신청들(상태 포함 — 캘린더 대기 점·확정 텍스트·처리 내역의 소스)
       var reqs = [];
       Object.keys(reqIdx).forEach(function (rid) {
@@ -495,13 +503,23 @@ var AttEngine = (function () {
         dots: dots, requests: reqs, external: st.external, externalPlace: st.externalPlace,
         segs: st.segments, open: st.open, leaves: st.leaves, late: st.late, amended: st.amended,
         missingOut: st.missingOut, absent: st.absent, workedMin: st.workedMin, remoteOut: st.remoteOut,
-        planStart: st.plan.start || null, planEnd: st.plan.end || null
+        planStart: st.plan.start || null, planEnd: st.plan.end || null, offdayMin: st.offdayMin
       });
     }
+    // 「바꾼 날일 수 있어요」 = 그 주(월~일)에 쉰 근무일(absent)이 있다 → 근무일 바꾸기로 정리할 후보(판단은 유성).
+    //   없으면 추가 근무로 본다. 주가 달을 넘어가도 그 날짜로 직접 판정한다.
+    offdays.forEach(function (o) {
+      var ws = addDays(o.date, -((weekday(o.date) + 6) % 7));
+      for (var k = 0; k < 7; k++) {
+        var dd = addDays(ws, k);
+        if (dd >= todayStr) break;
+        if (dayStatus(dd, events, settings, swaps, corr, todayStr, null).absent) { o.maybeSwap = true; break; }
+      }
+    });
     return {
       ym: ym, days: out, planMin: planTotal, workedMin: workedTotal,
       lateCount: lateCount, absentCount: absentCount, leaveCount: leaveCount, leaveMin: leaveMinTotal,
-      overtimeMin: overtimeTotal, deficitMin: deficitTotal,
+      overtimeMin: overtimeTotal, deficitMin: deficitTotal, offdayMin: offdayTotal, offdays: offdays,
       amendCount: amendCount, missingOutCount: missingOutCount, remoteOutCount: remoteOutCount,
       perfect: perfectMonth(ym, events, settings, swaps, corr, todayStr)
     };
