@@ -1173,6 +1173,9 @@ if (IS_HOST) {
     if (!e) return;
     if (e.key === 'att_go' && e.newValue) { if (takeInqGo()) inqOpen(); }
     else if (e.key === 'att_inqc' || e.key === 'att_inq') inqSync();
+    // 알약 키패드로 로그인(startActSession이 잠금을 지움) → 열려 있던 이 창의 비밀번호 화면도 닫고 그 세션으로 — 세션은 하나(10-10 유성
+    //   「퇴근 뒤 행정은 키패드, 문의는 로그인된 걸로」). noCancel = 로그인 관문(관리자 비밀번호 같은 다른 키패드는 안 건드림)
+    else if (e.key === 'att_locked' && !e.newValue && pinCtx && pinCtx.noCancel && store.token) { pinHelpers.close(); syncNow(); }
   });
   setInterval(function () {
     try { if (localStorage.getItem('att_go') && takeInqGo()) inqOpen(); } catch (e) { }

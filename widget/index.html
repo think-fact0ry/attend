@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v103';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v104';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -239,8 +239,31 @@ var ACT_IDLE_MS = 60 * 60 * 1000;
      도장이 실패하면 그 자리에 이유를 보여줘야 하고(`pErr`는 도장 화면 안에 있다), 그건 24차에
      "세션 종료는 서버가 답한 뒤"로 정한 이유다. 그 결정을 지키면서 화면만 먼저 잠근다. */
 var outPending = false;
+/* 세션은 **하나**다 — 앱이 풀려 있으면(토큰 있음 + 잠금 없음 + 오늘 + 손길 1시간 안) 알약도 로그인이다.
+   🔴10-10 유성 「퇴근을 눌렀어. 그럼 로그아웃한거잖아. 행정 버튼을 눌렀을때는 키패드가 나오고, 문의 버튼을 눌렀을때는 로그아웃이 안 된걸로 나오는데」
+     edge.log: 13:18:07 퇴근 → 앱 잠금 → 13:18:16 문의 → 앱 큰 비밀번호 화면 → 13:18:22 거기서 로그인 → 13:19 문의 = 앱 바로 열림, 그런데 행정 = 키패드.
+     알약 비밀번호는 앱을 풀어 줬지만(startActSession) **앱 비밀번호는 알약을 안 풀었다** — 두 세션이 따로 놀아 두 버튼이 다른 답을 했다.
+   ⇒ 알약 act가 없어도 앱 세션이 열려 있으면 그 세션을 이어받는다. 판정은 앱 부팅·유휴와 같은 재료(att_locked·att_day·att_seen). */
+function sessionOpen(){
+  try {
+    if (!localStorage.getItem('att_token') || localStorage.getItem('att_locked')) return false;
+    if (localStorage.getItem('att_day') !== ymdLocal()) return false;        // 자정 넘은 세션은 「나감」(앱 부팅의 자정 잠금과 같은 규칙)
+    var sn = +localStorage.getItem('att_seen') || 0;
+    if (sn && Date.now() - sn > ACT_IDLE_MS) return false;                   // 손길 1시간 넘음 = 유휴(알약 loop가 곧 잠근다)
+    return true;
+  } catch (e) { return false; }
+}
 function actAlive(){
-  if (!act) return false;
+  if (!act) {
+    // 앱에서 로그인한 세션 이어받기 — 호스트가 넘긴 auth가 같은 토큰일 때만(다른 사람 토큰이 섞이지 않게)
+    var tk = null; try { tk = localStorage.getItem('att_token'); } catch (e) { }
+    if (!(auth && tk && auth.token === tk && sessionOpen())) return false;
+    act = { token: auth.token, emp: auth.emp, name: (snap && snap.name) || '' }; actAt = Date.now();
+    diag('앱 세션 이어받음(알약 비밀번호 생략)');
+    return true;
+  }
+  var lk = null; try { lk = localStorage.getItem('att_locked'); } catch (e) { }
+  if (lk === '1') { act = null; actAt = 0; return false; }   // 앱이 방금 잠겼다(앱 로그아웃 등) — loop가 1초 안에 지우기 전 틈도 막는다
   var last = actAt; try { last = Math.max(actAt, +localStorage.getItem('att_seen') || 0); } catch (e) { }
   if (Date.now() - last > ACT_IDLE_MS) { endActSession(); return false; }   // 앱·안 창의 손길(att_seen)도 센다 — 알약으로 들어와 앱에서 1시간 넘게 일하면 구판은 알약을 누르는 순간 앱까지 잠갔다(10-10)
   return true;
@@ -380,6 +403,7 @@ $('pill').addEventListener('pointerdown', function(e){
 $('pill').addEventListener('click', function(e){
   if (moved) { moved = false; return; }
   if (e.target.closest && e.target.closest('#inqw')) { openInbox(); return; }
+  wantInbox = false;   // 행정 칸 = 평소 키패드(비밀번호 뒤 도장 화면)
   setOpen(true);
 });
 
@@ -406,6 +430,7 @@ function setOpen(v){
     else { pin = ''; drawDots(); setStep('pin'); }
   } else {
     pin = ''; drawDots();          // 접는 건 세션 종료가 아니다(확정 결정)
+    wantInbox = false;             // 문의로 연 키패드를 그냥 접었으면 다음 키패드는 평소대로
   }
   render();
 }
@@ -498,6 +523,11 @@ function verify(){
       $('gH1').classList.remove('err'); $('gForgot').classList.remove('as-btn'); drawDots();
       $('okName').textContent = (act.name ? act.name + '님 안녕하세요' : '안녕하세요');
       setStep('ok');
+      if (wantInbox) {   // 문의 칸으로 연 키패드 = 확인 화면만 잠깐 보이고 접은 뒤 받은함(유성 10-10 「비밀번호를 넣자마자 문의채팅으로」)
+        wantInbox = false;
+        setTimeout(function(){ setOpen(false); openInbox(); }, 500);
+        fetchTick(); return;
+      }
       // 확인 화면을 붙잡아 두는 시간 — 서버 왕복이 이미 2.2초(실측)라 여기서 더 붙잡으면 총 3초를 넘는다.
       //   체크가 그려지고 이름이 읽히는 데 필요한 최소만 남긴다(유성 07-31 "로딩이 거의 없는 수준으로").
       setTimeout(function(){ if (open) setStep('act'); }, 500);
@@ -879,9 +909,11 @@ function inqLateCheck(){
 /* 받은함 = 앱 창 안의 새 페이지(attend/inbox/, D9). att_go 표시를 남기면 앱이 1초 안에 보고 받은함으로 간다.
    · exe 4판(caps 받음) = show-app: 닫지 않고 열기, 이미 열려 있으면 앞으로(하던 화면은 앱이 att_go로 판단).
    · 3판 = 앱 창이 닫혀 있을 때만 'open'(호스트의 열기는 토글이라 열린 창에 보내면 닫힌다). 열려 있으면 앱이 att_go를 보고 스스로 넘어간다. */
+var wantInbox = false;   // 문의 칸으로 키패드가 열렸다 = 비밀번호를 넣자마자 받은함으로(verify 성공)
 function openInbox(){
-  // 세션이나 이 계정 서명이 없으면 앱으로 들여보내지 않고 키패드(왼쪽 칸과 같음) — 「로그인 키패드가 나와야지」(유성 10-10)
-  if (!auth || !inqId()) { setOpen(true); return; }
+  // 로그인이 안 됐으면(세션 없음, 퇴근·유휴·앱 로그아웃으로 잠김, 자정) 앱 대신 **알약 키패드** — 「로그인 키패드가 나와야지」 +
+  //   「비밀번호 창이 너무 커. 행정 알약 누를때 처럼 키패드만 따로」(유성 10-10, 구판은 잠긴 앱을 열어 창 전체가 비밀번호 화면). 넣자마자 받은함으로
+  if (!auth || !inqId() || !actAlive()) { wantInbox = true; setOpen(true); return; }
   try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { }
   if (caps && caps.showApp) toHost({ type:'show-app' });
   else if (!appOpen) toHost({ type:'open' });
