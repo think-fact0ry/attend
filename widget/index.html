@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v104';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v105';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -852,9 +852,19 @@ function inqPoll(){
       inq.rows = r.all || (r.wait || []).concat(r.mine || []);
       try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
       inqCount(id);
-    }
+    } else inqCacheTouch(id, r.gver);
     inqLateCheck();   // 방금 받은 목록 기준으로만 본다(그 사이 답장했는데 「3분」이 울리지 않게)
   }).catch(function(){ inq.busy = false; });
+}
+// 「바뀐 것 없음」이어도 남긴 목록의 시각(t)을 새로 쓴다 = t는 **마지막으로 확인한** 때(10-10 유성 「문의채팅 들어가면 순간 아무것도 없어 … 없다고 나와」).
+//   전엔 바뀔 때만 써서, 문의가 10분 조용하면 받은함이 맞는 목록을 「10분 넘음」으로 버리고 빈 목록 = 「없어요」를 띄웠다.
+//   같은 버전표·같은 계정일 때만, 1분에 한 번만 쓴다(앱이 저장 이벤트마다 깨지 않게 — 받은함의 한도 10분보다 넉넉히 짧다)
+function inqCacheTouch(id, gver){
+  try {
+    var c = JSON.parse(localStorage.getItem('att_inqc') || 'null');
+    if (!c || !c.r || c.r.gver !== gver || c.role !== id.role || (c.emp || '') !== (id.emp || '') || Date.now() - c.t < 60000) return;
+    c.t = Date.now(); localStorage.setItem('att_inqc', JSON.stringify(c));
+  } catch (e) { }
 }
 function inqCount(id){
   var rows = inq.rows || [], seen = {}, fresh = [], first = !inq.seen;

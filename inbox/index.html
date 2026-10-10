@@ -11,7 +11,10 @@
   · 주소 = https://think-fact0ry.github.io/attend/inbox/ — (구판 1-b: 앱 페이지를 통째로 이리 바꿨다 → 근태로 못 돌아가던 문제).
   · 정본: 설계 = docs/4_설계_2026-10-08_문의알리미_1단계.md(D9·D17) · 디자인 확정본 = prototype/문의창_디자인5차_프리뷰.html(알리미 탭)
           · 원칙 = docs/1 §4.18(채팅·받은함)·§5.3(목록 줄 누름)·§4.13-6(입력칸 그라디언트) · 서버 = scripts/26_문의알리미.
-  · 신원 = 로그인한 계정의 문의 서명(att_inq — 19가 등록 PC에서만 준다, 10-10). 한유성 계정 = 보기 서명(목록 하나, 열어도 읽음 안 찍힘, 답장은 하되 맡지 않음 = 10-10 유성 「보기 전용이 아니야」, 26 @3).
+  · 신원 = 로그인한 계정의 문의 서명(att_inq — 19가 등록 PC에서만 준다, 10-10). 한유성 계정 = 보기 서명(열어도 읽음 안 찍힘, 답장은 하되 맡지 않음 = 10-10 유성 「보기 전용이 아니야」, 26 @3).
+    세그는 행정과 같은 두 칸 [대기 | 맡은 대화] — 맡은 대화 = 누가 맡았든 전부(이름으로 안 나눔), 줄 꼬리표와 대화방 오른쪽 위에 맡은 사람 이름(10-10 유성, 26 @7·19 서명 이름).
+  · 속도(10-10 유성 「채팅 불러올 때 오래 걸려」): 서버 답 전엔 뼈대(「없어요」 아님) · 알약이 확인한 목록이면 바로 · 대화는 미리 받아 두고(s_tails, 읽음 안 찍음)
+    한 번 연 대화는 이 창 메모리에 · 안 받아 둔 대화는 누르는 순간 요청 출발. 감시 = scripts/19 tests/문의속도.test.js(가짜 26 지연 = 실측 1.3·1.9초).
     없으면 행정 서명(att_inq, 알약이 근태 조회 때마다 갱신). 둘 다 없으면 안내만.
   · 이 페이지는 박동(on)을 안 보낸다 — 출근 여부를 아는 건 알약이고, 여기서 보내면 알약의 「출근 중」을 덮어쓴다(26 _sPoll_).
   · 톡톡·카카오 줄(빨려 들기 모션 포함)은 2단계. 지금 목록엔 홈페이지 대화만 있다.
@@ -53,7 +56,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
 .mdot.on{display:block}
 
-/* 세그(행정만 — 관리자 보기는 목록 하나, D17) */
+/* 세그 — 행정 = 대기 / 내 대화, 한유성 = 대기 / 맡은 대화(10-10 유성 「한유성 문의채팅에 세그 넣자 … 행정인력 이름으로 나누지마」 — D17 ④ 「목록 하나」를 바꿈) */
 .seg{display:flex;margin:6px 18px 8px;background:var(--g100);border-radius:12px;padding:3px;flex:none}
 .seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:9px;font-size:14px;font-weight:500;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button.on{background:#fff;color:var(--g900);font-weight:600;box-shadow:0 1px 3px rgba(25,31,40,.08)}
@@ -61,7 +64,21 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .seg .n.show{display:inline-flex}
 .seg .n.red{background:var(--red)}
 .seg .n.grn{background:var(--green700)}
-body.viewer .seg{display:none}
+
+/* 뼈대(§5.4) = 앱 .sk-b 그대로(훑기) — 서버가 답하기 전엔 「없어요」 대신 이것(10-10 유성 「스켈레톤이라도 걸려야하는데 문의채팅이 없다고 나와」).
+   목록 뼈대 = 실제 줄(.it)과 같은 마크업에 막대만 — 글줄 높이를 1.6em으로 잡아 줄 높이가 실물과 같다(시험이 잰다) */
+.sk-b{display:inline-block;background:var(--g100);border-radius:8px;background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite;pointer-events:none}
+@keyframes sksh{0%{background-position:150% 0}70%,100%{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.sk-b{animation:none}}
+.it.sk{pointer-events:none}
+.it.sk .src{background:none}
+.it.sk .src .sk-b{width:42px;height:42px;border-radius:50%}
+.it.sk .l1,.it.sk .l2{height:1.6em;display:flex;align-items:center}
+.sk-th{margin-top:auto;display:flex;flex-direction:column}
+.sk-th .sk-b{display:block;border-radius:18px}
+.sk-th .them .sk-b{border-top-left-radius:6px}
+.sk-th .me .sk-b{background-color:var(--g200)}
+.rfail{margin:auto 0;align-self:center;text-align:center;color:var(--g600);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:10px}
 
 /* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6) */
 .sw{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
@@ -108,6 +125,10 @@ body.viewer .seg{display:none}
 .cchip{border:1px solid var(--g200);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--g700);box-shadow:0 1px 3px rgba(25,31,40,.08);cursor:pointer;transition:transform .08s;white-space:nowrap}
 .cchip:active{transform:scale(.96)}
 .rh .rel{margin-left:auto}
+/* 맡은 사람 이름표(한유성 화면만, 10-10 유성 「그 채팅을 들어가면 우상단에 뱃지를 달아줘 행정인력 이름으로」) — 행정 화면 「대기로 돌려놓기」 칩 자리.
+   누르는 것이 아니라서 칩의 테두리·그림자 없이 회색 꼬리표 — 글자·색·둥글기는 칩(.cchip) 그대로, 칩 테두리 1px만큼 안쪽 여백을 더해 겉 크기도 같다. 대기 대화엔 없음 */
+.rh .own{margin-left:auto;font-size:var(--fs-caption);font-weight:700;color:var(--g700);background:var(--g100);border-radius:99px;padding:4px 11px;white-space:nowrap;display:none}
+.rh .own.on{display:block}
 .thread{flex:1;overflow-y:auto;padding:14px 14px 10px;display:flex;flex-direction:column;scrollbar-width:none;user-select:text}
 .thread::-webkit-scrollbar{width:0}
 .day{align-self:center;font-size:var(--fs-caption);color:var(--g600);margin:16px 0 12px}
@@ -175,7 +196,7 @@ body.viewer .vnote{display:block}
   <div class="room" id="room">
     <div class="rh"><button class="x" id="rBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
       <div><div class="nm">홈페이지 문의</div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
-      <button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
+      <span class="own" id="rOwn"></span><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
     <div class="comp"><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
@@ -308,15 +329,20 @@ function fadeWatch(sc, host){
 var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('tsw')), fTa = fadeWatch($('rTa'), $('rTa').parentNode);
 
 /* ══════════ 목록 ══════════ */
-var S = { tab: 'wait', wait: [], mine: [], all: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '' };
-function rowsOfTab(){ return VIEWER ? S.all : (S.tab === 'wait' ? S.wait : S.mine); }
+// loaded = 서버(또는 알약이 남긴 목록)로 한 번이라도 목록을 알았나 — 모르는 동안은 「없어요」가 아니라 뼈대(10-10 유성 「문의채팅이 없다고 나와」).
+// slow = 20초 넘게 못 받음 → 뼈대를 비우고 「아직 못 불러왔어요」(§5.4, 뒤에서는 계속 다시 묻는다). names = 맡은 사람 이름표(한유성만 받음)
+var SLOW_MS = 20000;
+var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {} };
+function rowsOfTab(){ return S.tab === 'wait' ? S.wait : S.mine; }   // 한유성도 같은 두 칸 — mine = 누가 맡았든 맡은 대화
+function ownerName(emp){ return S.names[emp] || '행정'; }   // 이름을 아직 모르면(구판 26·19) 「행정」
 function isLate(r){ return r.lastWho === 'v' && Date.now() - new Date(r.lastAt).getTime() >= LATE_MS; }
 // 순서 = 마지막 메시지 순(서버) · 단 「3분 넘음」은 맨 위로(디자인 4차·5차 재현 그대로)
 function ordered(L){ return L.map(function(r, i){ return { r: r, i: i }; }).sort(function(a, b){ return ((isLate(b.r) ? 1 : 0) - (isLate(a.r) ? 1 : 0)) || (a.i - b.i); }).map(function(x){ return x.r; }); }
 function rowHtml(r){
-  var live = !!S.live[r.id], tag = '';
-  if (live) tag = '<span class="tag live">보는 중</span>';
-  else if (VIEWER && r.owner) tag = '<span class="tag">맡음</span>';
+  // 꼬리표: 한유성 화면의 맡은 대화 = 맡은 사람 이름(옛 「맡음」 — 칸이 나뉘어 모든 줄에 같은 글자가 되므로 이름으로, 유성 10-10 「추천대로」) + 보는 중
+  var tag = '';
+  if (VIEWER && r.owner) tag += '<span class="tag">' + esc(ownerName(r.owner)) + '</span>';
+  if (S.live[r.id]) tag += (tag ? ' ' : '') + '<span class="tag live">보는 중</span>';
   var right;
   if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '3분 넘음' : esc(ago(r.lastAt))) + '</span><span class="u"></span>';
   else right = '<span class="el">답장함</span>';
@@ -326,8 +352,14 @@ function rowHtml(r){
 }
 function emptyHtml(){
   if (S.dead) return '<div class="empty"><b>문의를 불러올 수 없어요</b>' + esc(S.dead) + '</div>';
-  if (VIEWER) return '<div class="empty">문의가 없어요</div>';
+  if (!S.loaded) return S.slow ? '<div class="empty"><b>문의를 아직 못 불러왔어요</b>계속 다시 불러오고 있어요</div>' : skelHtml();
   return '<div class="empty">' + (S.tab === 'wait' ? '기다리는 문의가 없어요' : '맡은 대화가 없어요') + '</div>';
+}
+function skelHtml(){   // 실제 줄과 같은 마크업(.it) + 막대 — 목록이 오면 자리가 안 움직인다(§5.4-2)
+  return [54, 54, 54, 54, 54].map(function(w, i){
+    return '<div class="it sk"><div class="src"><span class="sk-b"></span></div><div class="body"><div class="l1"><span class="sk-b" style="width:' + w + 'px;height:13px"></span></div>' +
+      '<div class="l2"><span class="sk-b" style="width:' + [210, 170, 230, 150, 190][i] + 'px;height:12px"></span></div></div><div class="rt"><span class="sk-b" style="width:34px;height:11px"></span></div></div>';
+  }).join('');
 }
 function render(){
   var L = ordered(rowsOfTab());
@@ -359,15 +391,22 @@ function take(r){   // 서버 목록 → 화면 상태
   S.gver = r.gver || S.gver;
   if (r.live) S.live = r.live;
   if (r.same) return false;
-  if (VIEWER) S.all = r.all || [];
-  else { S.wait = r.wait || []; S.mine = r.mine || []; }
+  if (r.names) S.names = r.names;
+  if (r.wait || r.mine) { S.wait = r.wait || []; S.mine = r.mine || []; }
+  else { var L = r.all || []; S.wait = L.filter(function(x){ return !x.owner; }); S.mine = L.filter(function(x){ return !!x.owner; }); }   // 구판 26(@6까지 한유성 = all 하나)·알약이 남긴 옛 목록
   return true;
 }
-// 첫 그림 = 알약이 남겨 둔 마지막 목록(왕복 기다리지 않고 바로 보인다). 이어서 서버가 덮는다
+// 첫 그림 = 알약이 남겨 둔 마지막 목록(왕복 기다리지 않고 바로 보인다). 이어서 서버가 덮는다.
+//   10분 = 알약이 **마지막으로 확인한** 때부터(알약이 「바뀐 것 없음」을 받아도 시각을 새로 쓴다 — 10-10 전엔 바뀔 때만 써서, 문의가 10분 조용하면
+//   맞는 목록을 버리고 「없어요」를 띄웠다). 버전표도 그대로 이어 받아 첫 조회가 「바뀐 것 없음」이면 서버가 시트를 안 연다(실측 1.9 → 1.3초).
+//   ⚠️이름표가 없는 한유성 목록(구판 26)이면 버전표를 비워 한 번 새로 받는다 — 안 그러면 다음 변화까지 이름 대신 「행정」
 (function(){
   try {
     var c = JSON.parse(localStorage.getItem('att_inqc') || 'null');
-    if (c && me && c.role === me.role && (c.emp || '') === (me.emp || '') && Date.now() - c.t < 10 * 60000) { take(c.r); S.gver = ''; }
+    if (c && me && c.r && c.role === me.role && (c.emp || '') === (me.emp || '') && Date.now() - c.t < 10 * 60000) {
+      take(c.r); S.loaded = true;
+      if (VIEWER && !c.r.names) S.gver = '';
+    }
   } catch (e) { }
   render();
 })();
@@ -379,13 +418,16 @@ function poll(){
   if (!me || !shownNow()) return;   // 창이 가려졌거나 앱이 다른 화면일 때 = 쉬기
   if (S.busy && Date.now() - S.pollAt < REQ_TIMEOUT_MS * 2) return;
   S.busy = true; S.pollAt = Date.now();
+  if (!S.loaded && !S.t0) { S.t0 = Date.now(); setTimeout(function(){ if (!S.loaded && !S.slow) { S.slow = true; render(); } }, SLOW_MS); }   // 처음 물은 때부터 20초(가려져 있던 시간은 안 셈)
   ask({ action:'s_poll', auth: me, gver: S.gver }).then(function(r){
     S.busy = false;
     if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
     S.dead = '';
-    var prevCur = S.cur ? findRow(S.cur.id) : null;
+    var prevCur = S.cur ? findRow(S.cur.id) : null, first = !S.loaded;
     var changed = take(r);
-    if (changed) renderFlip(); else render();
+    S.loaded = true;
+    if (changed && !first) renderFlip(); else render();   // 뼈대 → 목록은 미끄러짐 없이 그 자리에
+    prefetch();
     // 열린 대화방에 새 줄이 왔으면 그 방만 다시 읽는다
     if (S.cur) {
       var now = findRow(S.cur.id);
@@ -397,14 +439,43 @@ function poll(){
     }
   }).catch(function(){ S.busy = false; });
 }
-function dead(msg){ S.dead = msg; S.wait = []; S.mine = []; S.all = []; render(); }
-function findRow(id){ var L = VIEWER ? S.all : S.wait.concat(S.mine); for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; }
+function dead(msg){ S.dead = msg; S.wait = []; S.mine = []; render(); }
+function findRow(id){ var L = S.wait.concat(S.mine); for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; }
+
+/* ══════════ 미리 받기(10-10 유성 「해당 문의 채팅 들어갔을때 … 딜레이」 → 「추천대로」) ══════════
+   목록을 받을 때마다, 마지막 시각이 바뀌었거나 아직 없는 대화들의 마지막 20줄을 **한 번에**(s_tails) 받아 둔다 → 줄을 누르면 왕복 없이 바로.
+   · 26 s_tails는 읽음을 안 찍는다(행정이 열기 전에 학부모 화면에 「읽음」이 뜨면 거짓말) — 읽음은 실제로 열 때 s_room이 뒤에서.
+   · 이 창 메모리에만 둔다(RCACHE) — 학부모 글을 PC 디스크에 남기지 않는다. 잠기면 앱이 이 창을 빼서 같이 사라진다.
+   · 구판 26(@6까지)은 「알 수 없는 요청」 → 이 창에선 다시 안 묻는다(예전처럼 열 때 받음) */
+var RCACHE = {}, tails = { busy: false, off: false, tried: {} };
+function prefetch(){
+  if (!me || tails.busy || tails.off) return;
+  var want = {}, ids = S.wait.concat(S.mine).filter(function(r){
+    var c = RCACHE[r.id]; if (c && c.lastAt === r.lastAt) return false;
+    if (tails.tried[r.id] === r.lastAt) return false;   // 받으려 했는데 없던 방(지워짐) — 같은 시각이면 또 안 묻는다
+    want[r.id] = r.lastAt; return true;
+  }).map(function(r){ return r.id; }).slice(0, 30);
+  if (!ids.length) return;
+  tails.busy = true;
+  askRead({ action:'s_tails', auth: me, ids: ids }).then(function(res){
+    tails.busy = false;
+    if (!res || !res.ok || !res.tails) { if (res && !res.ok && /알 수 없는 요청/.test(res.error || '')) tails.off = true; return; }
+    ids.forEach(function(id){
+      tails.tried[id] = want[id];
+      var t = res.tails[id]; if (!t || !t.msgs) return;
+      if (RCACHE[id] && RCACHE[id].lastAt === want[id]) return;   // 그 사이 방 열기(s_room)가 같은 시각 것을 더 많이 받아 왔다
+      RCACHE[id] = { msgs: t.msgs, more: !!t.more, lastAt: want[id] };
+      if (R.id === id && !R.loaded) { R.msgs = t.msgs.slice(); R.more = !!t.more; R.loaded = true; drawThread(null, true); }   // 뼈대로 열려 있던 방 = 바로 그린다
+    });
+  }, function(){ tails.busy = false; });
+}
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) poll(); });
 
 /* ══════════ 줄 누르기 — 누른 모양 .17초 보여 주고 대화방. 대기 줄이면 뒤에서 조용히 내 대화로(§4.18) ══════════ */
 $('list').addEventListener('click', function(e){
-  var it = e.target.closest('.it'); if (!it) return;
+  var it = e.target.closest('.it'); if (!it || !it.dataset.id) return;   // 뼈대 줄은 번호가 없다
   var id = it.dataset.id, inWait = !VIEWER && S.tab === 'wait';
+  if (!RCACHE[id]) fetchRoom(id);   // 받아 둔 게 없으면 요청은 지금 출발 — 누른 모양 .17초를 기다리지 않는다(10-10, 실측 2.12초의 앞 0.17)
   it.classList.add('press');
   setTimeout(function(){
     it.classList.remove('press');
@@ -426,23 +497,40 @@ function claim(id){
 
 /* ══════════ 대화방 ══════════ */
 var T = $('thread'), ta = $('rTa'), sendB = $('rSend');
-var R = { id: '', msgs: [], more: false, hasPhone: false, live: false, owner: '' };
+// loaded = 이 방 말풍선을 한 번이라도 그렸나(받아 둔 것이든 서버 것이든) — 아니면 대화 칸은 뼈대
+var R = { id: '', msgs: [], more: false, hasPhone: false, live: false, owner: '', loaded: false };
+var PRE = {};   // 누르는 순간 출발한 방 열기 요청(id → {p, at})
+function fetchRoom(id){ PRE[id] = { p: askRead({ action:'s_room', auth: me, id: id }), at: Date.now() }; }
 function openRoom(id){
-  var row = findRow(id) || { id: id, lastAt: '' };
-  S.cur = { id: id, lastAt: '' };
-  R = { id: id, msgs: [], more: false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '' };
-  T.innerHTML = ''; ta.value = ''; sendB.disabled = true; autosize();
+  var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
+  S.cur = { id: id, lastAt: c && c.lastAt === row.lastAt ? row.lastAt : '' };
+  R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c };
+  ta.value = ''; sendB.disabled = true; autosize();
   setPst();
+  if (c) drawThread(null, true);   // 받아 둔 대화 = 바로(서버 것은 뒤에서 와서 덮는다 — 행정은 그때 읽음이 찍힌다)
+  else { T.innerHTML = roomSkel(); fThread(); }
   $('room').classList.add('on');
-  loadRoom(id, false);
+  loadRoom(id, !!c);
   if (!VIEWER) setTimeout(function(){ ta.focus(); }, 340);
+}
+function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(학부모 둘 · 우리 하나 · 학부모 하나) — 머리, 상태, 입력 칸은 목록이 알아서 바로 보인다
+  var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
+  return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
 function closeRoom(){ $('room').classList.remove('on'); S.cur = null; R.id = ''; }
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
-  askRead({ action:'s_room', auth: me, id: id }).then(function(r){
+  var pre = PRE[id]; delete PRE[id];
+  var req = pre && Date.now() - pre.at < 10000 ? pre.p : askRead({ action:'s_room', auth: me, id: id });
+  req.then(function(r){
+    if (r && r.ok) RCACHE[id] = { msgs: r.msgs.slice(), more: !!r.more, lastAt: (findRow(id) || {}).lastAt || '' };   // 다음에 열면 바로(이 창 메모리만)
     if (R.id !== id) return;          // 그새 다른 방으로 갔다
-    if (!r || !r.ok) { toastA((r && r.error) || '대화를 열 수 없어요'); if (r && r.code === 'gone') closeRoom(); return; }
+    if (!r || !r.ok) {
+      if (r && r.code === 'gone') { toastA(r.error || '대화를 찾을 수 없어요'); closeRoom(); return; }
+      if (!R.loaded) roomFail(id); else toastA((r && r.error) || '대화를 열 수 없어요');
+      return;
+    }
+    R.loaded = true;
     var had = {}; R.msgs.forEach(function(m){ had[m.seq] = 1; });
     // 아직 결과를 모르는 내 답장은 남긴다 — 서버 줄에 같은 글이 그 뒤 시각으로 있으면 그게 그것(서버 줄이 이긴다)
     var local = R.msgs.filter(function(m){ return m.pending || m.unknown || m.failed; });
@@ -453,7 +541,12 @@ function loadRoom(id, quietNew){
     S.cur.lastAt = (findRow(id) || {}).lastAt || '';
     setPst();
     drawThread(quietNew ? had : null, true);
-  }).catch(function(){ if (R.id === id) toastA('연결이 안 돼요'); });
+  }).catch(function(){ if (R.id !== id) return; if (!R.loaded) roomFail(id); else toastA('연결이 안 돼요'); });
+}
+// 뼈대인 채 못 받았으면 뼈대를 비우고 다시 불러오기(§5.4 — 뼈대가 오류 뒤에 남아 훑으면 「아직 로딩 중」 오신호). 받아 둔 게 보이는 중이면 토스트만
+function roomFail(id){
+  T.innerHTML = '<div class="rfail">대화를 아직 못 불러왔어요<button class="older" id="rRetry">다시 불러오기</button></div>';
+  $('rRetry').addEventListener('click', function(){ if (R.id !== id) return; T.innerHTML = roomSkel(); loadRoom(id, false); });
 }
 function loadOlder(){
   var first = R.msgs.filter(function(m){ return !m.pending; })[0]; if (!first) return;
@@ -468,7 +561,10 @@ function loadOlder(){
 function setPst(){
   if (!R.id) return;
   var row = findRow(R.id);
-  if (row) { R.hasPhone = !!row.hasPhone; R.owner = row.owner || R.owner; }
+  // 주인: 목록이 주인을 말하면 그대로, 목록이 「주인 있음 → 없음」으로 바뀌면(돌려놓기) 비운다 — 목록이 늦어 빈칸인 동안은 방 열기가 준 주인을 유지
+  if (row) { R.hasPhone = !!row.hasPhone; if (row.owner) R.owner = row.owner; else if (R.rowOwner) R.owner = ''; R.rowOwner = row.owner || ''; }
+  var own = $('rOwn'), showOwn = VIEWER && !!R.owner;   // 한유성 화면 = 맡은 사람 이름표(대기 대화엔 없음)
+  own.textContent = showOwn ? ownerName(R.owner) : ''; own.classList.toggle('on', showOwn);
   R.live = !!S.live[R.id] || (R.live && !row);
   var off = !R.live;
   $('rSt').classList.toggle('off', off);
@@ -506,7 +602,8 @@ function linkHtml(text){
 // 우리 쪽 말을 누가 썼나 — 한유성(관리자 보기)은 'viewer', 행정은 emp. 내가 쓴 게 아니면 이름을 단다
 var MY_WHO = VIEWER ? 'viewer' : (me && me.emp) || '';
 function authorOf(m){ return m.who === 'v' ? 'v' : (m.who || 's'); }
-function authorName(a){ return a === 'viewer' ? '한유성' : '행정'; }
+// 한유성 화면의 행정 말풍선 위 = 그 사람 이름(이름표와 같은 글자, 10-10 「추천대로」). 현아 화면은 그대로(한유성 줄 = 「한유성」, 다른 행정 = 「행정」)
+function authorName(a){ return a === 'viewer' ? '한유성' : (VIEWER ? ownerName(a) : '행정'); }
 function drawThread(had, keepBottom){
   var atBottom = T.scrollTop + T.clientHeight >= T.scrollHeight - 30;
   var html = R.more ? '<button class="older" id="older">이전 대화 보기</button>' : '';
@@ -557,9 +654,10 @@ sendB.addEventListener('click', function(){
   drawThread(had, true); T.scrollTop = T.scrollHeight;
   var row = findRow(id);
   if (row && VIEWER) {
-    // 한유성 답장 = 맡지 않는다(대기는 대기에, 맡은 방은 맡은 사람에게 — 26 서버 규칙, 유성 10-10). 목록 줄 글만 바꾸고 맨 위로
+    // 한유성 답장 = 맡지 않는다(대기는 대기에, 맡은 방은 맡은 사람에게 — 26 서버 규칙, 유성 10-10). 목록 줄 글만 바꾸고 **그 칸에서** 맨 위로
     row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
-    S.all = [row].concat(S.all.filter(function(x){ return x !== row; }));
+    if (S.wait.indexOf(row) >= 0) S.wait = [row].concat(S.wait.filter(function(x){ return x !== row; }));
+    else S.mine = [row].concat(S.mine.filter(function(x){ return x !== row; }));
   } else if (row) {
     // 대기 대화에 답장 = 맡기 겸함(서버 규칙) → 목록도 그렇게 먼저 옮긴다 + 맨 위로
     row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
@@ -594,6 +692,7 @@ sendB.addEventListener('click', function(){
 function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2200); }
 
 /* ══════════ 시작 ══════════ */
+if (VIEWER) $('seg').querySelector('[data-t="mine"]').firstChild.nodeValue = '맡은 대화';   // 한유성은 맡지 않으니 「내 대화」가 아니다 — 행정 빈 칸 글자 「맡은 대화가 없어요」와 같은 말
 if (!me) dead('이 컴퓨터 알약에서 근태에 한 번 들어가면 문의가 보여요');
 else poll();
 // 「3분 넘음」은 시간이 지나며 바뀐다 — 서버를 안 불러도 30초마다 다시 그린다
