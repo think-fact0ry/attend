@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v98';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v99';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -345,7 +345,7 @@ if (window.chrome && window.chrome.webview) {
    ⚠️`storage`는 **쓴 문서 자신에겐 안 온다** — 위젯이 스스로 찍은 건 punch()가 직접 fetchTick을 부른다. */
 window.addEventListener('storage', function(e){
   if (e && e.key === 'att_bump') fetchTick();
-  if (e && e.key === 'att_inqv') inqPoll();
+  if (e && e.key === 'att_inq') inqPoll();   // 앱 로그인이 이 계정 서명을 막 써 줬을 때(10-10) — 다음 주기를 안 기다린다
   // 로그인은 여기서 안 듣는다 — 앱의 `_hostAuth_`가 호스트에 밀고 호스트가 `auth`로 되돌려준다(경로 하나로 유지).
 });
 
@@ -466,7 +466,10 @@ function verify(){
   verifying_on();
   // lite=위젯은 token·emp·name만 쓴다. 서버가 근태이력 전체+스윕을 건너뛴다(왕복 자체가 가벼워진다).
   // ⏱️시한 필수 — 없으면 응답이 안 올 때 `verifying`이 굳어 **키패드가 영영 안 먹는다**.
-  ask({ action:'login', pin: pin, inst: INST, lite: true })
+  var lb = { action:'login', pin: pin, inst: INST, lite: true }, ldev = null;
+  try { ldev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { }
+  if (ldev && ldev.id) { lb.device = ldev.id; lb.deviceToken = ldev.token; }   // 로그인 응답의 문의 서명도 등록 PC에서만(10-10)
+  ask(lb)
     .then(function(r){
       verifying = false;
       if (!r || !r.ok) { pinFail((r && r.error) || '비밀번호가 맞지 않아요'); return; }
@@ -546,7 +549,10 @@ function fetchTick(){
      🔑26차-7(도장 중에 온 조회 응답이 방금 찍은 도장을 지웠다)과 **같은 부류**다 — 그땐 `snap`, 이번엔 `auth`.
        ⇒ **어느 세션으로 나간 요청인지 붙잡아 두고, 돌아왔을 때 그게 아직 현재 세션인지 확인한다.** */
   var sent = auth;
-  ask({ action:'tick', token: sent.token, emp: sent.emp })
+  var tb = { action:'tick', token: sent.token, emp: sent.emp }, tdev = null;
+  try { tdev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { }
+  if (tdev && tdev.id) { tb.device = tdev.id; tb.deviceToken = tdev.token; }   // 등록 PC 열쇠 = 문의 서명 조건(10-10, 19 _inqFor_)
+  ask(tb)
     .then(function(r){
       inFlight = false;
       // 응답이 도는 동안 세션이 바뀌었으면 이건 **옛 세션의 답**이다. 성공이든 실패든 지금 화면에 반영하지 않는다.
@@ -740,7 +746,9 @@ function punchFailed(prev, msg){
 /* ══════════ 문의 알리미(26) — 1-b 2026-10-09 ══════════
    정본 = docs/4_설계_2026-10-08_문의알리미_1단계.md(D2·D3·D5·D10·D17) · 서버 = scripts/26_문의알리미.
    · 신원: 19가 login/tick/punch 응답에 싣는 inq 서명(att_inq) — 26이 같은 INQ_KEY로 로컬 확인(26→19 호출 0).
-     관리자 보기(att_inqv, 근태 관리자 화면에서 켬)가 있으면 **그 PC는 보기 전용**이 이긴다(유성 PC, D17).
+     10-10부터 **계정 기준 + 등록 PC에서만**(유성 「기준은 계정」·계획 질문 1): 알약이 조회 때 att_dev(등록 PC 열쇠)를 실어 보내고,
+     19가 한유성 = 보기 서명(role viewer — 답장은 하되 맡지 않음, 열어도 읽음 안 남음), 행정 = 행정 서명을 준다. 서명이 null이면 지운다.
+     옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(시작 때 지움).
    · 박동: 행정 서명일 때만 on(=지금 출근 중)을 싣는다 → 26이 채팅/메일 모드를 정한다. 받은함 페이지는 on을 안 실음.
    · 세는 것 = 마지막 말이 학부모인 대화(=답장 전). 행정은 대기+내 대화, 보기 전용은 전체.
    · ⚠️흔들림·미리보기(피어나기)·소리는 이 창으로 못 한다(실측: 창 = DWM 라운드 사각 하나, 투명 영역 없음·창 이동은 호스트만)
@@ -749,11 +757,15 @@ var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U
 var INQ_FAST = 10000, INQ_SLOW = 60000;   // 출근 중 10초(D5) · 그 밖(퇴근 뒤·보기 전용) 60초 — 밤새 10초씩 GAS를 깨우지 않는다
 var inq = { n: 0, role: '', busy: false, at: 0, gver: '', rows: null, seen: null, t: null };
 function inqId(){
-  try { var v = JSON.parse(localStorage.getItem('att_inqv') || 'null'); if (v && v.sig) return v; } catch (e) { }
   try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
   return null;
 }
-function inqSave(sig){ if (sig && sig.sig) { try { localStorage.setItem('att_inq', JSON.stringify(sig)); } catch (e) { } } }
+try { localStorage.removeItem('att_inqv'); } catch (e) { }   // 옛 PC 보기 열쇠(10-10 계정 기준) — 날짜 없는 서명이 PC에 계속 남지 않게
+// 응답의 서명: 있으면 저장 / null이면(등록 PC 아님, 계정이 바뀜, INQ_KEY 없음) 지운다 / undefined(그 칸이 없는 응답)면 그대로
+function inqSave(sig){
+  if (sig && sig.sig) { try { localStorage.setItem('att_inq', JSON.stringify(sig)); } catch (e) { } return; }
+  if (sig === null && inqId()) { inqDrop('att_inq'); render(); }
+}
 function inqDrop(k){ try { localStorage.removeItem(k); localStorage.removeItem('att_inqc'); } catch (e) { } inq.gver = ''; inq.rows = null; inq.seen = null; inq.n = 0; }
 function inqAsk(body){
   var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -777,7 +789,7 @@ function inqPoll(){
     inq.busy = false;
     if (!r || !r.ok) {
       diag('문의 조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
-      if (r && r.code === 'auth') { inqDrop(id.role === 'viewer' ? 'att_inqv' : 'att_inq'); render(); }
+      if (r && r.code === 'auth') { inqDrop('att_inq'); render(); }
       return;
     }
     if (!r.same) {

@@ -856,7 +856,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <button class="mi" data-go="apply"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M12 3v4M8 3v4M16 3v4"/><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M9 14l2 2 4-4"/></svg>휴가 신청</span></button>
     <button class="mi" data-go="my"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>나의 근태</span></button>
     <button class="mi" data-go="ledger"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>연차 내역</span></button>
-    <!-- 문의 채팅(10-10) = PC 프로그램 안 + 보기 전용이거나 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰엔 없다. 보이기는 inqSync -->
+    <!-- 문의 채팅(10-10) = PC 프로그램 안 + 한유성(보기 서명)이거나 행정 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰엔 없다. 보이기는 inqSync -->
     <div class="div" id="inqDiv" style="display:none"></div>
     <button class="mi" data-go="inq" id="miInq" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span class="lab">문의 채팅<span class="nb" id="miInqN"></span></span></span></button>
     <div class="div"></div>
@@ -1063,7 +1063,7 @@ if (window.chrome && window.chrome.webview) {
    정본 = prototype/19_행정앱_문의채팅합치기_계획_프리뷰.html(A안 = 앱 안 창, 받은함 파일 inbox/는 따로 — 3-G).
    · 구판은 알약 「문의」에 앱 페이지를 받은함으로 **통째로 바꿨다**(location.replace) → 근태로 돌아갈 길이 없고 쓰던 휴가 신청도 날아갔다.
      이제 받은함을 s-inq 화면 안 창으로 한 번 띄우면 계속 산다 → 메뉴로 오가도 다시 안 읽고, 하던 화면도 그대로(go()는 표시만 바꾼다).
-   · 보이는 조건 = PC 프로그램(webview) 안 + 이 계정의 문의 신원 + (보기 전용 || 행정 출근 중) = 알약 문의 칸과 같은 규칙(widget showInq).
+   · 보이는 조건 = PC 프로그램(webview) 안 + 이 계정의 문의 신원 + (한유성 계정 || 행정 출근 중) = 알약 문의 칸과 같은 규칙(widget showInq).
    · 숫자 = 알약이 남긴 마지막 목록(att_inqc)에서 학부모 말이 마지막인 대화 수 = 알약과 같은 계산(widget inqCount) → 알약 숫자와 같다.
    · 잠기면(퇴근 도장, 유휴 1시간, 자정, 로그아웃, 서버 거절 = 전부 loginGate) 안 창을 뺀다 — 학부모 글이 잠금 뒤에 남지 않게.
      잠금 중에 알약 「문의」를 누르면 비밀번호를 넣자마자 여기로 온다(pending).
@@ -1071,18 +1071,24 @@ if (window.chrome && window.chrome.webview) {
      호스트가 받는다는 보장이 없다(exe는 FrameCreated를 구독하지 않는다). */
 var IS_HOST = !!(window.chrome && window.chrome.webview);
 var inqUi = { frame: null, pending: false, sig: '', preT: null };
-// 문의 신원 — 받은함 readId와 같은 순서(관리자 보기 att_inqv가 이긴다 — 2단계에서 계정 기준으로 바뀐다)
+// 문의 신원 = **계정** 하나(10-10 유성 「기준은 계정」) — 19가 로그인·알약 조회 때 그 계정 것을 준다(등록 PC에서만).
+//   한유성 = 보기 서명(role viewer), 행정 = 행정 서명(role staff). 옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(부팅 때 지움).
 function inqIdApp() {
-  try { var v = JSON.parse(localStorage.getItem('att_inqv') || 'null'); if (v && v.sig) return v; } catch (e) { }
   try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
   return null;
+}
+// 로그인 응답의 문의 서명을 저장 — 서명이 있으면 저장, null이면(등록 PC 아님, INQ_KEY 없음) 지운다, 칸이 없으면(구 서버, 문자 인증) 그대로
+function inqAdopt(r) {
+  if (!r || !('inq' in r)) return;
+  try { if (r.inq && r.inq.sig) localStorage.setItem('att_inq', JSON.stringify(r.inq)); else localStorage.removeItem('att_inq'); } catch (e) { }
 }
 // true = 보임 / false = 안 보임 / null = 아직 모름(부팅 중, 근태 상태가 아직 안 옴 — 이때 화면을 쫓아내지 않는다)
 function inqAllowed() {
   if (!IS_HOST || !store.token || localStorage.getItem('att_locked')) return false;
   var id = inqIdApp(); if (!id) return false;
-  if (id.role === 'viewer') return true;
-  if (id.role !== 'staff' || (id.emp && id.emp !== store.emp)) return false;   // 공용 PC에서 다른 사람이 로그인했는데 앞사람 서명이 남은 틈
+  // 서명이 지금 계정 것인지 — 공용 PC에서 다른 사람이 로그인했는데 앞사람 서명이 남은 틈(알약이 곧 바꿔 쓰지만 그 사이에도 남의 문의가 안 보이게)
+  if (id.role === 'viewer') { if (!state.db) return null; return !!state.db.exempt; }   // 보기 서명은 한유성(근태 면제) 계정일 때만
+  if (id.role !== 'staff' || (id.emp && id.emp !== store.emp)) return false;
   if (!state.status) return null;
   return !!state.status.open;
 }
@@ -1152,7 +1158,7 @@ if (IS_HOST) {
   window.addEventListener('storage', function (e) {
     if (!e) return;
     if (e.key === 'att_go' && e.newValue) { if (takeInqGo()) inqOpen(); }
-    else if (e.key === 'att_inqc' || e.key === 'att_inq' || e.key === 'att_inqv') inqSync();
+    else if (e.key === 'att_inqc' || e.key === 'att_inq') inqSync();
   });
   setInterval(function () {
     try { if (localStorage.getItem('att_go') && takeInqGo()) inqOpen(); } catch (e) { }
@@ -2542,7 +2548,7 @@ function loginGate() {
           if (r.code === 'nopin') { localStorage.removeItem('att_locked'); h.close(); syncNow(); return; } // 전환기 탈출: 아직 아무도 PIN 없음 → 기존 세션으로
           h.fail(r.error); return;
         }
-        store.token = r.token; store.emp = r.emp;
+        store.token = r.token; store.emp = r.emp; inqAdopt(r);   // 문의 서명도 이 계정 것으로(10-10)
         localStorage.removeItem('att_locked');
         h.close();
         adoptOrSync(r); // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 sync 한 번
@@ -3074,11 +3080,7 @@ function renderAdmin(r) {
         '<div class="anote">PC를 켜고 <b>얼마 만에</b> 위젯이 떴는지예요. 몇 분씩 걸린다면 그 사이엔 출근을 못 찍어요(작업표시줄에 고정한 근태 아이콘을 누르면 바로 떠요).</div>'
       : '') + '</div>';
 
-  // 문의 알리미 관리자 보기(10-09, D17) — 이 컴퓨터 저장소에 보기 서명을 남긴다. 읽음 안 찍힘·답장 없음·목록 하나
-  var inqv = null; try { inqv = JSON.parse(localStorage.getItem('att_inqv') || 'null'); } catch (e) { }
-  html += '<div class="asec"><h4>문의 보기 <span class="cavt">' + (inqv ? '지금 이 컴퓨터: 켜짐' : '지금 이 컴퓨터: 꺼짐') + '</span></h4>' +
-    '<div class="arow">' + (inqv ? '<button class="abtn gray" id="inqvOff">이 컴퓨터에서 끄기</button>' : '<button class="abtn" id="inqvOn">이 컴퓨터에서 문의 보기 켜기</button>') + '</div>' +
-    '<div class="anote">켜면 이 컴퓨터 알약이 근태 대신 문의 수만 보여 줘요. 누르면 모든 대화를 볼 수 있어요. 열어 봐도 읽음으로 안 바뀌고, 맡거나 답장할 수는 없어요. 컴퓨터를 잃어버리면 Claude에게 보기를 끊어 달라고 하면 돼요.</div></div>';
+  // [구] 문의 알리미 관리자 보기 칸(「이 컴퓨터에서 문의 보기 켜기」, 10-09) = 10-10 없앰 — 한유성 계정으로 로그인하면 그게 곧 보기(유성 「기준은 계정」).
 
   // 정정
   html += '<div class="asec"><h4>출퇴근 기록 정정 <span class="cavt">대상: ' + m.name + '</span></h4><div class="arow"><input class="ain" type="date" id="corrDate"> <input class="ain" type="time" id="corrIn"> ~ <input class="ain" type="time" id="corrOut"> <input class="ain" type="text" id="corrNote" placeholder="사유" style="flex:1;min-width:100px"> <button class="abtn" id="corrGo">정정</button></div>' +
@@ -3179,19 +3181,6 @@ function renderAdmin(r) {
         toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요 · 잔여 ' + fmtBalPlain(rr.balance), true); loadAdmin();
       });
     });
-  });
-  if ($('inqvOn')) $('inqvOn').addEventListener('click', function () {
-    busyBtn(this, function () {
-      return api('inq_admin', { adminPin: state.adminPin }, true).then(function (rr) {
-        if (!rr.ok) { toast(rr.error); return; }
-        localStorage.setItem('att_inqv', JSON.stringify(rr.inq));
-        toast('이 컴퓨터에서 문의 보기를 켰어요', true); loadAdmin();
-      }).catch(function () { toast('연결이 안 돼요'); });
-    });
-  });
-  if ($('inqvOff')) $('inqvOff').addEventListener('click', function () {
-    localStorage.removeItem('att_inqv'); localStorage.removeItem('att_inqc');
-    toast('이 컴퓨터에서 문의 보기를 껐어요', true); loadAdmin();
   });
   $('devGo').addEventListener('click', function () {
     // 07-23 유성: 같은 컴퓨터 중복 등록이 3개까지 쌓임 → 이미 등록된 기기는 차단(서버도 이중 방어)
@@ -3394,7 +3383,7 @@ function demoEv(date, type, val, flag, src) {
 })();
 function demoSync() {
   // ⚠️events=state.db와 참조 공유(도장 낙관 렌더가 이 공유에 의존, 07-24) — 낙관 쓰기 액션(request·cancel)은 아래서 tmp 이벤트를 '채택'하지 append 금지(12차)
-  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: DEMO_LATE ? '21:40:00' : '14:10:00', events: demo.events, settings: DEMO_SETTINGS, deviceOk: !DEMO_PHONE, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
+  return { ok: true, emp: 'hyeona', name: '이현아', today: '2026-08-14', nowHms: DEMO_LATE ? '21:40:00' : '14:10:00', events: demo.events, settings: DEMO_SETTINGS, exempt: /[?&]ex=1/.test(location.search), deviceOk: !DEMO_PHONE, pinSet: !!demo.pin, anyPinSet: !/[?&]np=1/.test(location.search), devices: [{ label: '사무실 PC', at: '2026-07-14' }] };
 }
 function demoApi(action, data) {
   data = data || {};
@@ -3519,6 +3508,7 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
   // 알약 「문의」로 열린 창(att_go) — 10-10부터 페이지를 바꾸지 않고 부팅 뒤 「문의 채팅」 화면으로(잠겨 있으면 비밀번호 뒤에)
   var wantInq = IS_HOST && takeInqGo();
   if (wantInq) inqUi.pending = true;
+  try { localStorage.removeItem('att_inqv'); } catch (e) { }   // 옛 「PC에 붙는 관리자 보기」 열쇠(10-10 계정 기준으로 바꿈) — 남겨 두면 날짜 없는 서명이 그 PC에 계속 산다
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
   // 자정 잠금(08-01) — 확정 규칙 "세션 종료=퇴근·유휴 1시간·자정" 중 자정이 앱엔 미구현이었다:
   //   퇴근 도장 없이 창을 닫아두면 유휴 타이머가 안 돌아 다음 날에도 토큰이 살았다(위젯 몰라요 버그의 뿌리).
