@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>문의</title>
+<title>문의 채팅</title>
 <!--
   문의 받은함 (2026-10-09, 문의 알리미 1단계 1-b)
-  · 주소 = https://think-fact0ry.github.io/attend/inbox/ — 근태 위젯 exe의 앱 창 안에서 열린다(알약 「문의 N」 → att_go → 앱이 여기로).
+  · 10-10 유성 「합치자」: 근태 앱 「문의 채팅」 화면 안 창(iframe)으로만 산다 — 앱 메뉴 「문의 채팅」과 알약 「문의 N」이 같은 곳.
+    따로 열리면 앱으로 돌려보낸다(아래 EMBED). 창 신호는 부모(앱)를 거친다. 정본 = prototype/19_행정앱_문의채팅합치기_계획_프리뷰.html
+  · 주소 = https://think-fact0ry.github.io/attend/inbox/ — (구판 1-b: 앱 페이지를 통째로 이리 바꿨다 → 근태로 못 돌아가던 문제).
   · 정본: 설계 = docs/4_설계_2026-10-08_문의알리미_1단계.md(D9·D17) · 디자인 확정본 = prototype/문의창_디자인5차_프리뷰.html(알리미 탭)
           · 원칙 = docs/1 §4.18(채팅·받은함)·§5.3(목록 줄 누름)·§4.13-6(입력칸 그라디언트) · 서버 = scripts/26_문의알리미.
-  · 신원 = 이 PC 저장소의 문의 서명. 관리자 보기(att_inqv)가 있으면 그게 이긴다(유성 PC — 목록 하나·읽음 안 찍힘·답장 없음).
+  · 신원 = 이 PC 저장소의 문의 서명. 관리자 보기(att_inqv)가 있으면 그게 이긴다(유성 PC — 목록 하나, 열어도 읽음 안 찍힘, 답장은 하되 맡지 않음 = 10-10 유성 「보기 전용이 아니야」, 26 @3).
     없으면 행정 서명(att_inq, 알약이 근태 조회 때마다 갱신). 둘 다 없으면 안내만.
   · 이 페이지는 박동(on)을 안 보낸다 — 출근 여부를 아는 건 알약이고, 여기서 보내면 알약의 「출근 중」을 덮어쓴다(26 _sPoll_).
   · 톡톡·카카오 줄(빨려 들기 모션 포함)은 2단계. 지금 목록엔 홈페이지 대화만 있다.
@@ -35,14 +37,16 @@ body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Goth
 button{font-family:inherit}
 #app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
 
-/* 머리 — 창 −(위젯 껍데기 안에서만, 근태 앱과 같은 자리·같은 동작) */
-.ahd{display:flex;align-items:center;justify-content:space-between;padding:18px 12px 6px 18px;flex:none}
-.ahd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px}
-.ahd .vtag{font-size:11.5px;font-weight:700;color:var(--g700);background:var(--g100);border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:2px}
-#hostMin{display:none;width:34px;height:34px;border:0;background:none;color:var(--g500);border-radius:9px;align-items:center;justify-content:center;cursor:pointer;transition:transform .16s}
-#hostMin:hover{background:var(--g100);color:var(--g700)}
-#hostMin:active{transform:scale(.86)}
-#hostMin svg{width:16px;height:16px}
+/* 머리 = 근태 앱 .hd 실값 그대로(10-10 유성 「− 버튼이 연약해. 근태앱의 − 버튼과 그대로」) — attend/index.html .hd·.hd .ic·svg.li.
+   ⚠️앱 값을 바꾸면 여기도(0-9). 순서 = [←][문의 채팅] … [−] (계획 프리뷰 확정 그림 — 「보기 전용」 표시는 유성 10-10 정정으로 뺌). −는 PC 프로그램 안에서만 */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff}
+.hd .lt{display:flex;align-items:center;gap:6px;min-width:0}
+.hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;line-height:normal}
+.hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;padding:0;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.hd .ic:active{transform:scale(.82)}
+.hd .ic svg{width:22px;height:22px}
+svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#hostMin{display:none}
 
 /* 세그(행정만 — 관리자 보기는 목록 하나, D17) */
 .seg{display:flex;margin:6px 18px 8px;background:var(--g100);border-radius:12px;padding:3px;flex:none}
@@ -136,9 +140,14 @@ body.viewer .seg{display:none}
 .send:disabled{background:var(--p-disabled);cursor:default}
 .send:not(:disabled):active{transform:scale(.92);background:var(--green800)}
 .send svg{width:20px;height:20px}
-body.viewer .comp,body.viewer .rh .rel{display:none}
-.vnote{font-size:var(--fs-caption);color:var(--g600);text-align:center;padding:10px 12px 12px;border-top:1px solid var(--g100);display:none;flex:none}
+body.viewer .rh .rel{display:none}
+/* 한유성(관리자 보기) = 답장은 행정처럼, 다만 열기만 해선 읽음이 안 남는다(유성 10-10 「보기 전용이 아니야. 읽음이 찍히지 않게 하는 거지」) — 그 한 줄만 */
+.vnote{font-size:var(--fs-caption);color:var(--g600);text-align:center;padding:6px 12px 2px;display:none;flex:none}
 body.viewer .vnote{display:block}
+/* 우리 쪽 말풍선인데 내가 쓴 게 아니면 위에 이름(현아 화면의 한유성 줄 = 「한유성」, 한유성 화면의 행정 줄 = 「행정」) — 「대표」 단어는 현아 대면 금지(19 CLAUDE.md) */
+.me .mcol{display:flex;flex-direction:column;align-items:flex-end;min-width:0}
+.me .who{margin:0 2px 4px 0}
+.bub a{color:inherit;text-decoration:underline;text-underline-offset:2px;word-break:normal;overflow-wrap:anywhere}   /* 주소는 줄에 안 들어갈 때만 끊는다(break-all이면 「h / ttps」처럼 첫 글자에서 끊겼다) */
 
 .atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:9}
 .atoast.on{opacity:1;transform:translateX(-50%)}
@@ -146,8 +155,11 @@ body.viewer .vnote{display:block}
 </head>
 <body>
 <div id="app">
-  <div class="ahd"><div><span class="t">문의</span><span class="vtag" id="vtag" style="display:none">보기 전용</span></div>
-    <button id="hostMin" title="작게" aria-label="작게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></svg></button></div>
+  <div class="hd">
+    <div class="lt"><button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+      <div class="t">문의 채팅</div></div>
+    <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  </div>
   <div class="seg" id="seg"><button class="on" data-t="wait">대기<span class="n red" id="nWait"></span></button><button data-t="mine">내 대화<span class="n grn" id="nMine"></span></button></div>
   <div class="sw" id="lsw"><div class="list" id="list"></div></div>
 
@@ -156,8 +168,8 @@ body.viewer .vnote{display:block}
       <div><div class="nm">홈페이지 문의</div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
       <button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
+    <div class="vnote">열어 봐도 읽음이 안 남아요</div>
     <div class="comp"><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
-    <div class="vnote">보기 전용이에요. 열어 봐도 읽음으로 안 바뀌어요.</div>
   </div>
   <div class="atoast" id="atoast"></div>
 </div>
@@ -172,7 +184,26 @@ var HOME_SVG = '<svg viewBox="0 0 24 24"><path d="M4.5 10.5 12 4.5l7.5 6V19a1 1 
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
-function toHost(o){ try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(o)); } catch (e) { } }
+/* ══════════ 앱 안 창으로만 산다(10-10 유성 「합치자」) ══════════
+   이 페이지는 근태 앱(attend/index.html)의 「문의 채팅」 화면 안 창(iframe)이다. 창 신호(− 닫기, 위 12px 이동, ← 뒤로)는
+   **부모(앱)에게** 보내고 앱이 호스트로 넘긴다(iframe 안 chrome.webview는 호스트가 받는다는 보장이 없다).
+   ⚠️따로 열리면(주소 직접, 구판 앱의 페이지 교체) 앱으로 돌려보낸다 — 앱 잠금(비밀번호)을 안 거쳐서, 퇴근 뒤에도 그날 서명으로 열리던 틈(계획 §4 제안 5). */
+var EMBED = (function(){ try { return window.parent !== window && !!window.frameElement && parent.location.origin === location.origin; } catch (e) { return false; } })();
+var HOSTED = EMBED && (function(){ try { return !!(parent.chrome && parent.chrome.webview); } catch (e) { return false; } })();
+function toApp(o){ if (!EMBED) return; try { o.tf = 'inq'; parent.postMessage(o, location.origin); } catch (e) { } }
+if (!EMBED) {
+  document.documentElement.style.visibility = 'hidden';
+  // 되돌아오는 고리 막기 — 구판 앱이 다시 여기로 보내면 두 번째엔 멈추고 안내만(목록은 안 보인다)
+  var bounced = 0; try { bounced = +sessionStorage.getItem('inq_bounce') || 0; } catch (e) { }
+  if (Date.now() - bounced < 8000) {
+    $('app').style.display = 'none'; document.documentElement.style.visibility = '';
+    var bn = document.createElement('div'); bn.style.cssText = 'padding:60px 24px;text-align:center;color:var(--g600);font-size:15px';
+    bn.textContent = '문의는 근태 앱 메뉴의 「문의 채팅」에서 볼 수 있어요'; document.body.appendChild(bn);
+  } else {
+    try { sessionStorage.setItem('inq_bounce', String(Date.now())); localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { }
+    location.replace('../');
+  }
+}
 
 /* ══════════ 신원 — 관리자 보기가 이긴다(D17) ══════════ */
 function readId(){
@@ -180,10 +211,9 @@ function readId(){
   try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
   return null;
 }
-var me = readId();
+var me = EMBED ? readId() : null;   // 따로 열린 페이지는 서명을 읽지도 않는다(서버를 한 번도 안 부른다)
 var VIEWER = !!(me && me.role === 'viewer');
 document.body.classList.toggle('viewer', VIEWER);
-if (VIEWER) $('vtag').style.display = '';
 
 /* GAS 응답은 가끔 JSON 대신 구글 HTML·수십 초로 온다(플랫폼 — 10-09 22 「BAD_REPLY인데 카톡 감」 실측).
    ⇒ 글자로 받아 직접 해석, 못 읽으면 「응답 못 받음」(실패가 아니다). 읽기는 4초 헤지, 쓰기는 다시 보내지 않고 작업 번호로 묻는다. */
@@ -208,10 +238,12 @@ function askRead(body){
 }
 function cid(){ return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
-/* ══════════ 창 −·이동 그립(근태 앱 attend/index.html과 같은 문법 — exe 무변경) ══════════ */
-if (window.chrome && window.chrome.webview) {
+/* ══════════ ← 뒤로 · 창 − · 이동 그립(근태 앱 attend/index.html과 같은 문법 — 신호만 앱을 거친다, exe 무변경) ══════════ */
+$('appBack').addEventListener('click', function(){ toApp({ type:'back' }); });
+if (HOSTED) {
   $('hostMin').style.display = 'flex';
-  $('hostMin').addEventListener('click', function(){ toHost({ type:'close' }); });
+  $('hostMin').addEventListener('click', function(){ toApp({ type:'close' }); });
+  // 이 창은 앱 창 맨 위(0px)부터 그려진다 → 여기 위 12px = 앱 창 위 12px. 앱 쪽 그립은 이 창 안의 마우스를 못 받는다
   (function(){
     var st = document.createElement('style'); document.documentElement.appendChild(st);
     var on = false;
@@ -221,10 +253,21 @@ if (window.chrome && window.chrome.webview) {
     document.addEventListener('mousedown', function(e){
       if (e.button !== 0 || e.clientY > 12) return;
       e.preventDefault(); e.stopPropagation();
-      toHost({ type:'edge', dir:'t' });
+      toApp({ type:'edge' });
     }, true);
   })();
 }
+// 앱이 이 화면을 가렸는지 — 가린 동안은 서버를 안 부른다(앱 다른 화면에 있는 동안 5초마다 GAS를 깨우지 않게)
+function shownNow(){
+  if (document.hidden) return false;
+  if (!EMBED) return true;
+  try { return window.frameElement.getClientRects().length > 0; } catch (e) { return true; }
+}
+window.addEventListener('message', function(e){
+  if (!EMBED || e.source !== parent || e.origin !== location.origin) return;
+  var d = e.data || {}; if (d.tf !== 'inq') return;
+  if (d.type === 'vis' && d.on) { render(); poll(); }   // 다시 보이는 순간 바로 한 번(5초를 안 기다린다)
+});
 
 /* ══════════ 시간 글자 ══════════ */
 function ago(iso){
@@ -318,7 +361,7 @@ var pollT = null;
 function poll(){
   clearTimeout(pollT);
   pollT = setTimeout(poll, POLL_MS);
-  if (!me || document.hidden) return;
+  if (!me || !shownNow()) return;   // 창이 가려졌거나 앱이 다른 화면일 때 = 쉬기
   if (S.busy && Date.now() - S.pollAt < REQ_TIMEOUT_MS * 2) return;
   S.busy = true; S.pollAt = Date.now();
   ask({ action:'s_poll', auth: me, gver: S.gver }).then(function(r){
@@ -425,21 +468,42 @@ function meLabel(m, i){
   var later = R.msgs.slice(i + 1).some(function(x){ return x.who === 'v'; });
   return (later || R.live) ? '<span class="rd">읽음</span>' : '<span>안 읽음</span>';
 }
+/* 글 속 웹 주소만 누를 수 있게(유성 10-10 「현아샘도 누군가가 링크를 보냈을 때 누를 수 있어야해」).
+   글은 전부 이스케이프하고, http/https 주소만 a로 감싼다(다른 글자는 태그가 될 길이 없다). 새 창 = PC 프로그램이 기본 브라우저로 연다(exe NewWindowRequested, http/https만).
+   주소 끝에 붙은 문장 부호(. , ) 등)는 주소에서 뺀다 — 「여기 보세요 https://a.kr/x.」의 마침표까지 주소로 잡지 않게. */
+var URL_RE = /https?:\/\/[^\s<>"'「」『』]+/g;
+function linkHtml(text){
+  var t = String(text == null ? '' : text), out = '', at = 0, m;
+  URL_RE.lastIndex = 0;
+  while ((m = URL_RE.exec(t))) {
+    var u = m[0].replace(/[.,!?;:)\]}>…~]+$/, ''), end = m.index + u.length, ok = false;
+    try { var p = new URL(u); ok = p.protocol === 'http:' || p.protocol === 'https:'; } catch (e) { }
+    out += esc(t.slice(at, m.index));
+    out += ok ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>' : esc(u);
+    at = end; URL_RE.lastIndex = end;
+  }
+  return out + esc(t.slice(at));
+}
+// 우리 쪽 말을 누가 썼나 — 한유성(관리자 보기)은 'viewer', 행정은 emp. 내가 쓴 게 아니면 이름을 단다
+var MY_WHO = VIEWER ? 'viewer' : (me && me.emp) || '';
+function authorOf(m){ return m.who === 'v' ? 'v' : (m.who || 's'); }
+function authorName(a){ return a === 'viewer' ? '한유성' : '행정'; }
 function drawThread(had, keepBottom){
   var atBottom = T.scrollTop + T.clientHeight >= T.scrollHeight - 30;
   var html = R.more ? '<button class="older" id="older">이전 대화 보기</button>' : '';
   var lastDay = '', prevWho = '';
   R.msgs.forEach(function(m, i){
-    var who = m.who === 'v' ? 'v' : 's';
+    var who = authorOf(m);
     var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + dayLabel(m.at) + '</div>'; lastDay = d; prevWho = ''; }
-    var cont = prevWho === who, next = R.msgs[i + 1], lastOfRun = !next || (next.who === 'v' ? 'v' : 's') !== who || ymd(next.at) !== d;
+    var cont = prevWho === who, next = R.msgs[i + 1], lastOfRun = !next || authorOf(next) !== who || ymd(next.at) !== d;
     var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
     if (who === 'v') {
       html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">홈페이지 방문자</div>') +
-        '<div class="bub">' + esc(m.text) + '</div></div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
+        '<div class="bub">' + linkHtml(m.text) + '</div></div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
     } else {
+      var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
       html += '<div class="row me' + (cont ? ' cont' : '') + nw + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
-        '<div class="bub' + (lastOfRun ? ' last' : '') + '">' + esc(m.text) + '</div></div>';
+        '<div class="mcol">' + name + '<div class="bub' + (lastOfRun ? ' last' : '') + '">' + linkHtml(m.text) + '</div></div></div>';
     }
     prevWho = who;
   });
@@ -468,13 +532,17 @@ ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey
 sendB.addEventListener('click', function(){
   var v = ta.value.trim(); if (!v || !R.id) return;
   ta.value = ''; sendB.disabled = true; autosize();
-  var c = cid(), id = R.id, m = { seq: 1e9 + Date.now(), at: new Date().toISOString(), who: me.emp, text: v, pending: true, cid: c };
+  var c = cid(), id = R.id, m = { seq: 1e9 + Date.now(), at: new Date().toISOString(), who: MY_WHO, text: v, pending: true, cid: c };
   R.msgs.push(m);
   var had = {}; R.msgs.forEach(function(x){ if (x !== m) had[x.seq] = 1; });
   drawThread(had, true); T.scrollTop = T.scrollHeight;
-  // 대기 대화에 답장 = 맡기 겸함(서버 규칙) → 목록도 그렇게 먼저 옮긴다 + 맨 위로
   var row = findRow(id);
-  if (row) {
+  if (row && VIEWER) {
+    // 한유성 답장 = 맡지 않는다(대기는 대기에, 맡은 방은 맡은 사람에게 — 26 서버 규칙, 유성 10-10). 목록 줄 글만 바꾸고 맨 위로
+    row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
+    S.all = [row].concat(S.all.filter(function(x){ return x !== row; }));
+  } else if (row) {
+    // 대기 대화에 답장 = 맡기 겸함(서버 규칙) → 목록도 그렇게 먼저 옮긴다 + 맨 위로
     row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
     S.wait = S.wait.filter(function(x){ return x !== row; }); S.mine = S.mine.filter(function(x){ return x !== row; });
     row.owner = row.owner || me.emp; S.mine.unshift(row); R.owner = row.owner; setPst();

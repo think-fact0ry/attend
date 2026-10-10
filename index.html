@@ -249,6 +249,20 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .mi:active .min{transform:scale(.97)} /* 누르면 안쪽 내용이 조금 부드럽게 작아짐 */
 .mi svg{width:20px;height:20px;color:var(--g600);flex:none}
 .drawer .div{height:1px;background:var(--g100);margin:8px 22px}
+/* 문의 채팅 숫자(10-10 유성 「알약 숫자가 nav 문의 채팅 우상단에도 작게」) — 글자 오른쪽 위. 알약과 같은 숫자 */
+.mi .lab{position:relative}
+.mi .nb{position:absolute;left:100%;top:-7px;margin-left:3px;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px;font-variant-numeric:tabular-nums;line-height:1}
+.mi .nb.show{display:inline-flex}
+/* 메뉴 아이콘 빨간 점(계획 §4 제안 1) — 메뉴는 거의 늘 닫혀 있어서 숫자만으론 앱 화면에서 안 보인다. 점은 숫자가 있을 때만 */
+#menuBtnMain,#menuBtn,.hd .goMenu{position:relative}
+.mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
+.mdot.on{display:block}
+#s-me .mdot,#s-my .mdot{box-shadow:0 0 0 2px var(--g50)} /* 회색 화면은 고리도 회색 */
+
+/* ── 문의 채팅 화면(10-10 유성 「합치자」) — 받은함 페이지(inbox/)를 이 화면 안 창으로 끼운다(파일은 따로 = 3-G).
+     머리(← 제목 −)도 받은함이 그린다: 대화방이 화면 맨 위까지 덮어야 해서 앱 머리를 위에 두면 두 줄로 쌓인다(계획 §4 제안 4). ── */
+#inqFrame{display:block;flex:1;width:100%;min-height:0;border:0;background:#fff}
+#s-inq.on{height:100vh;height:100dvh}
 
 /* ── 신청 ── */
 .seg3{display:flex;gap:8px;margin-bottom:18px}
@@ -832,6 +846,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <div class="abody" id="adminBody"></div>
   </section>
 
+  <!-- 문의 채팅(10-10) — 안 창(iframe #inqFrame)은 처음 열 때(또는 출근 중 미리) JS가 넣고, 잠기면 뺀다 -->
+  <section class="scr" id="s-inq"></section>
+
   <!-- 오버레이들 -->
   <div class="dim" id="dim"></div>
   <div class="drawer" id="drawer"><!-- 19차: 항목 누름=인셋 라운드 선택칸(::before 등장)+내용 축소(.min) — 토스 레퍼런스, §5.3 -->
@@ -839,6 +856,9 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <button class="mi" data-go="apply"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M12 3v4M8 3v4M16 3v4"/><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M9 14l2 2 4-4"/></svg>휴가 신청</span></button>
     <button class="mi" data-go="my"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>나의 근태</span></button>
     <button class="mi" data-go="ledger"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>연차 내역</span></button>
+    <!-- 문의 채팅(10-10) = PC 프로그램 안 + 보기 전용이거나 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰엔 없다. 보이기는 inqSync -->
+    <div class="div" id="inqDiv" style="display:none"></div>
+    <button class="mi" data-go="inq" id="miInq" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span class="lab">문의 채팅<span class="nb" id="miInqN"></span></span></span></button>
     <div class="div"></div>
     <button class="mi" data-go="me"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>내 정보</span></button>
   </div>
@@ -1039,20 +1059,115 @@ if (window.chrome && window.chrome.webview) {
     }, true);
   })();
 }
-/* 문의 받은함으로 넘어가기 — 표시는 15초만 유효(늦게 열린 창이 엉뚱하게 넘어가지 않게). 한 번 쓰면 지운다. */
-function goInbox() {
+/* ══ 문의 채팅(10-10 유성 「합치자」 — 알약 「문의」와 메뉴 「문의 채팅」이 같은 화면) ══
+   정본 = prototype/19_행정앱_문의채팅합치기_계획_프리뷰.html(A안 = 앱 안 창, 받은함 파일 inbox/는 따로 — 3-G).
+   · 구판은 알약 「문의」에 앱 페이지를 받은함으로 **통째로 바꿨다**(location.replace) → 근태로 돌아갈 길이 없고 쓰던 휴가 신청도 날아갔다.
+     이제 받은함을 s-inq 화면 안 창으로 한 번 띄우면 계속 산다 → 메뉴로 오가도 다시 안 읽고, 하던 화면도 그대로(go()는 표시만 바꾼다).
+   · 보이는 조건 = PC 프로그램(webview) 안 + 이 계정의 문의 신원 + (보기 전용 || 행정 출근 중) = 알약 문의 칸과 같은 규칙(widget showInq).
+   · 숫자 = 알약이 남긴 마지막 목록(att_inqc)에서 학부모 말이 마지막인 대화 수 = 알약과 같은 계산(widget inqCount) → 알약 숫자와 같다.
+   · 잠기면(퇴근 도장, 유휴 1시간, 자정, 로그아웃, 서버 거절 = 전부 loginGate) 안 창을 뺀다 — 학부모 글이 잠금 뒤에 남지 않게.
+     잠금 중에 알약 「문의」를 누르면 비밀번호를 넣자마자 여기로 온다(pending).
+   · 받은함의 창 신호(− 닫기, 위 12px 이동, ← 뒤로)는 **여기(부모)를 거쳐** 호스트로 간다 — iframe 안 chrome.webview 메시지는
+     호스트가 받는다는 보장이 없다(exe는 FrameCreated를 구독하지 않는다). */
+var IS_HOST = !!(window.chrome && window.chrome.webview);
+var inqUi = { frame: null, pending: false, sig: '', preT: null };
+// 문의 신원 — 받은함 readId와 같은 순서(관리자 보기 att_inqv가 이긴다 — 2단계에서 계정 기준으로 바뀐다)
+function inqIdApp() {
+  try { var v = JSON.parse(localStorage.getItem('att_inqv') || 'null'); if (v && v.sig) return v; } catch (e) { }
+  try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
+  return null;
+}
+// true = 보임 / false = 안 보임 / null = 아직 모름(부팅 중, 근태 상태가 아직 안 옴 — 이때 화면을 쫓아내지 않는다)
+function inqAllowed() {
+  if (!IS_HOST || !store.token || localStorage.getItem('att_locked')) return false;
+  var id = inqIdApp(); if (!id) return false;
+  if (id.role === 'viewer') return true;
+  if (id.role !== 'staff' || (id.emp && id.emp !== store.emp)) return false;   // 공용 PC에서 다른 사람이 로그인했는데 앞사람 서명이 남은 틈
+  if (!state.status) return null;
+  return !!state.status.open;
+}
+function inqCountApp(id) {
+  try {
+    var c = JSON.parse(localStorage.getItem('att_inqc') || 'null');
+    if (!c || !c.r || c.role !== id.role || (c.emp || '') !== (id.emp || '')) return 0;
+    var rows = c.r.all || (c.r.wait || []).concat(c.r.mine || []);
+    return rows.filter(function (x) { return x.lastWho === 'v'; }).length;
+  } catch (e) { return 0; }
+}
+function inqSync() {
+  if (!IS_HOST) return;
+  var ok = inqAllowed(), n = ok ? inqCountApp(inqIdApp()) : 0;
+  var sig = (ok === true ? 1 : 0) + '|' + n;
+  if (sig !== inqUi.sig) {   // 1초마다 돌아서 바뀔 때만 그린다
+    inqUi.sig = sig;
+    $('miInq').style.display = ok === true ? '' : 'none'; $('inqDiv').style.display = ok === true ? '' : 'none';
+    $('miInqN').textContent = n > 99 ? '99+' : String(n); $('miInqN').classList.toggle('show', n > 0);
+    document.querySelectorAll('.mdot').forEach(function (d) { d.classList.toggle('on', n > 0); });
+  }
+  if (ok === true) {
+    if (inqUi.pending) { inqUi.pending = false; go('inq'); }
+    else if (!inqUi.frame && !inqUi.preT) inqUi.preT = setTimeout(function () { inqUi.preT = null; if (inqAllowed() === true) inqFrameEnsure(); }, 1500);   // 출근 중이면 미리 불러 둔다(계획 §4 제안 2) — 앱 첫 그림과 안 겹치게 조금 뒤에
+  } else if (ok === false) {
+    if (store.token && !localStorage.getItem('att_locked')) inqUi.pending = false;   // 잠금 중엔 남긴다(비밀번호 뒤에 열 것)
+    if ($('s-inq').classList.contains('on')) { go('main'); refreshMain(); }   // 퇴근 등으로 자격이 사라졌다
+    inqUnload();
+  }
+}
+function inqFrameEnsure() {
+  if (inqUi.frame) return;
+  var f = document.createElement('iframe');
+  f.id = 'inqFrame'; f.title = '문의 채팅'; f.src = './inbox/';
+  $('s-inq').appendChild(f); inqUi.frame = f;
+}
+function inqUnload() {
+  clearTimeout(inqUi.preT); inqUi.preT = null;
+  if (!inqUi.frame) return;
+  try { inqUi.frame.remove(); } catch (e) { }
+  inqUi.frame = null;
+}
+function inqVis(on) {
+  if (on) inqFrameEnsure();
+  try { if (inqUi.frame && inqUi.frame.contentWindow) inqUi.frame.contentWindow.postMessage({ tf: 'inq', type: 'vis', on: !!on }, location.origin); } catch (e) { }
+}
+// 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending)
+function inqOpen() {
+  if (!IS_HOST) return;
+  if (!store.token || localStorage.getItem('att_locked')) { inqUi.pending = true; return; }
+  var ok = inqAllowed();
+  if (ok === false) return;   // 퇴근 뒤 등 — 알약에도 문의 칸이 없는 때
+  inqUi.pending = false;
+  go('inq');                  // 상태를 아직 모르면(null) 먼저 열고, 상태가 오면 inqSync가 다시 판정한다
+}
+// 알약이 남긴 표시(att_go) — 15초만 유효(늦게 열린 창이 엉뚱하게 넘어가지 않게). 한 번 쓰면 지운다.
+function takeInqGo() {
   try {
     var g = localStorage.getItem('att_go'); if (!g) return false;
     localStorage.removeItem('att_go');
     var p = g.split('|');
-    if (p[0] !== 'inbox' || !(Date.now() - (+p[1] || 0) < 15000)) return false;
-    location.replace('./inbox/'); return true;
+    return p[0] === 'inbox' && Date.now() - (+p[1] || 0) < 15000;
   } catch (e) { return false; }
 }
-if (window.chrome && window.chrome.webview) {
+if (IS_HOST) {
   // storage 이벤트(다른 WebView2 문서 사이 전파는 확인한 적 없는 사실) + 1초 확인 둘 다 — 한쪽에만 기대지 않는다(24차-2 교훈)
-  window.addEventListener('storage', function (e) { if (e && e.key === 'att_go' && e.newValue) goInbox(); });
-  setInterval(function () { try { if (localStorage.getItem('att_go')) goInbox(); } catch (e) { } }, 1000);
+  window.addEventListener('storage', function (e) {
+    if (!e) return;
+    if (e.key === 'att_go' && e.newValue) { if (takeInqGo()) inqOpen(); }
+    else if (e.key === 'att_inqc' || e.key === 'att_inq' || e.key === 'att_inqv') inqSync();
+  });
+  setInterval(function () {
+    try { if (localStorage.getItem('att_go') && takeInqGo()) inqOpen(); } catch (e) { }
+    inqSync();
+  }, 1000);
+  // 받은함 안 창이 보내는 것 — 같은 출처 + 그 창에서 온 것만
+  window.addEventListener('message', function (e) {
+    if (!inqUi.frame || e.source !== inqUi.frame.contentWindow || e.origin !== location.origin) return;
+    var d = e.data || {}; if (d.tf !== 'inq') return;
+    if (d.type === 'back') { go('main'); refreshMain(); }
+    else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
+    else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
+  });
+  // 메뉴 아이콘 빨간 점 — 메뉴 버튼 6곳(메인, 캘린더, 신청, 나의 근태, 연차 내역, 내 정보)에 한 번 심는다. 켜고 끄기는 inqSync
+  document.querySelectorAll('#menuBtnMain,#menuBtn,.hd .goMenu').forEach(function (b) { var d = document.createElement('span'); d.className = 'mdot'; b.appendChild(d); });
 }
 var state = { status: null, db: null, calYm: null, calSel: null, calData: null, myYm: null, adminPin: sessionStorage.getItem('att_admin') || '' };
 // 07-22(2) 유성: 앱 안 우클릭 차단(+안드로이드 롱프레스 메뉴 — 관리자 5초 누름 보호 겸함).
@@ -1284,7 +1399,7 @@ function kDate(d) { var wd = '일월화수목금토'[new Date(+d.slice(0, 4), +d
 function kDateShort(d) { var wd = '일월화수목금토'[new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)).getDay()]; return (+d.slice(5, 7)) + '월 ' + (+d.slice(8, 10)) + '일 (' + wd + ')'; }
 
 /* ── 화면 전환 ── */
-var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin'];
+var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin', 'inq'];
 function go(name) {
   SCREENS.forEach(function (s) { $('s-' + s).classList.toggle('on', s === name); });
   // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
@@ -1299,6 +1414,7 @@ function go(name) {
   if (name === 'my') loadMy();
   if (name === 'ledger') loadLedger();
   if (name === 'me') loadMe();
+  inqVis(name === 'inq');   // 문의 채팅 안 창에 보이는지 알린다(가려진 동안 받은함은 서버를 안 부른다)
 }
 function closeDrawer() { $('drawer').classList.remove('on'); $('dim').classList.remove('on'); $('outDim').classList.remove('on'); }
 function openDrawer() { $('drawer').classList.add('on'); $('dim').classList.add('on'); $('outDim').classList.add('on'); } // 19차: 바깥(body)도 같이 어둡게
@@ -1391,6 +1507,7 @@ function renderMain(r) {
     // 자정 잠금의 기준 날짜 — 회사 PC(도장 기기)+PIN 사용 중일 때만(폰=영구 세션이라 기록 안 함)
     if (r.deviceOk && r.anyPinSet) localStorage.setItem('att_day', r.today); else localStorage.removeItem('att_day');
   } catch (e) { }
+  inqSync();   // 출근·퇴근이 바뀌면 문의 채팅 칸도 바로(1초 확인을 안 기다린다) + 비밀번호 뒤에 열기로 한 것(pending)
 }
 /* 도장 = 기기 게이트만(2차: PIN 로그인 세션이 곧 찍는 사람 — 도장마다 PIN 재입력 폐지)
    낙관적 렌더(2026-07-24 유성 "다음 페이지로 반응이 느림"): 구판은 punch 응답을 기다린 뒤 syncNow로
@@ -2414,7 +2531,7 @@ function loadMe() {
 }
 // 진입/잠금 해제 공용(2차) — PIN 4자리 → login(전 구성원 매치·emp+세션 토큰 발급). 등록코드 폐기. 취소 없음.
 function loginGate() {
-  go('main'); mainSkeleton();
+  go('main'); inqUnload(); mainSkeleton();   // 문의 채팅 안 창도 내린다(학부모 글이 잠금 뒤에 남지 않게 — 10-10)
   pinPrompt({
     title: '비밀번호를 눌러주세요', digits: 4, noCancel: true, // 서브 문구 없음(§2.1) — 태블릿 게이트와 같은 제목
     forgot: { label: '비밀번호를 몰라요', fn: startOtpReset }, // 분실=문자 인증으로 재설정(11차)
@@ -3399,8 +3516,9 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
   } else { $('punchRow').style.display = 'none'; }
 }
 (function boot() {
-  // 문의 받은함(10-09, 1-b): 알약 「문의 N」 → att_go 표시 + 앱 창 열기. exe가 받은함 주소를 직접 열 수 있게 되는 건 1-c
-  if (goInbox()) return;
+  // 알약 「문의」로 열린 창(att_go) — 10-10부터 페이지를 바꾸지 않고 부팅 뒤 「문의 채팅」 화면으로(잠겨 있으면 비밀번호 뒤에)
+  var wantInq = IS_HOST && takeInqGo();
+  if (wantInq) inqUi.pending = true;
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
   // 자정 잠금(08-01) — 확정 규칙 "세션 종료=퇴근·유휴 1시간·자정" 중 자정이 앱엔 미구현이었다:
   //   퇴근 도장 없이 창을 닫아두면 유휴 타이머가 안 돌아 다음 날에도 토큰이 살았다(위젯 몰라요 버그의 뿌리).
@@ -3434,6 +3552,7 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
   hostDiag('boot-ok');                                        // 통과했다는 것도 남긴다 — "안 뜬 것"과 "안 남은 것"을 가르려고
   go('main');
   mainSkeleton();
+  if (wantInq) inqOpen();   // 근태 상태를 기다리지 않고 바로(알약은 문의 칸이 보일 때만 이 표시를 남긴다). 상태가 오면 inqSync가 다시 판정
   if (wantAdmin) openAdminPin();
   syncNow(function (c) {
     pollKey = pollSnap(c);
