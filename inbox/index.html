@@ -200,6 +200,11 @@ function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(
 var EMBED = (function(){ try { return window.parent !== window && !!window.frameElement && parent.location.origin === location.origin; } catch (e) { return false; } })();
 var HOSTED = EMBED && (function(){ try { return !!(parent.chrome && parent.chrome.webview); } catch (e) { return false; } })();
 function toApp(o){ if (!EMBED) return; try { o.tf = 'inq'; parent.postMessage(o, location.origin); } catch (e) { } }
+// 앱 유휴 잠금의 손길(att_seen, 10-10 로그아웃 조사) — 이 안 창의 입력은 부모 문서로 안 올라가서, 답장을 쓰고 있어도 앱은 「1시간 손길 없음」으로 잠갔다.
+//   앱 쪽 시한이 att_seen을 다시 보고 남은 만큼 다시 건다. 잠긴 동안은 안 센다(안 창은 잠기면 빠지지만 한 번 더 막는다). 10초에 한 번만 쓴다
+if (EMBED) ['pointerdown', 'keydown'].forEach(function(ev){ document.addEventListener(ev, function(){
+  try { if (localStorage.getItem('att_locked')) return; var n = Date.now(); if (n - (+localStorage.getItem('att_seen') || 0) > 10000) localStorage.setItem('att_seen', String(n)); } catch (e) { }
+}, true); });
 if (!EMBED) {
   document.documentElement.style.visibility = 'hidden';
   // 되돌아오는 고리 막기 — 구판 앱이 다시 여기로 보내면 두 번째엔 멈추고 안내만(목록은 안 보인다)
@@ -386,6 +391,9 @@ function poll(){
       var now = findRow(S.cur.id);
       setPst();
       if (now && (!prevCur || now.lastAt !== prevCur.lastAt) && now.lastAt !== S.cur.lastAt) loadRoom(S.cur.id, true);
+      // 문자 판정이 아직인 우리 줄(wait)이 있으면 목록이 바뀔 때(26이 판정 순간 gver를 올림) 그 방도 다시 읽는다 — 마지막 시각은 안 바뀌어서
+      //   위 조건만으론 「안 읽음」이 「문자로 보냈어요」·「읽음」으로 안 바뀌었다(claude-71 10-10: 답장 순간 판정 → 1분 뒤 판정)
+      else if (!r.same && R.id === S.cur.id && R.msgs.some(function(m){ return m.who !== 'v' && m.sms === 'wait'; })) loadRoom(S.cur.id, true);
     }
   }).catch(function(){ S.busy = false; });
 }
@@ -562,7 +570,7 @@ sendB.addEventListener('click', function(){
   function settle(r){   // 서버가 답한 결과(바로 왔든, 작업 번호로 물어서 왔든)
     m.pending = false; m.unknown = false;
     if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
-    else { m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : ''; if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at; }
+    else { m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at; }
     if (R.id === id) drawThread({}, true);
     S.gver = ''; poll();
   }

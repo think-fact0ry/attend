@@ -1006,6 +1006,12 @@ var $ = function (id) { return document.getElementById(id); };
 var _hostAuthT = null;
 function _hostAuthSend_() {
   try {
+    /* 🔴잠긴 앱은 exe에 세션을 **다시 밀지 않는다**(10-10 유성 신고 「로그아웃 한 상태에서 문의 알약 → 근태 어플이 켜짐」).
+         트레이 「로그아웃」으로 exe 세션이 지워져도 앱이 열리며 옛 att_token을 밀어 로그아웃이 되돌아갔다(edge.log 12:29:04 → 12:29:08 「토큰 있음」).
+         자정 잠금도 같은 구멍 — 아침에 앱을 열면 부팅이 잠그는데 이 함수는 어제 토큰을 exe에 넣어 알약이 「로그인됨」이 됐다.
+       잠겨 있어도 exe는 이미 받은 세션을 들고 있으므로 「잠겨도 위젯은 보이고 앱은 PIN」(유성 확정)은 그대로다.
+       로그인 성공 경로는 토큰을 쓴 **같은 동기 블록에서** 잠금을 지우고, 이 함수는 setTimeout 0 뒤에 돌아서 그때는 풀려 있다. */
+    if (localStorage.getItem('att_locked')) return;
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage(JSON.stringify({
         type: 'auth',
@@ -1477,7 +1483,7 @@ function heroB(b) { // 잔여 표기 B안(§10.9): "44시간 (+4)" + 아랫줄 =
 function renderMain(r) {
   $('mainTitle').textContent = (r.deviceOk && r.name) ? r.name + '님' : '근태'; // 공용 회사 PC=세션 주인 이름(T2-7 남의 세션 인지), 폰=미니멀 '근태'
   $('heroLabel').textContent = '남은 연차'; // 스켈레톤이 바꿔 놓은 라벨 복원(다른 값은 아래서 전부 다시 그려짐)
-  resetIdle(); // 공용 PC 유휴 잠금 타이머 리셋(매 렌더=상호작용 신호)
+  if (!idleTimer) armIdle(); // 유휴 잠금은 **안 걸려 있을 때만** 건다 — 구판 resetIdle()은 60초 폴링 그리기마다 1시간을 새로 세서 첫 화면이 열린 창은 안 잠겼다(10-10)
   var hb = heroB(r.balance);
   $('heroVal').innerHTML = hb.val;
   $('heroSub').textContent = hb.sub;
@@ -2576,6 +2582,7 @@ function loadMe() {
 // 진입/잠금 해제 공용(2차) — PIN 4자리 → login(전 구성원 매치·emp+세션 토큰 발급). 등록코드 폐기. 취소 없음.
 function loginGate() {
   go('main'); inqUnload(); mainSkeleton();   // 문의 채팅 안 창도 내린다(학부모 글이 잠금 뒤에 남지 않게 — 10-10)
+  clearTimeout(idleTimer); idleTimer = null;   // 잠긴 동안 묵은 유휴 타이머가 터져 키패드를 다시 띄우지(입력 중인 숫자를 날리지) 않게 — 잠금 길이 lockNow만이 아니다(서버 거절·부팅·알약)
   pinPrompt({
     title: '비밀번호를 눌러주세요', digits: 4, noCancel: true, // 서브 문구 없음(§2.1) — 태블릿 게이트와 같은 제목
     forgot: { label: '비밀번호를 몰라요', fn: startOtpReset }, // 분실=문자 인증으로 재설정(11차)
@@ -2587,7 +2594,7 @@ function loginGate() {
           h.fail(r.error); return;
         }
         store.token = r.token; store.emp = r.emp; inqAdopt(r);   // 문의 서명도 이 계정 것으로(10-10)
-        localStorage.removeItem('att_locked');
+        localStorage.removeItem('att_locked'); sessionSeen();   // 새 세션 = 손길 지금(잠긴 동안 키패드 입력은 안 세므로 여기서 적는다)
         h.close();
         adoptOrSync(r); // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 sync 한 번
       }).catch(function () { toast('연결이 안 돼요'); });
@@ -2656,14 +2663,34 @@ backGuardPush();
 var idleTimer = null;
 var IDLE_LOCK_MS = 60 * 60 * 1000; // 유휴 자동 잠금 1시간(2026-07-24 유성 실기기 — 5분은 쓰는 도중에 잠겨서 X).
 //   짧게 못 잡는 대신 ①퇴근 도장 즉시 잠금 ②메인 '잠그기' 버튼이 공용 PC 노출 창을 실제로 닫는다.
-function resetIdle() { // 공용 회사 PC만 무동작 자동 잠금(T2-1). PIN 미설정 전환기=잠금 안 함(진입 불가 방지). 폰=잠금 없음
-  clearTimeout(idleTimer);
-  if (state.db && state.db.deviceOk && state.db.anyPinSet && !DEMO) idleTimer = setTimeout(lockNow, IDLE_LOCK_MS);
+/* 유휴 = **사람 손길이 마지막으로 닿은 때**(att_seen — 앱, 문의 채팅 안 창, 알약 도장 세션이 같이 적는다)에서 1시간.
+   🔴10-10 로그아웃 조사(유성 「로그아웃 상태에서 들어가지면 안되지」)로 고침 — 구판의 구멍 2:
+     ①renderMain마다 타이머를 새로 걸었다 → 60초 폴링이 그릴 때마다 1시간이 처음부터 → **첫 화면이 열린 창은 영영 안 잠겼다**
+     ②타이머가 이 페이지 안에만 있었다 → **앱 창을 닫으면 사라져** 자리를 오래 비워도 다음 사람이 문의 칸·트레이 「근태 열기」로 그대로 들어왔다
+       (내 정보 문구 「자리를 오래 비우면 1시간 뒤에 자동으로 로그아웃돼요」가 창이 닫혀 있을 땐 거짓이었다)
+   ⇒ 손길(pointerdown·keydown)만 att_seen에 적고, 시한이 되면 att_seen을 다시 본다(그 사이 안 창·알약에 손이 닿았으면 남은 만큼 다시 건다).
+     창이 닫힌 동안은 알약 loop가, 다시 열 때는 부팅이 같은 규칙으로 잠근다. ⚠️잠긴 동안(키패드)의 손길은 안 센다 — 남이 키패드를 만져
+     앞사람 세션의 시한이 늘어나면 안 된다. 적용 = 공용 회사 PC(등록 기기 + PIN 사용)만, 폰 = 잠금 없음(T2-1 그대로). */
+function idleOn() { return !!(state.db && state.db.deviceOk && state.db.anyPinSet && !DEMO); }
+function idleSeen() { return +localStorage.getItem('att_seen') || 0; }
+function noteSeen() {
+  if (!store.token || localStorage.getItem('att_locked')) return;
+  var n = Date.now(); if (n - idleSeen() > 10000) { try { localStorage.setItem('att_seen', String(n)); } catch (e) { } }   // 10초에 한 번만 쓴다
 }
+function armIdle(ms) { clearTimeout(idleTimer); idleTimer = null; if (idleOn()) idleTimer = setTimeout(idleFire, ms || IDLE_LOCK_MS); }
+function sessionSeen() { try { localStorage.setItem('att_seen', String(Date.now())); } catch (e) { } }   // 로그인 성공 = 새 세션의 첫 손길
+function idleFire() {
+  idleTimer = null;
+  if (localStorage.getItem('att_locked')) return;   // 이미 잠겼다(다른 길로) — 다시 잠그면 키패드가 새로 뜬다
+  var left = IDLE_LOCK_MS - (Date.now() - idleSeen());
+  if (left > 1000) { armIdle(left); return; }   // 안 창·알약에서 그 사이 손이 닿았다
+  lockNow();
+}
+function resetIdle() { noteSeen(); armIdle(); }   // 진짜 손길에만 — 그리기(폴링)에는 안 부른다
 ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, resetIdle, true); });
 function lockNow() { // 공용 PC 세션 종료(퇴근·유휴·잠그기 버튼) — att_locked 후 PIN 재로그인
   if (!(state.db && state.db.anyPinSet)) return; // PIN 하나도 없으면 잠그지 않음(login 불가라 갇힘 방지 — 전환기 안전판)
-  clearTimeout(idleTimer);
+  clearTimeout(idleTimer); idleTimer = null;   // null까지 — 다시 로그인한 뒤 renderMain이 새로 건다(안 걸려 있을 때만 거는 규칙)
   localStorage.setItem('att_locked', '1');
   state.db = null; state.status = null;
   loginGate();
@@ -2957,7 +2984,7 @@ function otpAskNewPin(ticket, opts) { // 새 비밀번호 2회(태블릿 setup �
             toast(r.error); if (opts.backFn) opts.backFn(); else pinHelpers.close(); return; // 티켓 만료 등 → 처음으로
           }
           pinHelpers.close();
-          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); adoptOrSync(r); toast('비밀번호를 새로 정했어요', true); }
+          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); sessionSeen(); adoptOrSync(r); toast('비밀번호를 새로 정했어요', true); }
           else { toast('비밀번호를 바꿨어요', true); adoptOrSync(r, function () { loadMe(); }); } // set_pin 응답에 sync 동봉 — 추가 왕복 0
         }).catch(function () { toast('연결이 안 돼요'); });
       }
@@ -3555,6 +3582,15 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
     var ad = localStorage.getItem('att_day');
     if (!DEMO && ad && store.token && ad !== AttEngine.ymd(new Date())) {
       hostDiag('lock-midnight-' + ad);          // 어느 날짜가 남아 있어서 잠갔는지까지 남긴다
+      localStorage.setItem('att_locked', '1');
+    }
+  } catch (e) { }
+  // 유휴 1시간(10-10 로그아웃 조사): 창을 닫아 둔 채 자리를 비웠으면 다시 열 때 잠근다 — 페이지 안 타이머는 창이 닫히면 사라진다.
+  //   att_day가 있을 때만 = 공용 회사 PC + PIN 사용 중(폰은 영구 세션이라 renderMain이 att_day를 안 찍는다). 기준 = att_seen(유휴 절 참고)
+  try {
+    var seen0 = +localStorage.getItem('att_seen') || 0;
+    if (!DEMO && seen0 && store.token && localStorage.getItem('att_day') && !localStorage.getItem('att_locked') && Date.now() - seen0 > IDLE_LOCK_MS) {
+      hostDiag('lock-idle');
       localStorage.setItem('att_locked', '1');
     }
   } catch (e) { }

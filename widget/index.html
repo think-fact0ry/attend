@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v102';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v103';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -241,7 +241,8 @@ var ACT_IDLE_MS = 60 * 60 * 1000;
 var outPending = false;
 function actAlive(){
   if (!act) return false;
-  if (Date.now() - actAt > ACT_IDLE_MS) { endActSession(); return false; }
+  var last = actAt; try { last = Math.max(actAt, +localStorage.getItem('att_seen') || 0); } catch (e) { }
+  if (Date.now() - last > ACT_IDLE_MS) { endActSession(); return false; }   // 앱·안 창의 손길(att_seen)도 센다 — 알약으로 들어와 앱에서 1시간 넘게 일하면 구판은 알약을 누르는 순간 앱까지 잠갔다(10-10)
   return true;
 }
 /* 세션 시작 — 위젯과 **앱의 잠금을 같이 푼다**.
@@ -249,7 +250,7 @@ function actAlive(){
    앱은 같은 출처·같은 프로필이라 localStorage를 그대로 쓴다 → 여기서 열어 주면 앱이 안 묻는다. */
 function startActSession(r){
   act = { token: r.token, emp: r.emp, name: r.name || '' };
-  actAt = Date.now();
+  actAt = Date.now(); seenNow();
   auth = { token: r.token, emp: r.emp };
   try {
     localStorage.setItem('att_token', r.token);
@@ -269,10 +270,25 @@ function startActSession(r){
    ⚠️호스트에도 알린다: 앱 창이 열려 있으면 그 창을 지금 닫아야 한다.
      앱 창에 심어둔 후킹은 **그 문서의** localStorage.setItem만 가로채므로, 여기(다른 문서)서 잠근 건 못 본다.
      이 한 줄이 없으면 호스트의 느린 백스톱 폴링(1초)까지 잠금 화면이 남는다. */
+/* 손길 기록(10-10) — 앱 유휴 잠금의 기준 att_seen을 **도장 세션이 살아 있을 때만** 같이 적는다(앱 index.html 유휴 절).
+   ⚠️로그아웃 상태에서 알약을 눌러 키패드만 연 것은 안 센다 — 그러면 앞사람 세션의 1시간이 남의 손길로 늘어난다. */
+function seenNow(){ try { localStorage.setItem('att_seen', String(Date.now())); } catch (e) { } }
 function endActSession(){
   act = null; actAt = 0;
   try { localStorage.setItem('att_locked', '1'); } catch (e) { }
   toHost({ type:'locked' });
+}
+/* 세션이 **있다가 없어졌다**(트레이 「로그아웃」·자정 넘김 — 호스트가 빈 auth를 보냄) = 이 PC의 사람이 나갔다 → 앱도 잠근다.
+   🔴10-10 유성 신고 「로그아웃 한 상태에서 문의 알약을 눌렀을 때 근태 어플이 켜지는 문제」 — edge.log 실측:
+     12:29:04 auth 토큰 없음(트레이 로그아웃) → 12:29:07 show-app(문의 칸) → 앱 diag-boot-ok(잠금 통과) → 앱이 옛 토큰을 exe에 다시 밀어 로그아웃이 되돌아감.
+     트레이 로그아웃은 exe 세션만 지우고 **앱의 att_token·att_locked는 그대로**였다(앱 쪽 되밀기는 앱 `_hostAuthSend_`에서 막음).
+   ⚠️처음 받은 빈 auth(exe가 막 떴고 세션이 원래 없음)는 「나갔다」가 아니다 — 있다가 없어질 때만(호출부 `pe`). */
+function signedOut(){
+  if (open && step === 'act') setOpen(false);   // 펼친 도장 화면이 없는 세션으로 남지 않게(키패드면 그대로)
+  try { localStorage.setItem('att_locked', '1'); } catch (e) { }
+  toHost({ type:'locked' });  // 앱 창이 열려 있으면 지금 닫는다(endActSession과 같은 길)
+  diag('세션 끝 → 앱 잠금');
+  render();
 }
 
 function $(id){ return document.getElementById(id); }
@@ -320,6 +336,7 @@ if (window.chrome && window.chrome.webview) {
     //   남의 근무 시간이 알약에 떠 있게 된다. 도장 세션(act)도 그 사람 것이므로 같이 버린다.
     if (m.type === 'auth')    { var pe = auth && auth.emp; auth = m.token ? { token: m.token, emp: m.emp || 'hyeona' } : null;
                                 if (!auth || auth.emp !== pe) { snap = null; act = null; actAt = 0; inqDrop('att_inq'); }
+                                if (!auth && pe) signedOut();
                                 diag('auth 받음 ' + (auth ? ('O emp=' + auth.emp) : 'X(세션 없음)')); fetchTick(); }
     if (m.type === 'signout') { auth = null; act = null; snap = null; inqDrop('att_inq'); render(); }
     // ⚡`kind`가 실려 오면 = **앱에서 도장이 서버까지 다녀왔다**는 뜻 → 다시 물어보지 않고 바로 반영한다.
@@ -385,7 +402,7 @@ function setOpen(v){
   if (open) {
     $('pErr').textContent = '';
     // 살아 있는 세션이면 바로 도장 화면(도장마다 PIN 없음). 단 **퇴근이 나가 있는 동안은 아니다**(outPending).
-    if (actAlive() && !outPending) { actAt = Date.now(); setStep('act'); }
+    if (actAlive() && !outPending) { actAt = Date.now(); seenNow(); setStep('act'); }
     else { pin = ''; drawDots(); setStep('pin'); }
   } else {
     pin = ''; drawDots();          // 접는 건 세션 종료가 아니다(확정 결정)
@@ -685,7 +702,7 @@ function punch(kind){
 
   var prev = JSON.parse(JSON.stringify(snap));
   var nowH = sec2hms(serverSecNow());
-  if (kind === 'in') { snap.open = nowH; actAt = Date.now(); }
+  if (kind === 'in') { snap.open = nowH; actAt = Date.now(); seenNow(); }
   else {
     closeOpenSeg();
     snap.open = null; snap.lastOut = nowH;
@@ -763,10 +780,18 @@ function inqId(){
 try { localStorage.removeItem('att_inqv'); } catch (e) { }   // 옛 PC 보기 열쇠(10-10 계정 기준) — 날짜 없는 서명이 PC에 계속 남지 않게
 // 응답의 서명: 있으면 저장 / null이면(등록 PC 아님, 계정이 바뀜, INQ_KEY 없음) 지운다 / undefined(그 칸이 없는 응답)면 그대로
 function inqSave(sig){
-  if (sig && sig.sig) { try { localStorage.setItem('att_inq', JSON.stringify(sig)); } catch (e) { } return; }
+  if (sig && sig.sig) {
+    var was = inqId();
+    try { localStorage.setItem('att_inq', JSON.stringify(sig)); } catch (e) { }
+    // 서명이 새로 생겼거나 계정이 바뀌었으면 바로 조회 — 구판은 다음 주기(보기 전용 60초)까지 문의 칸이 안 떠서
+    //   로그아웃 뒤 다시 로그인하면 칸이 1분 가까이 비어 있었다(10-10 로그아웃 조사 중 발견). 같은 문서가 쓴 값이라 storage 이벤트도 안 온다
+    if (!was || was.role !== sig.role || (was.emp || '') !== (sig.emp || '')) setTimeout(inqPoll, 0);
+    return;
+  }
   if (sig === null && inqId()) { inqDrop('att_inq'); render(); }
 }
-function inqDrop(k){ try { localStorage.removeItem(k); localStorage.removeItem('att_inqc'); } catch (e) { } inq.gver = ''; inq.rows = null; inq.seen = null; inq.n = 0; }
+// ⚠️role까지 지운다 — 구판은 role이 다음 조회(보기 전용 60초)까지 남아 **로그아웃 뒤에도 문의 칸이 떠 있었고** 그걸 누르면 앱이 열렸다(10-10 유성 신고)
+function inqDrop(k){ try { localStorage.removeItem(k); localStorage.removeItem('att_inqc'); } catch (e) { } inq.gver = ''; inq.rows = null; inq.seen = null; inq.n = 0; inq.role = ''; inqLate = {}; }
 function inqAsk(body){
   var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   var opt = { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) };
@@ -855,6 +880,8 @@ function inqLateCheck(){
    · exe 4판(caps 받음) = show-app: 닫지 않고 열기, 이미 열려 있으면 앞으로(하던 화면은 앱이 att_go로 판단).
    · 3판 = 앱 창이 닫혀 있을 때만 'open'(호스트의 열기는 토글이라 열린 창에 보내면 닫힌다). 열려 있으면 앱이 att_go를 보고 스스로 넘어간다. */
 function openInbox(){
+  // 세션이나 이 계정 서명이 없으면 앱으로 들여보내지 않고 키패드(왼쪽 칸과 같음) — 「로그인 키패드가 나와야지」(유성 10-10)
+  if (!auth || !inqId()) { setOpen(true); return; }
   try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { }
   if (caps && caps.showApp) toHost({ type:'show-app' });
   else if (!appOpen) toHost({ type:'open' });
@@ -934,6 +961,15 @@ function loop(){
     //     서버 반영이 늦을 수 있으니 잠시 뒤 한 번 더 묻는다.
     if (lk === '1') { act = null; actAt = 0; if (open) setOpen(false); fetchTick(); recheckSoon(4000); }
   }
+  // 유휴 1시간 = 앱 잠금(10-10 로그아웃 조사) — **앱 창이 닫혀 있어도** 여기서 센다. 앱 타이머는 그 페이지가 살아 있을 때만 돌아서
+  //   창을 닫고 자리를 비우면 아무도 안 잠갔다(다음 사람이 문의 칸·트레이로 그대로 들어감). 기준 = att_seen(앱·안 창·도장 세션의 손길).
+  //   att_day가 있을 때만 = 공용 회사 PC + PIN 사용 중(앱 부팅의 같은 판정과 같은 조건).
+  try {
+    var sn = +localStorage.getItem('att_seen') || 0;
+    if (sn && Date.now() - sn > ACT_IDLE_MS && localStorage.getItem('att_token') && localStorage.getItem('att_day') && localStorage.getItem('att_locked') !== '1') {
+      diag('유휴 1시간 → 앱 잠금'); if (open && step === 'act') setOpen(false); endActSession();   // 키패드에 손대는 중이면 그대로 둔다
+    }
+  } catch (e) { }
   // 🛟마지막 안전망 — 위 시한이 어떤 이유로든 안 걸렸을 때(중단 미지원 브라우저·예상 못 한 경로)도
   //   조회가 영구히 멈추지 않게 한다. **알약이 멈춰 있는 것보다 한 번 더 묻는 게 낫다.**
   if (inFlight && performance.now() - inFlightAt > REQ_TIMEOUT_MS * 2) {
