@@ -39,8 +39,11 @@ body{font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;
   user-select:none;word-break:keep-all;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 
 /* ── 작은 알약 ── */
-#pill{display:flex;align-items:center;gap:9px;padding:0 15px;position:relative;
+/* 알약 = 왼쪽 칸 #zl(점, 글자, 게이지) + 오른쪽 문의 버튼 칸 #inqw (2026-10-10 유성 3차 「알약은 하나로 해」).
+   게이지는 왼쪽 칸 안에서만 찬다 — 구판은 #fill이 알약 전체 폭의 %라 문의 칸이 붙으면 그 밑까지 초록이 깔렸다. */
+#pill{display:flex;align-items:stretch;position:relative;
   height:34px;flex:0 0 34px;cursor:pointer;transition:opacity .2s}
+#zl{position:relative;display:flex;align-items:center;gap:9px;padding:0 15px}
 body.open #pill{display:none}
 #fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green100);transition:width .4s ease}
 body.warn #fill{background:var(--warn-weak-bg)}
@@ -55,15 +58,18 @@ body.warn #t{color:var(--warn-weak-fg)}
 body.nc #nc{display:block}
 body.dim #pill{opacity:.45}
 body.moving #pill{cursor:move;opacity:.6}
-/* ── 문의(26) — 알약 오른쪽에 붙는 칸(디자인 확정본 = prototype/문의창_디자인5차 .pill .inqw, 왼쪽 고정·오른쪽으로 자람) ── */
-#inqw{position:relative;display:none;align-items:center;gap:9px;height:100%}
+/* ── 문의(26) — 알약 오른쪽 버튼 칸(유성 10-10 3차 「알약 오른쪽 … 버튼처럼」 + 바탕 g50 픽.
+     프리뷰 = 생각공작소 prototype/19_행정앱_알약하나_브레인스토밍_프리뷰.html B안). 바탕이 달라 누를 곳이 보인다.
+     보이는 때 = 행정은 출근 중에만(「퇴근하면 업무는 끝」), 한유성 보기는 늘 — render()가 정한다.
+     숫자가 생기면 오른쪽으로만 자란다(docs/1 §4.18 왼쪽 고정). 0이면 숫자 없이 「문의」만. ── */
+#inqw{position:relative;display:none;align-items:center;gap:6px;padding:0 13px;background:var(--g50);
+  border-left:1px solid var(--g200);font-size:14px;font-weight:700;color:var(--g700);letter-spacing:-.4px;white-space:nowrap;transition:background .15s}
 body.inq #inqw{display:flex}
-#inqw .sep{width:1px;height:16px;background:var(--g200);flex:0 0 auto}
-#inqw .inq{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--g900);letter-spacing:-.4px;white-space:nowrap}
+#inqw:hover{background:var(--g100)}
+#inqw:active{background:var(--g200)}
+body.inqn #inqw{color:var(--g900)}
 #inqN{min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11.5px;display:none;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box;font-variant-numeric:tabular-nums}
 body.inqn #inqN{display:inline-flex}
-/* 관리자 보기 PC(유성, D17) = 근태 없이 「문의」만 */
-body.vonly #dot,body.vonly #t,body.vonly #fill,body.vonly #inqw .sep{display:none}
 
 /* ── 중간 위젯(공통) ── */
 #panel{display:none;position:relative;padding:14px 16px 16px;height:100%;box-sizing:border-box}
@@ -152,7 +158,7 @@ body.open #panel{display:block}
 </head>
 <body>
   <div id="pill">
-    <div id="fill"></div><span id="dot"></span><span id="t">근태</span><span id="inqw"><span class="sep"></span><span class="inq">문의<span id="inqN">0</span></span></span><span id="nc" title="연결 안 됨"></span>
+    <div id="zl"><div id="fill"></div><span id="dot"></span><span id="t">행정</span><span id="nc" title="연결 안 됨"></span></div><span id="inqw">문의<span id="inqN">0</span></span>
   </div>
 
   <div id="panel">
@@ -222,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v95';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v96';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -352,7 +358,7 @@ $('pill').addEventListener('pointerdown', function(e){
 });
 $('pill').addEventListener('click', function(e){
   if (moved) { moved = false; return; }
-  if (document.body.classList.contains('vonly') || (e.target.closest && e.target.closest('#inqw'))) { openInbox(); return; }
+  if (e.target.closest && e.target.closest('#inqw')) { openInbox(); return; }
   setOpen(true);
 });
 
@@ -629,7 +635,11 @@ function applyRemotePunch(kind){
 }
 
 function view(){
-  if (!auth || !snap) return { text:'근태', on:false, warn:false, dim:false, gauge:0 };
+  if (!auth || !snap) return { text:'행정', on:false, warn:false, dim:false, gauge:0 };   // 유성 10-10 「근태 라는 표현 말고 행정이라고 쓰자」
+  // 근태 면제(한유성) = 근무 상태가 없다 → 「근무 전」·흐린 「휴무일」 대신 이름. 흐리게 하면 문의 칸까지 흐려진다.
+  //   판정은 서버(19 tick exempt). exempt가 아예 없는 응답(19 배포 전)만 서버 _isAdminMember_와 같은 이름 규칙으로 본다.
+  if (snap.exempt === true || (snap.exempt === undefined && String(snap.name || '').replace(/\s/g, '') === '한유성'))
+    return { text:'행정', on:false, warn:false, dim:false, gauge:0 };
   if (serverSecNow() >= 24*3600) return { text:'근무 전', on:false, warn:false, dim:false, gauge:0 };
   // 10-09: 휴무일에도 출퇴근을 찍을 수 있다 → 찍었으면 근무일처럼 시간을 보여 주고(게이지는 소정이 없어 0), 안 찍었으면 '휴무일'.
   if (!snap.work && !snap.open && !(snap.lastOut && (serverSecNow() - hms2sec(snap.lastOut)) * 1000 < AFTER_OUT_MS))
@@ -801,12 +811,10 @@ function sendState(){
   lastSent = sig;
   toHost({ type:'state', w:Math.ceil(w), h:h, on:v.on, warn:v.warn, dim:v.dim });
 }
-/* 알약 폭 = 좌우 여백 15씩 + 점 8 + 사이 9 + 글자 (+ 연결 끊김 점 9+5) (+ 문의 칸 9+칸 폭). 관리자 보기 PC는 문의 칸만. */
+/* 알약 폭 = 왼쪽 칸(여백 15씩 + 점 8 + 사이 9 + 글자 (+ 연결 끊김 점 9+5)) + 문의 칸(자기 여백·왼쪽 선 포함 폭). */
 function pillW(offline){
-  var b = document.body, vonly = b.classList.contains('vonly');
-  var w = 15 + 15 + (offline ? 14 : 0);
-  if (!vonly) w += 8 + 9 + $('t').offsetWidth;
-  if (b.classList.contains('inq')) w += (vonly ? 0 : 9) + $('inqw').offsetWidth;
+  var w = 15 + 8 + 9 + $('t').offsetWidth + (offline ? 14 : 0) + 15;
+  if (document.body.classList.contains('inq')) w += $('inqw').offsetWidth;
   return w;
 }
 var lastText = null, lastGauge = null, lastInqN = null;
@@ -819,10 +827,11 @@ function render(){
   // 1초 루프가 매번 같은 값을 다시 써서 레이아웃을 무의미하게 무르게 하지 않는다(값이 바뀔 때만).
   if (v.text !== lastText) { lastText = v.text; $('t').textContent = v.text; }
   if (v.gauge !== lastGauge) { lastGauge = v.gauge; $('fill').style.width = v.gauge + '%'; }
-  var vonly = inq.role === 'viewer';
-  b.classList.toggle('vonly', vonly);
-  b.classList.toggle('inq', vonly || inq.n > 0);
-  b.classList.toggle('inqn', inq.n > 0);
+  // 문의 칸 = 행정은 출근 중에만(유성 10-10 「퇴근하면 업무는 끝」 — 퇴근 뒤엔 숫자도 지움. 출근 전도 같게 = Claude 기본값),
+  //   한유성 보기는 늘(보기만, 읽음 안 찍힘). 출근 중이면 0이어도 칸이 있다(지난 대화를 다시 볼 길).
+  var showInq = inq.role === 'viewer' || (inq.role === 'staff' && !!(snap && snap.open));
+  b.classList.toggle('inq', showInq);
+  b.classList.toggle('inqn', showInq && inq.n > 0);
   if (inq.n !== lastInqN) { lastInqN = inq.n; $('inqN').textContent = inq.n > 99 ? '99+' : String(inq.n); }
 
   if (open && step === 'act') {
@@ -832,7 +841,7 @@ function render(){
     //   아래 값이 '휴무일'·'근무 전'·'사무실 근무'면 이름만(근무한 적 없는 시간을 근무한 시간이라 부르지 않는다).
     var isTime = /\d/.test(v.text);
     var who = act && act.name ? act.name + '님' : '';
-    $('pLabel').textContent = isTime ? (who ? who + '이 근무한 시간' : '근무한 시간') : (who || '근태');
+    $('pLabel').textContent = isTime ? (who ? who + '이 근무한 시간' : '근무한 시간') : (who || '행정');
     $('pVal').textContent = v.text;
     // 🔴26차-6(현아쌤 08-06 "퇴근을 늦게 눌렀는데 컴퓨터로 했더니 5시간이 기록"): 알약 도장은 **시각 입력이 없다**
     //   (`punch`를 time 없이 보낸다 = 누른 그 시각). 종업이 지난 뒤엔 '지금'이 틀린 값일 수 있으므로
