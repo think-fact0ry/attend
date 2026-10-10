@@ -1109,6 +1109,7 @@ function inqSync() {
     $('miInq').style.display = ok === true ? '' : 'none'; $('inqDiv').style.display = ok === true ? '' : 'none';
     $('miInqN').textContent = n > 99 ? '99+' : String(n); $('miInqN').classList.toggle('show', n > 0);
     document.querySelectorAll('.mdot').forEach(function (d) { d.classList.toggle('on', n > 0); });
+    inqPost({ type: 'dot', on: n > 0 });   // 문의 채팅 머리의 메뉴 아이콘 점도(10-10 메뉴 넣기)
   }
   if (ok === true) {
     if (inqUi.pending) { inqUi.pending = false; go('inq'); }
@@ -1123,6 +1124,7 @@ function inqFrameEnsure() {
   if (inqUi.frame) return;
   var f = document.createElement('iframe');
   f.id = 'inqFrame'; f.title = '문의 채팅'; f.src = './inbox/';
+  f.addEventListener('load', function () { inqPost({ type: 'dot', on: +(String(inqUi.sig).split('|')[1] || 0) > 0 }); });   // 막 뜬 창에도 지금 점 상태(sig = '보임|숫자')
   $('s-inq').appendChild(f); inqUi.frame = f;
 }
 function inqUnload() {
@@ -1131,9 +1133,10 @@ function inqUnload() {
   try { inqUi.frame.remove(); } catch (e) { }
   inqUi.frame = null;
 }
+function inqPost(o) { o.tf = 'inq'; try { if (inqUi.frame && inqUi.frame.contentWindow) inqUi.frame.contentWindow.postMessage(o, location.origin); } catch (e) { } }
 function inqVis(on) {
   if (on) inqFrameEnsure();
-  try { if (inqUi.frame && inqUi.frame.contentWindow) inqUi.frame.contentWindow.postMessage({ tf: 'inq', type: 'vis', on: !!on }, location.origin); } catch (e) { }
+  inqPost({ type: 'vis', on: !!on });
 }
 // 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending)
 function inqOpen() {
@@ -1169,6 +1172,7 @@ if (IS_HOST) {
     if (!inqUi.frame || e.source !== inqUi.frame.contentWindow || e.origin !== location.origin) return;
     var d = e.data || {}; if (d.tf !== 'inq') return;
     if (d.type === 'back') { go('main'); refreshMain(); }
+    else if (d.type === 'menu') openDrawer();   // 문의 채팅 머리의 ≡(10-10 유성 「우상단 메뉴바 넣기」)
     else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
     else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
   });

@@ -38,15 +38,20 @@ button{font-family:inherit}
 #app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
 
 /* 머리 = 근태 앱 .hd 실값 그대로(10-10 유성 「− 버튼이 연약해. 근태앱의 − 버튼과 그대로」) — attend/index.html .hd·.hd .ic·svg.li.
-   ⚠️앱 값을 바꾸면 여기도(0-9). 순서 = [←][문의 채팅] … [−] (계획 프리뷰 확정 그림 — 「보기 전용」 표시는 유성 10-10 정정으로 뺌). −는 PC 프로그램 안에서만 */
+   ⚠️앱 값을 바꾸면 여기도(0-9). 순서 = [←] 문의 채팅 [− ≡] — 유성 10-10 「우상단 메뉴바 넣기. 문의채팅 이름 연차내역처럼 중앙으로」:
+   연차 내역(s-ledger)과 같은 3칸 문법(왼쪽 ← / 제목 / 오른쪽 아이콘 두 칸 = 38+2+38)이라 제목이 연차 내역과 같은 자리에 온다. −는 PC 프로그램 안에서만 */
 .hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff}
-.hd .lt{display:flex;align-items:center;gap:6px;min-width:0}
+.hd .rt{display:flex;gap:2px}
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;line-height:normal}
 .hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;padding:0;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .hd .ic:active{transform:scale(.82)}
 .hd .ic svg{width:22px;height:22px}
 svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #hostMin{display:none}
+/* 메뉴 아이콘 빨간 점 = 앱 .mdot 그대로(숫자가 있을 때만 — 켜고 끄기는 앱이 dot 메시지로) */
+#appMenu{position:relative}
+.mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
+.mdot.on{display:block}
 
 /* 세그(행정만 — 관리자 보기는 목록 하나, D17) */
 .seg{display:flex;margin:6px 18px 8px;background:var(--g100);border-radius:12px;padding:3px;flex:none}
@@ -156,9 +161,12 @@ body.viewer .vnote{display:block}
 <body>
 <div id="app">
   <div class="hd">
-    <div class="lt"><button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-      <div class="t">문의 채팅</div></div>
-    <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="t">문의 채팅</div>
+    <div class="rt">
+      <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button class="ic" id="appMenu" title="메뉴" aria-label="메뉴"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="mdot" id="menuDot"></span></button>
+    </div>
   </div>
   <div class="seg" id="seg"><button class="on" data-t="wait">대기<span class="n red" id="nWait"></span></button><button data-t="mine">내 대화<span class="n grn" id="nMine"></span></button></div>
   <div class="sw" id="lsw"><div class="list" id="list"></div></div>
@@ -239,6 +247,7 @@ function cid(){ return 'i' + Date.now().toString(36) + Math.random().toString(36
 
 /* ══════════ ← 뒤로 · 창 − · 이동 그립(근태 앱 attend/index.html과 같은 문법 — 신호만 앱을 거친다, exe 무변경) ══════════ */
 $('appBack').addEventListener('click', function(){ toApp({ type:'back' }); });
+$('appMenu').addEventListener('click', function(){ toApp({ type:'menu' }); });   // 앱 메뉴(드로어)는 부모 화면에 있다 — 이 창 위로 덮인다
 if (HOSTED) {
   $('hostMin').style.display = 'flex';
   $('hostMin').addEventListener('click', function(){ toApp({ type:'close' }); });
@@ -266,6 +275,7 @@ window.addEventListener('message', function(e){
   if (!EMBED || e.source !== parent || e.origin !== location.origin) return;
   var d = e.data || {}; if (d.tf !== 'inq') return;
   if (d.type === 'vis' && d.on) { render(); poll(); }   // 다시 보이는 순간 바로 한 번(5초를 안 기다린다)
+  if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱의 다른 메뉴 아이콘과 같은 값(알약 숫자 기준)
 });
 
 /* ══════════ 시간 글자 ══════════ */
