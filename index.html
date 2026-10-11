@@ -2580,6 +2580,7 @@ function loadMe() {
     : '<div class="anote" style="margin-top:0">이 기기는 로그인 상태가 계속 유지돼요.</div>';
   if ($('lockGo')) $('lockGo').addEventListener('click', function () {
     openConfirm('로그아웃 할까요?', '다음 분은 출퇴근 비밀번호로 들어와요.', '로그아웃', function () {
+      try { localStorage.setItem('att_bye', '1'); } catch (e) { }   // 버튼으로 나감 = 한유성 문의 알림도 멈춤(알약 inqBye — 유휴 잠금과 구별, 10-12). 로그인하면 지움
       showDone('로그아웃했어요', '다음 분은 비밀번호로 들어와요'); setTimeout(lockNow, 1400);
     });
   });
@@ -2599,7 +2600,7 @@ function loginGate() {
           h.fail(r.error); return;
         }
         store.token = r.token; store.emp = r.emp; inqAdopt(r);   // 문의 서명도 이 계정 것으로(10-10)
-        localStorage.removeItem('att_locked'); sessionSeen();   // 새 세션 = 손길 지금(잠긴 동안 키패드 입력은 안 세므로 여기서 적는다)
+        localStorage.removeItem('att_locked'); localStorage.removeItem('att_bye'); sessionSeen();   // 새 세션 = 손길 지금(잠긴 동안 키패드 입력은 안 세므로 여기서 적는다) · att_bye = 로그아웃 버튼 표시 지움(10-12)
         h.close();
         adoptOrSync(r); // login이 sync 페이로드를 함께 내려준다(2026-07-24) → 추가 왕복 0. 구 서버 응답이면 sync 한 번
       }).catch(function () { toast('연결이 안 돼요'); });
@@ -2989,7 +2990,7 @@ function otpAskNewPin(ticket, opts) { // 새 비밀번호 2회(태블릿 setup �
             toast(r.error); if (opts.backFn) opts.backFn(); else pinHelpers.close(); return; // 티켓 만료 등 → 처음으로
           }
           pinHelpers.close();
-          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); sessionSeen(); adoptOrSync(r); toast('비밀번호를 새로 정했어요', true); }
+          if (opts.isLogin) { store.token = r.token; store.emp = r.emp; localStorage.removeItem('att_locked'); localStorage.removeItem('att_bye'); sessionSeen(); adoptOrSync(r); toast('비밀번호를 새로 정했어요', true); }
           else { toast('비밀번호를 바꿨어요', true); adoptOrSync(r, function () { loadMe(); }); } // set_pin 응답에 sync 동봉 — 추가 왕복 0
         }).catch(function () { toast('연결이 안 돼요'); });
       }

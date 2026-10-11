@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v108';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v109';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -279,6 +279,7 @@ function startActSession(r){
     localStorage.setItem('att_token', r.token);
     localStorage.setItem('att_emp', r.emp);
     localStorage.removeItem('att_locked');
+    localStorage.removeItem('att_bye');   // 앱 「로그아웃」 버튼 표시 — 다시 로그인했으니 한유성 알림도 다시(10-12)
     /* 🔴자정 잠금까지 같이 풀어야 한다(2026-08-15 유성 "위젯에서 pin 넣었는데 앱이 또 물어봐").
        앱 부팅은 `att_day`(앱이 **마지막으로 그린 날**)가 오늘이 아니면 세션을 잠근다(08-01 신설).
        그런데 `att_day`는 **앱의 renderMain만** 찍는다 → 어제 앱을 쓰고 오늘 알약으로 들어오면
@@ -833,7 +834,7 @@ function inqAsk(body){
 function inqPoll(){
   clearTimeout(inq.t);
   var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open);
-  inq.t = setTimeout(inqPoll, (duty || appOpen) ? INQ_FAST : INQ_SLOW);
+  inq.t = setTimeout(inqPoll, (duty || appOpen || inqDuty()) ? INQ_FAST : INQ_SLOW);   // 한유성 로그인 중도 10초(알림이 늦지 않게). 박동 on은 행정 출근(duty)만
   var role = id ? id.role : '';
   if (role !== inq.role) { inq.role = role; inq.gver = ''; inq.seen = null; render(); }
   if (!id) { if (inq.n) { inq.n = 0; inq.rows = null; render(); } return; }
@@ -876,8 +877,8 @@ function inqCount(id){
   inq.seen = seen;
   inq.n = rows.filter(inqCountable).length;
   render();
-  // 새 학부모 줄 → 호스트 로그 한 줄. 보기 전용은 숫자만(D10)
-  if (fresh.length && id.role === 'staff') toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n });
+  // 새 학부모 줄 → 호스트 로그 한 줄. 행정은 늘, 한유성 보기는 알림이 켜진 때만(10-12 — 로그아웃 뒤엔 로그도 안 남김)
+  if (fresh.length && (id.role === 'staff' || inqDuty())) toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n });
   inqAlert(rows, fresh);
 }
 function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   // ⚠️inqCount 뒤에 둔다 — 위젯알림 시험이 inqCount부터 떼어 돌린다
@@ -889,14 +890,19 @@ function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   //
      학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리는 새 대화에만 — §5.1 소리 과용 금지).
    · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄 = 흔들림만, **3분 재알림 없음**
      (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
-   · 행정이 출근 중일 때만(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로). 관리자 보기는 숫자만(D10).
+   · 행정이 출근 중일 때(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로) + 한유성이 로그인 중일 때(10-12 — 출근 없이도, 로그아웃이면 0. 옛 D10 「관리자 보기는 숫자만」은 끝).
      3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
    · ⚠️exe가 `caps`(v4)를 보낸 뒤에만 보낸다 — 3판 exe는 notify를 모르고, open은 토글이라 열린 앱 창을 닫는다.
    · ⚠️학부모 글은 `text`에만 싣는다 — 호스트가 `m` 칸을 PC 로그 파일(edge.log)에 쓴다. */
 var caps = null;
 var INQ_LATE_MS = 3 * 60 * 1000;
 var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC가 본 때 + 3분, p: 미리보기 }
-function inqDuty(){ var id = inqId(); return !!(id && id.role === 'staff' && snap && snap.open); }
+// 알림 켬 = 행정이 출근 중 **또는** 한유성(보기 서명)이 로그인 중(유성 10-12 「한유성 로그인했으면 울리게해. 출근버튼 누르지 않아도 … 로그아웃 했을때는 울리지 않게」 — D10 「관리자 보기는 숫자만」을 뒤집음).
+//   한유성 로그인 = 호스트 세션(auth)이 있고 앱 「로그아웃」 버튼 표시(att_bye)가 없음. **1시간 유휴 자동 잠금은 로그아웃이 아니다**(비밀번호만 다시 — 유성 10-12 「계속 울림」).
+//   멈추는 때 = 트레이 「로그아웃」·자정(호스트가 빈 auth → 위 auth 처리가 서명을 지움) · 앱 「로그아웃」 버튼(att_bye) · 다른 사람이 로그인(서명이 그 사람 것으로).
+//   유휴 잠금과 앱 로그아웃 버튼은 둘 다 att_locked라 구별이 안 돼서 버튼만 att_bye를 따로 적는다(로그인하면 지움 — 앱 두 길·알약 startActSession).
+function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch (e) { return false; } }
+function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
 function inqNotify(kind, preview, ch){
   if (!caps || !caps.notify) return;
   toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: kind !== 'more', shake: true,
@@ -961,8 +967,8 @@ function render(){
   if (v.text !== lastText) { lastText = v.text; $('t').textContent = v.text; }
   if (v.gauge !== lastGauge) { lastGauge = v.gauge; $('fill').style.width = v.gauge + '%'; }
   // 문의 칸 = 행정은 출근 중에만(유성 10-10 「퇴근하면 업무는 끝」 — 퇴근 뒤엔 숫자도 지움. 출근 전도 같게 = Claude 기본값),
-  //   한유성 보기는 늘(보기만, 읽음 안 찍힘). 출근 중이면 0이어도 칸이 있다(지난 대화를 다시 볼 길).
-  var showInq = inq.role === 'viewer' || (inq.role === 'staff' && !!(snap && snap.open));
+  //   한유성 보기는 로그인 중일 때(알림과 같은 판정 — 앱 「로그아웃」 버튼 뒤엔 숫자도 지움, 10-12). 출근 중이면 0이어도 칸이 있다(지난 대화를 다시 볼 길).
+  var showInq = (inq.role === 'viewer' && !!auth && !inqBye()) || (inq.role === 'staff' && !!(snap && snap.open));
   b.classList.toggle('inq', showInq);
   b.classList.toggle('inqn', showInq && inq.n > 0);
   if (inq.n !== lastInqN) { lastInqN = inq.n; $('inqN').textContent = inq.n > 99 ? '99+' : String(inq.n); }
