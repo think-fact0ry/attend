@@ -994,6 +994,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 var GAS = 'https://script.google.com/macros/s/AKfycbwNB7J3m_Q0GSYubJf11jpa4DJ8SyUuwU-Ma0r3db446Nl56_yGRkFq_dsaXq5gk70FWQ/exec';
 var DEMO = /[?&]demo=1/.test(location.search);
 var $ = function (id) { return document.getElementById(id); };
+// 파일을 앱 창에 떨어뜨려도 창이 그 파일로 넘어가지 않게(10-11 문의 첨부 — 브라우저 기본 = 파일 열기 → 쓰던 것이 날아감). 문의 채팅 대화방 안에서는 받은함이 받아 첨부로 넣는다
+['dragover', 'drop'].forEach(function (ev) { window.addEventListener(ev, function (e) { var t = e.dataTransfer && e.dataTransfer.types; if (t && [].indexOf.call(t, 'Files') >= 0) e.preventDefault(); }); });
 
 // 데스크톱 위젯 껍데기(exe)에 세션을 넘긴다 — **WebView2 안일 때만**. 폰·브라우저엔 `window.chrome.webview`가
 //   없어 아무 일도 안 일어난다(2026-07-30). 껍데기는 이 토큰으로 알약에 근무시간을 띄우고, 앱의 잠금 규칙은

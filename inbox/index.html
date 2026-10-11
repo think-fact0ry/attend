@@ -27,6 +27,7 @@
   --g800:#333d4b; --g900:#191f28;
   --green50:#f8fbf9; --green100:#e9f8ee; --green200:#cef2db; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
   --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
+  --danger-weak-bg:#fdecee; --danger-weak-fg:#c0392b;   /* §3.1 danger weak — 첨부 PDF 표시 */
   --p-disabled:#b7e0c8;
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
   --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
@@ -176,6 +177,54 @@ body.viewer .vnote{display:block}
 .me .who{margin:0 2px 4px 0}
 .bub a{color:inherit;text-decoration:underline;text-underline-offset:2px;word-break:normal;overflow-wrap:anywhere}   /* 주소는 줄에 안 들어갈 때만 끊는다(break-all이면 「h / ttps」처럼 첫 글자에서 끊겼다) */
 
+/* 첨부(10-11 유성 「사진 첨부 가능하게 … 채팅창 오른쪽에 클립 버튼 … 이미지 복사 붙여넣기」 → 제안 GO) — 행정 → 학부모만.
+   넣는 길 셋 = 입력 칸 안 오른쪽 클립 / 붙여넣기(Ctrl+V) / 대화방에 끌어다 놓기. PDF, PNG, JPG만, 사진은 긴 변 1600px JPG로 줄여 보냄, PDF 10MB까지, 한 번에 5개.
+   보내기 전 = 입력 줄 위 미리보기 칩(✕로 빼기). 받은 파일, 보낸 파일은 이 창 메모리에만(blob 주소) — PC 디스크에 안 남긴다(RCACHE와 같은 결) */
+.taw .clip{position:absolute;right:3px;bottom:3px;width:32px;height:32px;border:0;background:none;border-radius:10px;color:var(--g600);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;padding:0;transition:transform .16s,color .15s}
+body.att .taw .clip{display:flex}   /* 26이 첨부 받는 판(s_poll files:1)일 때만 — 구판 서버에 파일만 보내면 「내용을 적어 주세요」로 거절된다 */
+body.att .ta{padding-right:40px}
+.taw .clip:hover{color:var(--g900)}
+.taw .clip:active{transform:scale(.86)}
+.taw .clip svg{width:19px;height:19px}
+.atts{display:none;gap:8px;padding:2px 0 8px;overflow-x:auto;scrollbar-width:none}
+.atts::-webkit-scrollbar{height:0}
+.atts.on{display:flex}
+.chip{position:relative;flex:none;display:flex;align-items:center;gap:8px;max-width:210px;background:var(--g50);border:1px solid var(--g200);border-radius:12px;padding:6px 32px 6px 6px}
+.chip .th{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none;background:var(--g100);display:block}
+.chip .cn{min-width:0;font-size:12.5px;line-height:1.35}
+.chip .cn b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .cn span{display:block;color:var(--g600);font-size:11.5px}
+.chip .cx{position:absolute;top:5px;right:5px;width:22px;height:22px;border:0;border-radius:50%;background:var(--g200);color:var(--g700);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.chip .cx svg{width:12px;height:12px}
+.pi{width:34px;height:40px;border-radius:6px;background:var(--danger-weak-bg);color:var(--danger-weak-fg);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.chip.wait .th,.aimg:not(.ok){background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite}
+.aimg.bad{animation:none;background-image:none}
+.drop{position:absolute;inset:8px;z-index:6;background:rgba(233,248,238,.94);border:2px dashed var(--green600);border-radius:16px;display:none;align-items:center;justify-content:center;color:var(--green700);font-weight:700;font-size:15px;pointer-events:none}
+.room.dragging .drop{display:flex}
+.att{display:block;border:0;padding:0;margin:0;background:none;cursor:pointer;font:inherit;color:inherit;text-align:left;transition:transform .08s}
+.att:active{transform:scale(.96)}   /* §5.3 카드, 사진 타일 = .96 */
+.att + .bub{margin-top:4px}
+.aimg{width:220px;max-width:100%;max-height:300px;border-radius:18px;overflow:hidden;position:relative;background-color:var(--g100)}
+.aimg img{display:block;width:100%;height:100%;object-fit:cover}
+.aimg .again{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--g600)}
+.apdf{display:flex;gap:10px;align-items:center;width:230px;max-width:100%;background:#fff;border:1px solid var(--g200);border-radius:16px;padding:10px 12px;box-shadow:0 1px 3px rgba(25,31,40,.06)}
+.apdf .cn{flex:1;min-width:0}
+.apdf .cn b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.apdf .cn span{display:block;font-size:11.5px;color:var(--g600);margin-top:2px}
+/* 크게 보기 = 대화방 위 어두운 막(사진 = 맞춰 보기, PDF = 창 안 PDF 보기 — 프로그램 창은 blob 주소를 바깥 브라우저로 못 넘긴다). 닫기 = X, 바깥 누르기, Esc */
+.view{position:absolute;inset:0;z-index:8;background:rgba(17,20,24,.94);display:none;align-items:center;justify-content:center;padding:52px 12px 12px}
+.view.on{display:flex}
+.view .vb{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.view img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.view iframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
+.view .vx{position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.view .vx svg{width:20px;height:20px}
+.ldd{display:inline-flex;gap:3px;margin-left:5px;vertical-align:middle}   /* §5.2 출렁점 = 앱 .ldd 그대로 */
+.ldd i{width:4px;height:4px;border-radius:50%;background:currentColor;animation:ldb 1s ease-in-out infinite}
+.ldd i:nth-child(2){animation-delay:.16s}
+.ldd i:nth-child(3){animation-delay:.32s}
+@keyframes ldb{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-3px);opacity:1}}
+
 .atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:9}
 .atoast.on{opacity:1;transform:translateX(-50%)}
 </style>
@@ -199,7 +248,10 @@ body.viewer .vnote{display:block}
       <span class="own" id="rOwn"></span><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
-    <div class="comp"><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
+    <div class="comp"><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
+    <input type="file" id="rFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
+    <div class="drop">여기에 놓아 주세요</div>
+    <div class="view" id="rView" role="dialog" aria-label="첨부 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
   </div>
   <div class="atoast" id="atoast"></div>
 </div>
@@ -423,6 +475,7 @@ function poll(){
     S.busy = false;
     if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
     S.dead = '';
+    if (r.files && !document.body.classList.contains('att')) document.body.classList.add('att');   // 첨부 켜짐(26 @8~)
     var prevCur = S.cur ? findRow(S.cur.id) : null, first = !S.loaded;
     var changed = take(r);
     S.loaded = true;
@@ -505,7 +558,7 @@ function openRoom(id){
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
   S.cur = { id: id, lastAt: c && c.lastAt === row.lastAt ? row.lastAt : '' };
   R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c };
-  ta.value = ''; sendB.disabled = true; autosize();
+  ta.value = ''; clearAtts(); autosize(); closeView();
   setPst();
   if (c) drawThread(null, true);   // 받아 둔 대화 = 바로(서버 것은 뒤에서 와서 덮는다 — 행정은 그때 읽음이 찍힌다)
   else { T.innerHTML = roomSkel(); fThread(); }
@@ -517,7 +570,7 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ $('room').classList.remove('on'); S.cur = null; R.id = ''; }
+function closeRoom(){ closeView(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
@@ -535,7 +588,12 @@ function loadRoom(id, quietNew){
     // 아직 결과를 모르는 내 답장은 남긴다 — 서버 줄에 같은 글이 그 뒤 시각으로 있으면 그게 그것(서버 줄이 이긴다)
     var local = R.msgs.filter(function(m){ return m.pending || m.unknown || m.failed; });
     R.msgs = r.msgs.concat(local.filter(function(p){
-      return !r.msgs.some(function(m){ return m.who !== 'v' && m.text === p.text && new Date(m.at).getTime() >= new Date(p.at).getTime() - 120000; });
+      var hit = null;
+      r.msgs.some(function(m){ if (m.who !== 'v' && sameBody(m, p) && new Date(m.at).getTime() >= new Date(p.at).getTime() - 120000) { hit = m; return true; } return false; });
+      if (!hit) return true;
+      had[hit.seq] = 1;   // 이미 보이던 내 말풍선이 서버 줄로 바뀐 것 — 새 줄이 아니다(다시 올라오는 모션 없음, 10-11)
+      if (p.local && FC['L' + p.cid] && !FC[id + ':' + hit.seq]) FC[id + ':' + hit.seq] = FC['L' + p.cid];   // 보낸 파일 = 서버에서 다시 안 받는다
+      return false;
     }));
     R.more = !!r.more; R.hasPhone = !!r.hasPhone; R.live = !!r.live; R.owner = r.owner || '';
     S.cur.lastAt = (findRow(id) || {}).lastAt || '';
@@ -615,15 +673,16 @@ function drawThread(had, keepBottom){
     var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
     if (who === 'v') {
       html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">홈페이지 방문자</div>') +
-        '<div class="bub">' + linkHtml(m.text) + '</div></div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
+        bodyHtml(m) + '</div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
     } else {
       var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
       html += '<div class="row me' + (cont ? ' cont' : '') + nw + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
-        '<div class="mcol">' + name + '<div class="bub">' + linkHtml(m.text) + '</div></div></div>';
+        '<div class="mcol">' + name + bodyHtml(m) + '</div></div>';
     }
     prevWho = who;
   });
   T.innerHTML = html;
+  fillAtts();
   if ($('older')) $('older').addEventListener('click', loadOlder);
   if (keepBottom && (atBottom || !had)) T.scrollTop = T.scrollHeight;
   fThread();
@@ -641,53 +700,224 @@ $('rel').addEventListener('click', function(){
   }).catch(function(){ S.gver = ''; poll(); });
 });
 
-/* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════ */
+/* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════
+   첨부(10-11)가 있으면 파일 하나씩 먼저, 글은 맨 뒤. 말풍선은 한꺼번에 먼저 보이고, 보내기는 앞 것이 끝나야 다음 것(학부모 화면에서도 같은 순서) */
 function autosize(){ ta.style.height = 'auto'; ta.style.height = Math.min(100, ta.scrollHeight + 3) + 'px'; fTa(); }
-ta.addEventListener('input', function(){ sendB.disabled = !ta.value.trim(); autosize(); });
+function canSend(){ return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }
+function syncSend(){ sendB.disabled = !canSend(); }
+ta.addEventListener('input', function(){ syncSend(); autosize(); });
 ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendB.click(); } });
+var LSEQ = 0;   // 낙관 줄 번호가 같은 1ms에 겹치지 않게(파일 여러 개를 한 번에)
 sendB.addEventListener('click', function(){
-  var v = ta.value.trim(); if (!v || !R.id) return;
-  ta.value = ''; sendB.disabled = true; autosize();
-  var c = cid(), id = R.id, m = { seq: 1e9 + Date.now(), at: new Date().toISOString(), who: MY_WHO, text: v, pending: true, cid: c };
-  R.msgs.push(m);
-  var had = {}; R.msgs.forEach(function(x){ if (x !== m) had[x.seq] = 1; });
+  if (!canSend()) return;
+  var v = ta.value.trim(), files = ATT.slice();
+  ta.value = ''; ATT = []; drawAtts(); autosize();   // 칩의 blob 주소는 안 지운다 — 보낸 말풍선이 그대로 쓴다(FC)
+  var items = files.map(function(a){ return { text: '', file: a }; });
+  if (v) items.push({ text: v });
+  sendBatch(R.id, items);
+});
+function seenAll(){ var h = {}; R.msgs.forEach(function(x){ h[x.seq] = 1; }); return h; }   // 결과만 바뀐 다시 그리기 = 올라오는 모션 없음
+function msgLabel(m){ return m.text || (m.file ? (m.file.t === 'application/pdf' ? '파일 ' + m.file.n : '사진') : ''); }   // 26 _msgLabel_과 같은 말(목록 줄 글)
+function sameBody(a, b){ return (a.text || '') === (b.text || '') && !!a.file === !!b.file && (!a.file || (a.file.t === b.file.t && +a.file.s === +b.file.s)); }
+function sendBatch(id, items){
+  var ms = items.map(function(it){
+    var m = { seq: 1e9 + Date.now() + (++LSEQ), at: new Date().toISOString(), who: MY_WHO, text: it.text, pending: true, cid: cid() };
+    if (it.file) { m.file = { n: it.file.name, t: it.file.type, s: it.file.size, w: it.file.w, h: it.file.h }; m.local = 1; FC['L' + m.cid] = { url: it.file.url, t: it.file.type, n: it.file.name }; }
+    return m;
+  });
+  var had = seenAll();
+  ms.forEach(function(m){ R.msgs.push(m); });
   drawThread(had, true); T.scrollTop = T.scrollHeight;
-  var row = findRow(id);
+  var last = ms[ms.length - 1], row = findRow(id);
   if (row && VIEWER) {
     // 한유성 답장 = 맡지 않는다(대기는 대기에, 맡은 방은 맡은 사람에게 — 26 서버 규칙, 유성 10-10). 목록 줄 글만 바꾸고 **그 칸에서** 맨 위로
-    row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
+    row.lastAt = last.at; row.lastWho = 's'; row.preview = msgLabel(last).slice(0, 60);
     if (S.wait.indexOf(row) >= 0) S.wait = [row].concat(S.wait.filter(function(x){ return x !== row; }));
     else S.mine = [row].concat(S.mine.filter(function(x){ return x !== row; }));
   } else if (row) {
     // 대기 대화에 답장 = 맡기 겸함(서버 규칙) → 목록도 그렇게 먼저 옮긴다 + 맨 위로
-    row.lastAt = m.at; row.lastWho = 's'; row.preview = v.slice(0, 60);
+    row.lastAt = last.at; row.lastWho = 's'; row.preview = msgLabel(last).slice(0, 60);
     S.wait = S.wait.filter(function(x){ return x !== row; }); S.mine = S.mine.filter(function(x){ return x !== row; });
     row.owner = row.owner || me.emp; S.mine.unshift(row); R.owner = row.owner; setPst();
   }
-  var t0 = Date.now();
-  function settle(r){   // 서버가 답한 결과(바로 왔든, 작업 번호로 물어서 왔든)
-    m.pending = false; m.unknown = false;
-    if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
-    else { m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at; }
-    if (R.id === id) drawThread({}, true);
-    S.gver = ''; poll();
-  }
-  // ⚠️응답을 못 받았다 ≠ 안 보냈다. 같은 답장을 다시 보내지 않고 5초마다 결과만 묻는다(학부모에게 두 번 가면 안 된다)
-  function askJob(){
-    if (Date.now() - t0 > 4 * 60000) { m.pending = false; m.unknown = true; if (R.id === id) drawThread({}, true); return; }
-    setTimeout(function(){
-      ask({ action:'s_job', auth: me, cid: c }).then(function(j){
-        if (j && j.ok && j.state === 'done') { settle(j.result); return; }
-        if (j && j.ok && j.state === 'none' && Date.now() - t0 > 60000) { m.pending = false; m.unknown = true; if (R.id === id) drawThread({}, true); return; }
-        askJob();
-      }, askJob);
-    }, 5000);
-  }
-  ask({ action:'s_reply', auth: me, id: id, text: v, cid: c }).then(function(r){
-    if (r && r.code === 'run') { askJob(); return; }
-    settle(r);
-  }, askJob);
+  var chain = Promise.resolve();
+  ms.forEach(function(m, i){ chain = chain.then(function(){ return sendOne(id, m, items[i].file); }); });
+}
+// 하나 보내기 — 결과를 알았거나(성공, 실패) 모르게 됐을 때(4분) 끝. 파일은 시한 2분(올리는 데 오래 걸린다)
+function sendOne(id, m, F){
+  return new Promise(function(done){
+    var c = m.cid, t0 = Date.now();
+    function settle(r){   // 서버가 답한 결과(바로 왔든, 작업 번호로 물어서 왔든)
+      m.pending = false; m.unknown = false;
+      if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
+      else {
+        m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at;
+        if (F) { if (r.file) m.file = r.file; FC[id + ':' + r.seq] = { url: F.url, t: F.type, n: m.file.n }; }   // 서버 줄로 바뀌어도 다시 안 받는다
+      }
+      if (R.id === id) drawThread(seenAll(), true);
+      S.gver = ''; poll(); done();
+    }
+    function unknown(){ m.pending = false; m.unknown = true; if (R.id === id) drawThread(seenAll(), true); done(); }
+    // ⚠️응답을 못 받았다 ≠ 안 보냈다. 같은 답장을 다시 보내지 않고 5초마다 결과만 묻는다(학부모에게 두 번 가면 안 된다)
+    function askJob(){
+      if (Date.now() - t0 > 4 * 60000) { unknown(); return; }
+      setTimeout(function(){
+        ask({ action:'s_job', auth: me, cid: c }).then(function(j){
+          if (j && j.ok && j.state === 'done') { settle(j.result); return; }
+          if (j && j.ok && j.state === 'none' && Date.now() - t0 > 60000) { unknown(); return; }
+          askJob();
+        }, askJob);
+      }, 5000);
+    }
+    var body = { action:'s_reply', auth: me, id: id, text: m.text, cid: c };
+    if (F) body.file = { n: F.name, t: F.type, b64: F.b64, w: F.w, h: F.h };
+    ask(body, F ? FILE_TIMEOUT_MS : 0).then(function(r){
+      if (r && r.code === 'run') { askJob(); return; }
+      settle(r);
+    }, askJob);
+  });
+}
+
+/* ══════════ 첨부 넣기 — 클립, 붙여넣기, 끌어다 놓기가 같은 길(addFiles) ══════════ */
+var ATT = [], FC = {}, MAX_ATT = 5, PDF_MAX = 10 * 1024 * 1024, IMG_EDGE = 1600, FILE_TIMEOUT_MS = 120000;
+var X_SVG = '<svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+function kindOf(f){
+  var t = String(f.type || '').toLowerCase(), n = String(f.name || '').toLowerCase();
+  if (t === 'application/pdf' || (!t && /\.pdf$/.test(n))) return 'pdf';
+  if (t === 'image/png' || t === 'image/jpeg' || (!t && /\.(png|jpe?g)$/.test(n))) return 'img';
+  return '';
+}
+function fmtSize(s){ s = +s || 0; return s >= 1048576 ? (Math.round(s / 104857.6) / 10) + 'MB' : Math.max(1, Math.round(s / 1024)) + 'KB'; }
+function baseName(n){ return String(n || '').replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, ''); }
+function addFiles(list, pasted){
+  if (!R.id || !document.body.classList.contains('att')) return;
+  var bad = 0, big = 0, over = 0;
+  [].forEach.call(list || [], function(f){
+    var k = kindOf(f);
+    if (!k) { bad++; return; }
+    if (k === 'pdf' && f.size > PDF_MAX) { big++; return; }
+    if (ATT.length >= MAX_ATT) { over++; return; }
+    // 이름: 캡처를 붙여넣으면 브라우저가 「image.png」라고 붙인다 → 「붙여넣은 사진」. 사진은 JPG로 바꿔 보내니 끝을 .jpg로
+    var nm = baseName(f.name), generic = pasted && /^image$/i.test(nm);
+    var a = { key: cid(), kind: k, ready: false, type: k === 'pdf' ? 'application/pdf' : 'image/jpeg', name: k === 'pdf' ? (nm || '파일') + '.pdf' : (generic || !nm ? '붙여넣은 사진' : nm) + '.jpg', size: 0, w: 0, h: 0, url: '', b64: '' };
+    ATT.push(a);
+    (k === 'pdf' ? Promise.resolve({ blob: f, w: 0, h: 0 }) : shrink(f)).then(function(x){
+      return b64Of(x.blob).then(function(b64){
+        if (ATT.indexOf(a) < 0) return;   // 그새 ✕로 뺐다
+        a.size = x.blob.size; a.w = x.w; a.h = x.h; a.b64 = b64; a.url = URL.createObjectURL(x.blob); a.ready = true;
+        drawAtts();
+      });
+    }).catch(function(){
+      ATT = ATT.filter(function(z){ return z !== a; }); drawAtts();
+      toastA(k === 'pdf' ? '파일을 읽지 못했어요' : '사진을 열지 못했어요');
+    });
+  });
+  drawAtts();
+  if (bad) toastA('PDF, PNG, JPG만 보낼 수 있어요');
+  else if (big) toastA('10MB 넘는 파일은 보낼 수 없어요');
+  else if (over) toastA('한 번에 ' + MAX_ATT + '개까지 보낼 수 있어요');
+}
+// 사진 = 긴 변 1600px JPG(투명한 PNG는 흰 바탕). 휴대폰 사진 방향(EXIF)은 createImageBitmap이 맞춰 준다
+function shrink(f){
+  var src = window.createImageBitmap ? createImageBitmap(f) : new Promise(function(res, rej){ var u = URL.createObjectURL(f), i = new Image(); i.onload = function(){ URL.revokeObjectURL(u); res(i); }; i.onerror = function(){ URL.revokeObjectURL(u); rej(new Error('img')); }; i.src = u; });
+  return src.then(function(bm){
+    var w = bm.width, h = bm.height; if (!w || !h) throw new Error('empty');
+    var k = Math.min(1, IMG_EDGE / Math.max(w, h)); w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+    var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    var x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(bm, 0, 0, w, h);
+    if (bm.close) bm.close();
+    return new Promise(function(res, rej){ cv.toBlob(function(b){ if (b) res({ blob: b, w: w, h: h }); else rej(new Error('toBlob')); }, 'image/jpeg', 0.9); });
+  });
+}
+function b64Of(blob){ return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ var s = String(r.result), i = s.indexOf(','); res(i >= 0 ? s.slice(i + 1) : ''); }; r.onerror = rej; r.readAsDataURL(blob); }); }
+function drawAtts(){
+  var box = $('rAtts');
+  box.innerHTML = ATT.map(function(a){
+    var th = a.kind === 'pdf' ? '<span class="pi">PDF</span>' : (a.ready ? '<img class="th" alt="" src="' + esc(a.url) + '">' : '<span class="th"></span>');
+    return '<div class="chip' + (a.ready ? '' : ' wait') + '" data-k="' + esc(a.key) + '">' + th +
+      '<span class="cn"><b>' + esc(a.kind === 'pdf' ? a.name : baseName(a.name)) + '</b><span>' + (a.ready ? fmtSize(a.size) : '준비 중<span class="ldd"><i></i><i></i><i></i></span>') + '</span></span>' +
+      '<button class="cx" aria-label="빼기">' + X_SVG + '</button></div>';
+  }).join('');
+  box.classList.toggle('on', ATT.length > 0);
+  syncSend();
+}
+function clearAtts(){ ATT.forEach(function(a){ if (a.url) URL.revokeObjectURL(a.url); }); ATT = []; drawAtts(); }
+$('rAtts').addEventListener('click', function(e){
+  var x = e.target.closest('.cx'); if (!x) return;
+  var k = x.parentNode.dataset.k;
+  ATT = ATT.filter(function(a){ if (a.key === k) { if (a.url) URL.revokeObjectURL(a.url); return false; } return true; });
+  drawAtts(); ta.focus();
 });
+$('rClip').addEventListener('click', function(){ var f = $('rFile'); f.value = ''; f.click(); });
+$('rFile').addEventListener('change', function(){ addFiles(this.files); this.value = ''; ta.focus(); });
+// 붙여넣기 = 그림 파일만 가로챈다. 엑셀, 워드에서 글을 복사하면 그림도 같이 실리므로 글이 있으면 글 붙여넣기 그대로
+document.addEventListener('paste', function(e){
+  if (!$('room').classList.contains('on') || !R.id || !document.body.classList.contains('att')) return;
+  var cd = e.clipboardData; if (!cd || !cd.files || !cd.files.length) return;
+  if ((cd.getData('text/plain') || '').trim()) return;
+  e.preventDefault(); addFiles(cd.files, true);
+});
+// 끌어다 놓기 = 대화방 어디든. 놓을 수 없는 곳(목록)에 떨어뜨려도 창이 그 파일로 넘어가지 않게(브라우저 기본 = 파일 열기 → 쓰던 답장이 날아감)
+(function(){
+  var room = $('room'), depth = 0;
+  function hasFiles(e){ var t = e.dataTransfer && e.dataTransfer.types; return !!t && [].indexOf.call(t, 'Files') >= 0; }
+  room.addEventListener('dragenter', function(e){ if (!hasFiles(e) || !R.id || !document.body.classList.contains('att')) return; e.preventDefault(); depth++; room.classList.add('dragging'); });
+  room.addEventListener('dragover', function(e){ if (!hasFiles(e) || !R.id) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  room.addEventListener('dragleave', function(e){ if (!hasFiles(e)) return; if (--depth <= 0) { depth = 0; room.classList.remove('dragging'); } });
+  room.addEventListener('drop', function(e){ if (!hasFiles(e)) return; e.preventDefault(); depth = 0; room.classList.remove('dragging'); if (R.id) addFiles(e.dataTransfer.files); });
+  ['dragover', 'drop'].forEach(function(ev){ window.addEventListener(ev, function(e){ if (hasFiles(e)) e.preventDefault(); }); });
+})();
+
+/* ══════════ 대화 속 첨부 — 사진 = 말풍선 자리에 사진, PDF = 카드. 누르면 크게(이 창 안) ══════════
+   받기 = s_file(서명 + 방 + 줄 번호)뿐, 드라이브 주소 0. 받은 것은 이 창 메모리(blob 주소)에만 */
+function fileKey(m){ return m.local ? 'L' + m.cid : R.id + ':' + m.seq; }
+function attHtml(m){
+  var f = m.file, k = fileKey(m);
+  if (f.t === 'application/pdf') return '<button class="att apdf" data-k="' + esc(k) + '"><span class="pi">PDF</span><span class="cn"><b>' + esc(f.n) + '</b><span>' + fmtSize(f.s) + ', 누르면 열려요</span></span></button>';
+  var c = FC[k], ok = !!(c && c.url);
+  return '<button class="att aimg' + (ok ? ' ok' : '') + '" data-k="' + esc(k) + '" style="aspect-ratio:' + (f.w && f.h ? (+f.w) + '/' + (+f.h) : '4/3') + '" aria-label="사진 크게 보기">' + (ok ? '<img alt="" src="' + esc(c.url) + '">' : '') + '</button>';
+}
+function bodyHtml(m){ return (m.file ? attHtml(m) : '') + (m.text || !m.file ? '<div class="bub">' + linkHtml(m.text) + '</div>' : ''); }
+function attEl(k){ return T.querySelector('.att[data-k="' + CSS.escape(k) + '"]'); }
+function fillAtts(){
+  [].forEach.call(T.querySelectorAll('.aimg:not(.ok):not(.bad)'), function(el){
+    var k = el.dataset.k;
+    getFile(k).then(function(c){ var x = attEl(k); if (!x || x.classList.contains('ok')) return; x.classList.add('ok'); x.innerHTML = '<img alt="" src="' + esc(c.url) + '">'; },
+      function(){ var x = attEl(k); if (!x || x.classList.contains('ok')) return; x.classList.add('bad'); x.innerHTML = '<span class="again">다시 불러오기</span>'; });
+  });
+}
+function getFile(k){
+  var c = FC[k]; if (c) return c.url ? Promise.resolve(c) : c.p;
+  var i = k.lastIndexOf(':'); if (i < 0) return Promise.reject(new Error('nokey'));
+  var id = k.slice(0, i), seq = +k.slice(i + 1);
+  var once = function(){ return ask({ action:'s_file', auth: me, id: id, seq: seq }, FILE_TIMEOUT_MS); };
+  c = FC[k] = {};
+  c.p = once().catch(function(e){ if (e && e.bad) return once(); throw e; }).then(function(r){   // 구글 HTML이면 한 번만 다시(큰 응답이라 4초 헤지는 안 씀 — 같은 파일을 두 번 받게 된다)
+    if (!r || !r.ok || !r.b64) throw new Error((r && r.error) || 'nofile');
+    var bin = atob(r.b64), u = new Uint8Array(bin.length);
+    for (var j = 0; j < bin.length; j++) u[j] = bin.charCodeAt(j);
+    c.url = URL.createObjectURL(new Blob([u], { type: r.t })); c.t = r.t; c.n = r.n; return c;
+  });
+  c.p.catch(function(){ delete FC[k]; });   // 실패는 기억 안 함(다시 누르면 다시 받는다)
+  return c.p;
+}
+T.addEventListener('click', function(e){
+  var a = e.target.closest('.att'); if (!a) return;
+  var k = a.dataset.k;
+  if (a.classList.contains('bad')) { a.classList.remove('bad'); a.innerHTML = ''; fillAtts(); return; }
+  var sz = a.querySelector('.cn span'), was = sz && sz.textContent;
+  if (sz && !(FC[k] && FC[k].url)) sz.innerHTML = '불러오는 중<span class="ldd"><i></i><i></i><i></i></span>';
+  getFile(k).then(function(c){ if (sz) sz.textContent = was; openView(c); }, function(){ if (sz) sz.textContent = was; toastA('파일을 불러오지 못했어요'); });
+});
+function openView(c){
+  var v = $('rView'), b = v.querySelector('.vb'); b.innerHTML = '';
+  if (c.t === 'application/pdf') { var fr = document.createElement('iframe'); fr.title = c.n || 'PDF'; fr.src = c.url; b.appendChild(fr); }
+  else { var im = new Image(); im.alt = ''; im.src = c.url; b.appendChild(im); }
+  v.classList.add('on'); v.querySelector('.vx').focus();
+}
+function closeView(){ var v = $('rView'); if (!v.classList.contains('on')) return; v.classList.remove('on'); v.querySelector('.vb').innerHTML = ''; }
+$('rView').addEventListener('click', function(e){ if (e.target === this || e.target.classList.contains('vb') || e.target.closest('.vx')) closeView(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('rView').classList.contains('on')) { e.preventDefault(); closeView(); } });
 
 function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2200); }
 
