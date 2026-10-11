@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v112';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v113';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -900,7 +900,7 @@ function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(
    정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
    · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
    · 학부모 새 줄 = 새 대화든 있던 대화든 **소리 + 미리보기 + 두 번 흔들림**(10-12 카톡식 — 유성 「새로운 문의가 왔을 때는 항상 미리보기 … 카톡도 …」에 이어
-     「카카오채널로 온 문의 … 울리지도 않고」. 옛 5차 「있던 대화 = 흔들림만」·v111 「소리는 새 대화만」을 뒤집음. 소리와 흔들림은 10초에 한 번까지 = inqRing, 그 안의 다음 글은 미리보기만 바뀜) /
+     「카카오채널로 온 문의 … 울리지도 않고」. 옛 5차 「있던 대화 = 흔들림만」·v111 「소리는 새 대화만」을 뒤집음. 소리와 흔들림은 각각 10초에 한 번까지 = inqRingS·inqRingK, 그 안의 다음 글은 미리보기만 바뀜) /
      학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리 없음 — §5.1 소리 과용 금지).
    · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄도 같음(10-12 카톡식), **3분 재알림 없음**
      (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
@@ -917,12 +917,15 @@ var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC
 //   유휴 잠금과 앱 로그아웃 버튼은 둘 다 att_locked라 구별이 안 돼서 버튼만 att_bye를 따로 적는다(로그인하면 지움 — 앱 두 길·알약 startActSession).
 function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch (e) { return false; } }
 function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
-var inqRing = 0;   // 마지막으로 소리나 흔들림을 보낸 때(10초에 한 번까지 — 카톡식 규칙 6)
+// 마지막으로 소리를 낸 때 / 흔든 때(각각 10초에 한 번까지 — 카톡식 규칙 6). 따로 세는 이유 = 3분 다시 알림은 소리 없이 흔들기만 해서,
+//   하나로 세면 그 직후 진짜 새 글의 소리까지 먹는다(10-12 리뷰)
+var inqRingS = 0, inqRingK = 0;
 function inqNotify(kind, preview, ch){
   if (!caps || !caps.notify) return;
-  var now = Date.now(), quiet = now - inqRing < 10000;
-  if (!quiet) inqRing = now;
-  toHost({ type:'notify', kind: kind, sound: kind !== 'late' && !quiet, peek: true, shake: !quiet,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 3분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
+  var now = Date.now(), snd = kind !== 'late' && now - inqRingS >= 10000, shk = now - inqRingK >= 10000;
+  if (snd) inqRingS = now;
+  if (shk) inqRingK = now;
+  toHost({ type:'notify', kind: kind, sound: snd, peek: true, shake: shk,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 3분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
            title: ch === 'kk' ? '카카오 문의' : (ch ? '톡톡 문의' : '홈페이지 문의'), text: String(preview || '').split('\n')[0] });
 }
 function inqAlert(rows, fresh){
