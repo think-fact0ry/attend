@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v109';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v110';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -836,7 +836,7 @@ function inqPoll(){
   var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open);
   inq.t = setTimeout(inqPoll, (duty || appOpen || inqDuty()) ? INQ_FAST : INQ_SLOW);   // 한유성 로그인 중도 10초(알림이 늦지 않게). 박동 on은 행정 출근(duty)만
   var role = id ? id.role : '';
-  if (role !== inq.role) { inq.role = role; inq.gver = ''; inq.seen = null; render(); }
+  if (role !== inq.role) { if (role) diag('문의 서명 ' + role + ' → 목록 처음부터'); inq.role = role; inq.gver = ''; inq.seen = null; render(); }
   if (!id) { if (inq.n) { inq.n = 0; inq.rows = null; render(); } return; }
   if (inq.busy && performance.now() - inq.at < REQ_TIMEOUT_MS * 2) return;   // 시한이 못 걸려도 영구히 막히지 않게(위 loop와 같은 결)
   inq.busy = true; inq.at = performance.now();
@@ -850,6 +850,7 @@ function inqPoll(){
       return;
     }
     if (!r.same) {
+      inq.pg = inq.gver;   // 앞 버전표(로그용 — inqCount가 「버전 앞 → 뒤」로 남김)
       inq.gver = r.gver;
       inq.rows = r.all || (r.wait || []).concat(r.mine || []);
       try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
@@ -872,16 +873,25 @@ function inqCount(id){
   var rows = inq.rows || [], seen = {}, fresh = [], first = !inq.seen;
   rows.forEach(function(x){
     seen[x.id] = x.lastAt;
-    if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined });
+    if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined, was: inq.seen[x.id] });
   });
   inq.seen = seen;
   inq.n = rows.filter(inqCountable).length;
   render();
   // 새 학부모 줄 → 호스트 로그 한 줄. 행정은 늘, 한유성 보기는 알림이 켜진 때만(10-12 — 로그아웃 뒤엔 로그도 안 남김)
-  if (fresh.length && (id.role === 'staff' || inqDuty())) toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n });
+  // 🔎10-12 01:50:27 노트북 실측: 서버 도착 01:48:09(다시 읽기 01:49:58 전) 줄로 다시 읽기 29초 뒤 「more」가 났다 — 처음 목록은 안 울려야 한다.
+  //   헤드리스 재현 0/3(서버 목록이 그대로면 안 울림) → 다음에 나면 바로 보이게 **어느 칸이, 기억한 시각 → 서버 시각, 버전표 앞 → 뒤**를 남긴다.
+  //   ⚠️글·닉네임은 안 싣는다(m 칸 = edge.log). 시각·채널 글자(kk/nv/홈)만
+  if (id.role === 'staff' || inqDuty()) {
+    if (first) toHost({ type:'inq', m: '첫 목록 ' + rows.length + '줄(안 울림) 버전 ' + inqHms(inq.gver) });
+    else if (fresh.length) toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n + ' / 버전 ' + inqHms(inq.pg) + ' → ' + inqHms(inq.gver) + ' / '
+      + fresh.map(function(f){ return (f.row.ch || '홈') + ' ' + (f.room ? '새 대화' : inqHms(f.was)) + ' → ' + inqHms(f.row.lastAt); }).join(', ') });
+  }
   inqAlert(rows, fresh);
 }
 function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   // ⚠️inqCount 뒤에 둔다 — 위젯알림 시험이 inqCount부터 떼어 돌린다
+// 로그용 시각 「HH:MM:SS」 — ISO 글자든 버전표(ms.우연수)든. 모르면 「-」
+function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(v || '')) ? parseInt(v, 10) : Date.parse(v)); if (!t || isNaN(t)) return '-'; var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 
 /* ── 문의 알림(exe 4판, 1-c 2026-10-10) ──
    정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
