@@ -181,8 +181,8 @@ body.viewer .vnote{display:block}
    넣는 길 셋 = 입력 칸 안 오른쪽 클립 / 붙여넣기(Ctrl+V) / 대화방에 끌어다 놓기. PDF, PNG, JPG만, 사진은 긴 변 1600px JPG로 줄여 보냄, PDF 10MB까지, 한 번에 5개.
    보내기 전 = 입력 줄 위 미리보기 칩(✕로 빼기). 받은 파일, 보낸 파일은 이 창 메모리에만(blob 주소) — PC 디스크에 안 남긴다(RCACHE와 같은 결) */
 .taw .clip{position:absolute;right:3px;bottom:3px;width:32px;height:32px;border:0;background:none;border-radius:10px;color:var(--g600);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;padding:0;transition:transform .16s,color .15s}
-body.att .taw .clip{display:flex}   /* 26이 첨부 받는 판(s_poll files:1)일 때만 — 구판 서버에 파일만 보내면 「내용을 적어 주세요」로 거절된다 */
-body.att .ta{padding-right:40px}
+body.fileon .taw .clip{display:flex}   /* 26이 첨부 받는 판(s_poll files:1)일 때만 — 구판 서버에 파일만 보내면 「내용을 적어 주세요」로 거절된다. ⚠️body 표시는 fileon — 10-11 처음엔 att였는데 첨부 카드 .att와 겹쳐 .att:active가 body를 눌림 축소(받은함 어디를 눌러도 화면 전체가 줄어듦)+.att{cursor:pointer;background:none}가 body에 걸렸다(유성 실기기) */
+body.fileon .ta{padding-right:40px}
 .taw .clip:hover{color:var(--g900)}
 .taw .clip:active{transform:scale(.86)}
 .taw .clip svg{width:19px;height:19px}
@@ -219,6 +219,8 @@ body.att .ta{padding-right:40px}
 .view iframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
 .view .vx{position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .view .vx svg{width:20px;height:20px}
+.view .vx{transition:transform .12s}
+.view .vx:active{transform:scale(.86)}   /* §5.3 — 누른 X만 잠깐 작아진다(유성 10-11 「x 버튼만 버튼처럼 축소」) */
 .ldd{display:inline-flex;gap:3px;margin-left:5px;vertical-align:middle}   /* §5.2 출렁점 = 앱 .ldd 그대로 */
 .ldd i{width:4px;height:4px;border-radius:50%;background:currentColor;animation:ldb 1s ease-in-out infinite}
 .ldd i:nth-child(2){animation-delay:.16s}
@@ -475,7 +477,7 @@ function poll(){
     S.busy = false;
     if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
     S.dead = '';
-    if (r.files && !document.body.classList.contains('att')) document.body.classList.add('att');   // 첨부 켜짐(26 @8~)
+    if (r.files && !document.body.classList.contains('fileon')) document.body.classList.add('fileon');   // 첨부 켜짐(26 @8~)
     var prevCur = S.cur ? findRow(S.cur.id) : null, first = !S.loaded;
     var changed = take(r);
     S.loaded = true;
@@ -790,7 +792,7 @@ function kindOf(f){
 function fmtSize(s){ s = +s || 0; return s >= 1048576 ? (Math.round(s / 104857.6) / 10) + 'MB' : Math.max(1, Math.round(s / 1024)) + 'KB'; }
 function baseName(n){ return String(n || '').replace(/^.*[\\/]/, '').replace(/\.[^.]+$/, ''); }
 function addFiles(list, pasted){
-  if (!R.id || !document.body.classList.contains('att')) return;
+  if (!R.id || !document.body.classList.contains('fileon')) return;
   var bad = 0, big = 0, over = 0;
   [].forEach.call(list || [], function(f){
     var k = kindOf(f);
@@ -852,7 +854,7 @@ $('rClip').addEventListener('click', function(){ var f = $('rFile'); f.value = '
 $('rFile').addEventListener('change', function(){ addFiles(this.files); this.value = ''; ta.focus(); });
 // 붙여넣기 = 그림 파일만 가로챈다. 엑셀, 워드에서 글을 복사하면 그림도 같이 실리므로 글이 있으면 글 붙여넣기 그대로
 document.addEventListener('paste', function(e){
-  if (!$('room').classList.contains('on') || !R.id || !document.body.classList.contains('att')) return;
+  if (!$('room').classList.contains('on') || !R.id || !document.body.classList.contains('fileon')) return;
   var cd = e.clipboardData; if (!cd || !cd.files || !cd.files.length) return;
   if ((cd.getData('text/plain') || '').trim()) return;
   e.preventDefault(); addFiles(cd.files, true);
@@ -861,7 +863,7 @@ document.addEventListener('paste', function(e){
 (function(){
   var room = $('room'), depth = 0;
   function hasFiles(e){ var t = e.dataTransfer && e.dataTransfer.types; return !!t && [].indexOf.call(t, 'Files') >= 0; }
-  room.addEventListener('dragenter', function(e){ if (!hasFiles(e) || !R.id || !document.body.classList.contains('att')) return; e.preventDefault(); depth++; room.classList.add('dragging'); });
+  room.addEventListener('dragenter', function(e){ if (!hasFiles(e) || !R.id || !document.body.classList.contains('fileon')) return; e.preventDefault(); depth++; room.classList.add('dragging'); });
   room.addEventListener('dragover', function(e){ if (!hasFiles(e) || !R.id) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
   room.addEventListener('dragleave', function(e){ if (!hasFiles(e)) return; if (--depth <= 0) { depth = 0; room.classList.remove('dragging'); } });
   room.addEventListener('drop', function(e){ if (!hasFiles(e)) return; e.preventDefault(); depth = 0; room.classList.remove('dragging'); if (R.id) addFiles(e.dataTransfer.files); });
