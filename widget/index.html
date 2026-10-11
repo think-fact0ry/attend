@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v107';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v108';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -798,6 +798,7 @@ function punchFailed(prev, msg){
      옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(시작 때 지움).
    · 박동: 행정 서명일 때만 on(=지금 출근 중)을 싣는다 → 26이 채팅/메일 모드를 정한다. 받은함 페이지는 on을 안 실음.
    · 세는 것 = 마지막 말이 학부모인 대화(=답장 전). 행정은 대기+내 대화, 보기 전용은 전체.
+     톡톡·카카오 카드(2단계, r.ch)는 **대기에 있을 때만** 센다 — 맡은 카드는 파트너센터에서 답했는지 우리가 몰라서(inqCountable, 앱 inqCountApp과 같게).
    · ⚠️흔들림·미리보기(피어나기)·소리는 이 창으로 못 한다(실측: 창 = DWM 라운드 사각 하나, 투명 영역 없음·창 이동은 호스트만)
      → exe 4판이 `notify`를 받아 한다(아래 inqAlert). 'inq'는 로그 한 줄로 남긴다. */
 var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
@@ -873,18 +874,21 @@ function inqCount(id){
     if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined });
   });
   inq.seen = seen;
-  inq.n = rows.filter(function(x){ return x.lastWho === 'v'; }).length;
+  inq.n = rows.filter(inqCountable).length;
   render();
   // 새 학부모 줄 → 호스트 로그 한 줄. 보기 전용은 숫자만(D10)
   if (fresh.length && id.role === 'staff') toHost({ type:'inq', m: '새 ' + fresh.length + ' / 답장 전 ' + inq.n });
   inqAlert(rows, fresh);
 }
+function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   // ⚠️inqCount 뒤에 둔다 — 위젯알림 시험이 inqCount부터 떼어 돌린다
 
 /* ── 문의 알림(exe 4판, 1-c 2026-10-10) ──
    정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
    · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
    · 새 대화 = 소리 + 미리보기 + 두 번 흔들림 / 있던 대화에 학부모 새 줄 = 두 번 흔들림만(5차 「맨 아래 대화에 새 메시지」) /
      학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리는 새 대화에만 — §5.1 소리 과용 금지).
+   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄 = 흔들림만, **3분 재알림 없음**
+     (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
    · 행정이 출근 중일 때만(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로). 관리자 보기는 숫자만(D10).
      3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
    · ⚠️exe가 `caps`(v4)를 보낸 뒤에만 보낸다 — 3판 exe는 notify를 모르고, open은 토글이라 열린 앱 창을 닫는다.
@@ -893,10 +897,10 @@ var caps = null;
 var INQ_LATE_MS = 3 * 60 * 1000;
 var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC가 본 때 + 3분, p: 미리보기 }
 function inqDuty(){ var id = inqId(); return !!(id && id.role === 'staff' && snap && snap.open); }
-function inqNotify(kind, preview){
+function inqNotify(kind, preview, ch){
   if (!caps || !caps.notify) return;
   toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: kind !== 'more', shake: true,
-           title: '홈페이지 문의', text: String(preview || '').split('\n')[0] });
+           title: ch === 'kk' ? '카카오 문의' : (ch ? '톡톡 문의' : '홈페이지 문의'), text: String(preview || '').split('\n')[0] });
 }
 function inqAlert(rows, fresh){
   if (!inqDuty()) { inqLate = {}; return; }
@@ -905,10 +909,10 @@ function inqAlert(rows, fresh){
   var by = {}; rows.forEach(function(x){ by[x.id] = x; });
   Object.keys(inqLate).forEach(function(k){ var x = by[k]; if (!x || x.lastWho !== 'v' || x.lastAt !== inqLate[k].at) delete inqLate[k]; });
   if (!fresh.length) return;
-  fresh.forEach(function(f){ inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, p: f.row.preview }; });
+  fresh.forEach(function(f){ if (!f.row.ch) inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, p: f.row.preview }; });   // 카드는 3분 재알림 없음
   // 여러 줄이 한 번에 오면 알림은 한 번 — 새 대화가 있으면 그것(목록이 최근순이라 첫 것이 가장 최근)
   var room = fresh.filter(function(f){ return f.room; })[0];
-  if (room) inqNotify('new', room.row.preview); else inqNotify('more', fresh[0].row.preview);
+  if (room) inqNotify('new', room.row.preview, room.row.ch); else inqNotify('more', fresh[0].row.preview, fresh[0].row.ch);
 }
 function inqLateCheck(){
   if (!inqDuty()) { inqLate = {}; return; }
