@@ -1110,7 +1110,7 @@ function inqCountApp(id) {
     var c = JSON.parse(localStorage.getItem('att_inqc') || 'null');
     if (!c || !c.r || c.role !== id.role || (c.emp || '') !== (id.emp || '')) return 0;
     var rows = c.r.all || (c.r.wait || []).concat(c.r.mine || []);
-    return rows.filter(function (x) { return x.lastWho === 'v' && !(x.ch && x.owner); }).length;   // 톡톡·카카오 카드는 대기에 있을 때만(알약 inqCountable과 같게)
+    return rows.reduce(function (a, x) { return a + (x.unread != null ? Math.max(0, +x.unread || 0) : (x.lastWho === 'v' && !(x.ch && x.owner) ? 1 : 0)); }, 0);   // 안 읽은 글 합(10-12 카톡식, 알약 inqUnread와 같게)
   } catch (e) { return 0; }
 }
 function inqSync() {

@@ -18,7 +18,7 @@
     없으면 행정 서명(att_inq, 알약이 근태 조회 때마다 갱신). 둘 다 없으면 안내만.
   · 이 페이지는 박동(on)을 안 보낸다 — 출근 여부를 아는 건 알약이고, 여기서 보내면 알약의 「출근 중」을 덮어쓴다(26 _sPoll_).
   · 2단계(10-11 유성 「B(+A)」·「go」, 26 브랜치 26-cards와 같이 배포): 톡톡·카카오 카드(r.ch) = 회사폰 알림을 26이 받아 만든 줄. 누르면 그 센터
-    파트너센터 채팅을 브라우저로(서버가 준 주소만) + 대기면 내 대화로 빨려 들기. 카드엔 「답장 전」·3분·빨간 점·내 대화 숫자 없음(우리가 답했는지 모름).
+    파트너센터 채팅을 브라우저로(서버가 준 주소만) + 대기면 내 대화로 빨려 들기. 카드엔 「답장 전」·3분 없음(우리가 답했는지 모름) — 안 읽은 수만(10-12 카톡식, 누르면 읽음 = s_seen).
     이름 줄 = 이름 굵게 + 원래 이름 뱃지(서해구·연수구·미추홀구·카카오·홈페이지). 오른쪽 클릭 = 맨 위에 고정 / 이름 붙이기 / 대기로 돌려놓기(내 대화, 행정만).
     정본 = prototype/26_문의알리미_카드이름_프리뷰.html · 고정과이름 = prototype/26_문의채팅_고정과이름_검토_프리뷰.html. 감시 = scripts/19 tests/문의카드.test.js
 -->
@@ -119,7 +119,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .it .rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
 .it .el{font-size:11.5px;color:var(--g600);white-space:nowrap}
 .it.late .el{color:var(--warn-weak-fg);font-weight:600}
-.it .u{width:8px;height:8px;border-radius:50%;background:var(--red)}
+/* 안 읽은 수(10-12 유성 「카톡처럼 … 빨간색 원안에 흰색 텍스트로 … 몇분전 아래에」 — 옛 빨간 점 .u를 바꿈) = 세그 숫자(.seg .n.red)와 같은 동그라미 */
+.it .ub{font-size:11.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;color:#fff;background:var(--red);display:inline-flex;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
 /* 이름 붙이기 = 그 줄 이름 자리에서 바로 적기(Enter 저장, Esc 취소, 밖을 누르면 저장). 이름이 있으면 칸 오른쪽에 되돌리기 ↩(유성 10-11) */
 .renw{position:relative;display:block;width:100%;min-width:0}
 .it .ren{font:inherit;font-size:14.5px;font-weight:600;border:1.5px solid var(--green600);background:#fff;border-radius:8px;padding:0 6px;width:100%;outline:none;color:var(--g900);user-select:text}
@@ -400,8 +401,11 @@ window.addEventListener('message', function(e){
 });
 
 /* ══════════ 시간 글자 ══════════ */
+// 서버 시각 = 이 PC 시각 + 차이(s_poll now, 10-12 — 유성 노트북 시계가 2분 14초 빨라 「4분 전」이 실제 2분 전이었다).
+//   「몇 분 전」·「3분 넘음」은 서버가 적은 시각(lastAt)과 빼는 것이라 이 PC 시계가 틀리면 같이 틀린다 → 서버 시각으로 뺀다
+function nowS(){ return Date.now() + (S.skew || 0); }
 function ago(iso){
-  var d = Date.now() - new Date(iso).getTime();
+  var d = nowS() - new Date(iso).getTime();
   if (!(d >= 0)) return '';
   if (d < 60000) return '방금';
   if (d < 3600000) return Math.floor(d / 60000) + '분 전';
@@ -427,12 +431,13 @@ var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('
 // slow = 20초 넘게 못 받음 → 뼈대를 비우고 「아직 못 불러왔어요」(§5.4, 뒤에서는 계속 다시 묻는다). names = 맡은 사람 이름표(한유성만 받음)
 var SLOW_MS = 20000;
 // pins = 26이 고정과 이름을 받는 판(s_poll pins:1, @10~) — 구판이면 오른쪽 클릭 메뉴를 안 띄운다. editing = 이름을 적고 있는 줄 id
-var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, editing: '', flying: '' };
+var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, editing: '', flying: '', seen: {}, skew: 0 };
+// seen = 이 창에서 읽은 줄 {id: 그때 마지막 시각} — 서버 목록이 읽음보다 늦게 와도 숫자가 다시 안 뜬다(새 글이 오면 시각이 바뀌어 다시 셈). skew = 서버 시각 − 이 PC 시각(10-12)
 function rowsOfTab(){ return S.tab === 'wait' ? S.wait : S.mine; }   // 한유성도 같은 두 칸 — mine = 누가 맡았든 맡은 대화
 function ownerName(emp){ return S.names[emp] || '행정'; }   // 이름을 아직 모르면(구판 26·19) 「행정」
-// 톡톡·카카오 카드(r.ch = 'nv'|'kk', 26 2단계) = 답은 파트너센터에서 해서 우리가 답했는지 모른다 → 「답장 전」·「3분 넘음」·빨간 점·내 대화 숫자에 안 든다(5차)
+// 톡톡·카카오 카드(r.ch = 'nv'|'kk', 26 2단계) = 답은 파트너센터에서 해서 우리가 답했는지 모른다 → 「답장 전」·「3분 넘음」에 안 든다(5차). 안 읽은 수는 카드도 같이(10-12 — 봤는지는 안다)
 function isCard(r){ return !!(r && r.ch); }
-function isLate(r){ return !isCard(r) && r.lastWho === 'v' && Date.now() - new Date(r.lastAt).getTime() >= LATE_MS; }
+function isLate(r){ return !isCard(r) && r.lastWho === 'v' && nowS() - new Date(r.lastAt).getTime() >= LATE_MS; }
 // 순서 = 마지막 메시지 순(서버) · 「3분 넘음」 맨 위 → 고정 → 나머지(서버도 고정을 먼저 보내지만, 방금 누른 고정이 서버 답 전에 바로 올라가게 여기서도)
 function ordered(L){ return L.map(function(r, i){ return { r: r, i: i }; }).sort(function(a, b){ return ((isLate(b.r) ? 1 : 0) - (isLate(a.r) ? 1 : 0)) || ((b.r.pin ? 1 : 0) - (a.r.pin ? 1 : 0)) || (a.i - b.i); }).map(function(x){ return x.r; }); }
 function baseOf(r){ return isCard(r) ? (r.base || '') : '홈페이지'; }
@@ -448,10 +453,11 @@ function rowHtml(r){
   if (r.pin) tag += '<span class="tag pin">' + PINF_SVG + esc(r.owner ? '고정' : (r.pinName || '고정')) + '</span>';
   if (VIEWER && r.owner) tag += '<span class="tag">' + esc(ownerName(r.owner)) + '</span>';
   if (S.live[r.id]) tag += '<span class="tag live">보는 중</span>';
-  var right;
-  if (isCard(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>';   // 카드 = 마지막 알림 시각만
-  else if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '3분 넘음' : (S.tab === 'mine' ? '답장 전' : esc(ago(r.lastAt)))) + '</span><span class="u"></span>';
-  else right = '<span class="el">답장함</span>';
+  // 오른쪽 칸 = 위 글자(시각 / 「답장 전」 / 「3분 넘음」 / 「답장함」) + 아래 안 읽은 수(카톡처럼, 10-12 — 0이면 없음). 카드도 같은 자리
+  var right, ub = unreadOf(r) > 0 ? '<span class="ub">' + (unreadOf(r) > 99 ? '99+' : unreadOf(r)) + '</span>' : '';
+  if (isCard(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + ub;   // 카드 = 마지막 알림 시각 + 안 읽은 수(답했는지는 몰라도 봤는지는 안다)
+  else if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '3분 넘음' : (S.tab === 'mine' ? '답장 전' : esc(ago(r.lastAt)))) + '</span>' + ub;
+  else right = '<span class="el">답장함</span>' + ub;
   var l1 = S.editing === r.id
     ? '<span class="renw' + (r.label ? ' has' : '') + '"><input class="ren" maxlength="' + LABEL_MAX + '" value="' + esc(r.label || '') + '" placeholder="이름 (' + LABEL_MAX + '자까지)" aria-label="이름 붙이기">' +
       (r.label ? '<button class="rv" type="button" title="원래 이름으로" aria-label="원래 이름으로">' + UNDO_SVG + '</button>' : '') + '</span>'
@@ -482,9 +488,11 @@ function render(){
   fList();
   if (S.editing) bindRen();
 }
-// 세그 숫자 — 대기 = 아무도 안 맡은 대화(카드 포함), 내 대화 = 내가 답 안 한 홈페이지 대화만(카드는 답했는지 몰라서 안 셈)
+// 세그 숫자 = 그 칸 줄 숫자(안 읽은 수)의 합(10-12 유성 「세그필에 3있지 그 3만큼 어디 채팅이 2인지 어디 채팅이 1인지」 — 옛: 대기 = 줄 수, 내 대화 = 답 안 한 수)
+function unreadOf(r){ return r && S.cur && S.cur.id === r.id && $('room').classList.contains('on') ? 0 : Math.max(0, +(r && r.unread) || 0); }   // 지금 열어 둔 방 = 읽는 중(서버도 방을 다시 읽을 때 찍는다)
+function sumUnread(L){ return L.reduce(function(a, r){ return a + unreadOf(r); }, 0); }
 function counts(){
-  var nw = S.wait.filter(function(r){ return r.lastWho === 'v'; }).length, nm = S.mine.filter(function(r){ return r.lastWho === 'v' && !isCard(r); }).length;
+  var nw = sumUnread(S.wait), nm = sumUnread(S.mine);
   var a = $('nWait'); a.textContent = nw; a.classList.toggle('show', nw > 0);
   var b = $('nMine'); b.textContent = nm; b.classList.toggle('show', nm > 0);
 }
@@ -514,7 +522,17 @@ function take(r){   // 서버 목록 → 화면 상태
   if (r.names) S.names = r.names;
   if (r.wait || r.mine) { S.wait = r.wait || []; S.mine = r.mine || []; }
   else { var L = r.all || []; S.wait = L.filter(function(x){ return !x.owner; }); S.mine = L.filter(function(x){ return !!x.owner; }); }   // 구판 26(@6까지 한유성 = all 하나)·알약이 남긴 옛 목록
+  S.wait.concat(S.mine).forEach(function(x){ if (S.seen[x.id] && S.seen[x.id] === x.lastAt) x.unread = 0; });   // 이 창에서 이미 읽은 줄(서버 반영 전 목록이어도)
   return true;
+}
+// 읽음 = 줄 누름(카드)·대화방 열기(10-12 카톡식) — 서버 답을 안 기다리고 숫자부터 지운다. 카드는 대화방이 없어 서버에 s_seen을 따로 알린다(홈페이지 방은 s_room이 찍음)
+function seenLocal(row, it, tell){
+  if (!row) return;
+  S.seen[row.id] = row.lastAt;
+  if (!(+row.unread > 0)) return;
+  row.unread = 0; counts();
+  var b = it && it.querySelector('.ub'); if (b) b.remove();
+  if (tell) ask({ action:'s_seen', auth: me, id: row.id }).catch(function(){});   // 실패해도 다음 목록에서 숫자가 다시 보일 뿐(다시 누르면 됨)
 }
 // 첫 그림 = 알약이 남겨 둔 마지막 목록(왕복 기다리지 않고 바로 보인다). 이어서 서버가 덮는다.
 //   10분 = 알약이 **마지막으로 확인한** 때부터(알약이 「바뀐 것 없음」을 받아도 시각을 새로 쓴다 — 10-10 전엔 바뀔 때만 써서, 문의가 10분 조용하면
@@ -539,10 +557,12 @@ function poll(){
   if (S.busy && Date.now() - S.pollAt < REQ_TIMEOUT_MS * 2) return;
   S.busy = true; S.pollAt = Date.now();
   if (!S.loaded && !S.t0) { S.t0 = Date.now(); setTimeout(function(){ if (!S.loaded && !S.slow) { S.slow = true; render(); } }, SLOW_MS); }   // 처음 물은 때부터 20초(가려져 있던 시간은 안 셈)
+  var t0 = Date.now();
   ask({ action:'s_poll', auth: me, gver: S.gver }).then(function(r){
     S.busy = false;
     if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
     S.dead = '';
+    if (typeof r.now === 'number') S.skew = r.now - (t0 + Date.now()) / 2;   // 서버 시각 차이(왕복 절반 보정, 26 @12~)
     if (r.files && !document.body.classList.contains('fileon')) document.body.classList.add('fileon');   // 첨부 켜짐(26 @8~)
     var prevCur = S.cur ? findRow(S.cur.id) : null, first = !S.loaded;
     var changed = take(r);
@@ -603,6 +623,7 @@ $('list').addEventListener('click', function(e){
   var id = it.dataset.id, inWait = !VIEWER && S.tab === 'wait', row = findRow(id);
   if (isCard(row)) {
     openExt(row);
+    seenLocal(row, it, true);   // 카드 누름 = 읽음(10-12 — 「그러면 저 3은 어떻게 없애려고」)
     if (inWait) flyTo(it, id, 'mine');
     else { it.classList.add('press'); setTimeout(function(){ it.classList.remove('press'); }, 170); }
     return;
@@ -666,6 +687,7 @@ var PRE = {};   // 누르는 순간 출발한 방 열기 요청(id → {p, at})
 function fetchRoom(id){ PRE[id] = { p: askRead({ action:'s_room', auth: me, id: id }), at: Date.now() }; }
 function openRoom(id){
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
+  seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 자기 숫자만, 10-12)
   S.cur = { id: id, lastAt: c && c.lastAt === row.lastAt ? row.lastAt : '' };
   R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c };
   ta.value = ''; clearAtts(); autosize(); closeView();
@@ -680,7 +702,7 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ closeView(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }
+function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); closeView(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];

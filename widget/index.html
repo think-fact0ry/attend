@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v111';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v112';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -798,8 +798,9 @@ function punchFailed(prev, msg){
      19가 한유성 = 보기 서명(role viewer — 답장은 하되 맡지 않음, 열어도 읽음 안 남음), 행정 = 행정 서명을 준다. 서명이 null이면 지운다.
      옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(시작 때 지움).
    · 박동: 행정 서명일 때만 on(=지금 출근 중)을 싣는다 → 26이 채팅/메일 모드를 정한다. 받은함 페이지는 on을 안 실음.
-   · 세는 것 = 마지막 말이 학부모인 대화(=답장 전). 행정은 대기+내 대화, 보기 전용은 전체.
-     톡톡·카카오 카드(2단계, r.ch)는 **대기에 있을 때만** 센다 — 맡은 카드는 파트너센터에서 답했는지 우리가 몰라서(inqCountable, 앱 inqCountApp과 같게).
+   · 세는 것 = 안 읽은 학부모 글 합(10-12 카톡식 — 유성 「문의가 3이면 그 3만큼 … 어디 채팅이 2인지」). 줄마다 26 s_poll unread(행정 = 대화방 열거나 카드 누르면 0,
+     한유성 = 자기 본 수 따로), 행정은 대기+내 대화, 보기 전용은 전체(inqUnread, 앱 inqCountApp과 같게). unread 칸 없는 옛 서버면 옛 규칙 = 마지막 말이 학부모인 대화 수
+     (카드는 대기에 있을 때만, inqCountable).
    · ⚠️흔들림·미리보기(피어나기)·소리는 이 창으로 못 한다(실측: 창 = DWM 라운드 사각 하나, 투명 영역 없음·창 이동은 호스트만)
      → exe 4판이 `notify`를 받아 한다(아래 inqAlert). 'inq'는 로그 한 줄로 남긴다. */
 var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
@@ -876,7 +877,7 @@ function inqCount(id){
     if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined, was: inq.seen[x.id] });
   });
   inq.seen = seen;
-  inq.n = rows.filter(inqCountable).length;
+  inq.n = rows.reduce(function(a, x){ return a + inqUnread(x); }, 0);   // 「문의 N」 = 안 읽은 글 합(10-12 카톡식 — 옛: 줄 수)
   render();
   // 새 학부모 줄 → 호스트 로그 한 줄. 행정은 늘, 한유성 보기는 알림이 켜진 때만(10-12 — 로그아웃 뒤엔 로그도 안 남김)
   // 🔎10-12 01:50:27 노트북 실측: 서버 도착 01:48:09(다시 읽기 01:49:58 전) 줄로 다시 읽기 29초 뒤 「more」가 났다 — 처음 목록은 안 울려야 한다.
@@ -890,15 +891,18 @@ function inqCount(id){
   inqAlert(rows, fresh);
 }
 function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   // ⚠️inqCount 뒤에 둔다 — 위젯알림 시험이 inqCount부터 떼어 돌린다
+// 줄 하나의 안 읽은 수(26 s_poll unread — 행정 = 줄 번호 − 행정 읽음, 한유성 = 학부모 글 수 − 본 수, 10-12). 그 칸이 없는 옛 응답이면 옛 규칙(1/0)
+function inqUnread(x){ return x.unread != null ? Math.max(0, +x.unread || 0) : (inqCountable(x) ? 1 : 0); }
 // 로그용 시각 「HH:MM:SS」 — ISO 글자든 버전표(ms.우연수)든. 모르면 「-」
 function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(v || '')) ? parseInt(v, 10) : Date.parse(v)); if (!t || isNaN(t)) return '-'; var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 
 /* ── 문의 알림(exe 4판, 1-c 2026-10-10) ──
    정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
    · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
-   · 새 대화 = 소리 + 미리보기 + 두 번 흔들림 / 있던 대화에 학부모 새 줄 = **미리보기 + 두 번 흔들림**(소리만 없음 — 유성 10-12 「새 카드가 아니더라도, 새로운 문의가 왔을 때는 항상 미리보기 … 카톡도 채팅방이 몇년째 사라지지 않고 있는데 … 알림이 안오는 건 아니잖아」, 옛 5차 「흔들림만」을 뒤집음) /
-     학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리는 새 대화에만 — §5.1 소리 과용 금지).
-   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄 = 미리보기 + 흔들림(10-12, 소리는 새 카드만), **3분 재알림 없음**
+   · 학부모 새 줄 = 새 대화든 있던 대화든 **소리 + 미리보기 + 두 번 흔들림**(10-12 카톡식 — 유성 「새로운 문의가 왔을 때는 항상 미리보기 … 카톡도 …」에 이어
+     「카카오채널로 온 문의 … 울리지도 않고」. 옛 5차 「있던 대화 = 흔들림만」·v111 「소리는 새 대화만」을 뒤집음. 소리와 흔들림은 10초에 한 번까지 = inqRing, 그 안의 다음 글은 미리보기만 바뀜) /
+     학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리 없음 — §5.1 소리 과용 금지).
+   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄도 같음(10-12 카톡식), **3분 재알림 없음**
      (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
    · 행정이 출근 중일 때(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로) + 한유성이 로그인 중일 때(10-12 — 출근 없이도, 로그아웃이면 0. 옛 D10 「관리자 보기는 숫자만」은 끝).
      3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
@@ -913,9 +917,12 @@ var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC
 //   유휴 잠금과 앱 로그아웃 버튼은 둘 다 att_locked라 구별이 안 돼서 버튼만 att_bye를 따로 적는다(로그인하면 지움 — 앱 두 길·알약 startActSession).
 function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch (e) { return false; } }
 function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
+var inqRing = 0;   // 마지막으로 소리나 흔들림을 보낸 때(10초에 한 번까지 — 카톡식 규칙 6)
 function inqNotify(kind, preview, ch){
   if (!caps || !caps.notify) return;
-  toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: true, shake: true,   // 미리보기 = 늘(10-12 유성 「항상 미리보기」 — 이어진 줄 more도). 소리만 새 대화
+  var now = Date.now(), quiet = now - inqRing < 10000;
+  if (!quiet) inqRing = now;
+  toHost({ type:'notify', kind: kind, sound: kind !== 'late' && !quiet, peek: true, shake: !quiet,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 3분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
            title: ch === 'kk' ? '카카오 문의' : (ch ? '톡톡 문의' : '홈페이지 문의'), text: String(preview || '').split('\n')[0] });
 }
 function inqAlert(rows, fresh){
