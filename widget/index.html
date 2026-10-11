@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v110';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v111';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -896,9 +896,9 @@ function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(
 /* ── 문의 알림(exe 4판, 1-c 2026-10-10) ──
    정본 = 1-c 계획 prototype/19_문의알리미_1c마무리_계획_프리뷰.html §3 · 디자인 5차 · 원칙 §4.18.
    · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
-   · 새 대화 = 소리 + 미리보기 + 두 번 흔들림 / 있던 대화에 학부모 새 줄 = 두 번 흔들림만(5차 「맨 아래 대화에 새 메시지」) /
+   · 새 대화 = 소리 + 미리보기 + 두 번 흔들림 / 있던 대화에 학부모 새 줄 = **미리보기 + 두 번 흔들림**(소리만 없음 — 유성 10-12 「새 카드가 아니더라도, 새로운 문의가 왔을 때는 항상 미리보기 … 카톡도 채팅방이 몇년째 사라지지 않고 있는데 … 알림이 안오는 건 아니잖아」, 옛 5차 「흔들림만」을 뒤집음) /
      학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리는 새 대화에만 — §5.1 소리 과용 금지).
-   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄 = 흔들림만, **3분 재알림 없음**
+   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄 = 미리보기 + 흔들림(10-12, 소리는 새 카드만), **3분 재알림 없음**
      (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
    · 행정이 출근 중일 때(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로) + 한유성이 로그인 중일 때(10-12 — 출근 없이도, 로그아웃이면 0. 옛 D10 「관리자 보기는 숫자만」은 끝).
      3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
@@ -915,7 +915,7 @@ function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch
 function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
 function inqNotify(kind, preview, ch){
   if (!caps || !caps.notify) return;
-  toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: kind !== 'more', shake: true,
+  toHost({ type:'notify', kind: kind, sound: kind === 'new', peek: true, shake: true,   // 미리보기 = 늘(10-12 유성 「항상 미리보기」 — 이어진 줄 more도). 소리만 새 대화
            title: ch === 'kk' ? '카카오 문의' : (ch ? '톡톡 문의' : '홈페이지 문의'), text: String(preview || '').split('\n')[0] });
 }
 function inqAlert(rows, fresh){
