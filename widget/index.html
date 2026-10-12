@@ -228,7 +228,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v113';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v114';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -376,7 +376,8 @@ if (window.chrome && window.chrome.webview) {
     // exe 4판부터: 알약이 뜰 때마다 「할 줄 아는 것」을 알려 준다 → 이걸 받은 뒤에만 notify·show-app을 쓴다(아래 문의 알림).
     if (m.type === 'caps')    { caps = (m.v >= 4) ? m : null; }
     // 미리보기 창을 누름 = 호스트가 이미 앱을 앞으로 띄웠다 → 갈 곳(받은함)만 남긴다(show-app을 또 보내지 않는다).
-    if (m.type === 'peek-click') { try { localStorage.setItem('att_go', 'inbox|' + Date.now()); } catch (e) { } }
+    //   10-12 ①: 미리보기로 띄운 방이 8초 안이면 att_go 끝에 방 id를 붙인다 → 앱이 받은함에 그 방을 열라고 전한다(없으면 받은함만)
+    if (m.type === 'peek-click') { try { localStorage.setItem('att_go', 'inbox|' + Date.now() + (inqPeek && Date.now() - inqPeek.at < INQ_PEEK_MS ? '|' + inqPeek.id : '')); } catch (e) { } }
   });
 }
 
@@ -857,7 +858,7 @@ function inqPoll(){
       try { localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); } catch (e) { }
       inqCount(id);
     } else inqCacheTouch(id, r.gver);
-    inqLateCheck();   // 방금 받은 목록 기준으로만 본다(그 사이 답장했는데 「3분」이 울리지 않게)
+    inqLateCheck();   // 방금 받은 목록 기준으로만 본다(그 사이 답장했는데 「2분」이 울리지 않게)
   }).catch(function(){ inq.busy = false; });
 }
 // 「바뀐 것 없음」이어도 남긴 목록의 시각(t)을 새로 쓴다 = t는 **마지막으로 확인한** 때(10-10 유성 「문의채팅 들어가면 순간 아무것도 없어 … 없다고 나와」).
@@ -874,7 +875,8 @@ function inqCount(id){
   var rows = inq.rows || [], seen = {}, fresh = [], first = !inq.seen;
   rows.forEach(function(x){
     seen[x.id] = x.lastAt;
-    if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt) fresh.push({ row: x, room: inq.seen[x.id] === undefined, was: inq.seen[x.id] });
+    // 새 글 = 학부모 줄이 마지막이고 시각이 **앞으로** 갔을 때만(10-12 거두기 — 마지막 답장을 거두면 시각이 그 앞 학부모 줄로 **되돌아가는데**, 그걸 새 글로 보면 거짓 알림)
+    if (!first && x.lastWho === 'v' && inq.seen[x.id] !== x.lastAt && (inq.seen[x.id] === undefined || String(x.lastAt) > String(inq.seen[x.id]))) fresh.push({ row: x, room: inq.seen[x.id] === undefined, was: inq.seen[x.id] });
   });
   inq.seen = seen;
   inq.n = rows.reduce(function(a, x){ return a + inqUnread(x); }, 0);   // 「문의 N」 = 안 읽은 글 합(10-12 카톡식 — 옛: 줄 수)
@@ -893,6 +895,30 @@ function inqCount(id){
 function inqCountable(x){ return x.lastWho === 'v' && !(x.ch && x.owner); }   // ⚠️inqCount 뒤에 둔다 — 위젯알림 시험이 inqCount부터 떼어 돌린다
 // 줄 하나의 안 읽은 수(26 s_poll unread — 행정 = 줄 번호 − 행정 읽음, 한유성 = 학부모 글 수 − 본 수, 10-12). 그 칸이 없는 옛 응답이면 옛 규칙(1/0)
 function inqUnread(x){ return x.unread != null ? Math.max(0, +x.unread || 0) : (inqCountable(x) ? 1 : 0); }
+// 이름 규칙(받은함 inbox/index.html nameParts와 **글자까지 같은 사본** — 19 위젯알림 시험이 두 본문을 대조한다. 공용 파일로 안 빼는 이유 =
+//   Pages 10분 캐시가 문서와 공용 파일의 판을 엇갈리게 할 수 있다, 08-01 사고): top = 붙인 이름 > 카드 닉네임, base = 원래 이름(카드 = 서해구·카카오 / 홈페이지)
+function nameParts(r){ var card = !!(r && r.ch); return { top: (r && r.label) || (card ? r.nick : '') || '', base: card ? (r.base || '') : '홈페이지' }; }
+// 미리보기 창 제목(10-12 유성 「② 미리보기 제목에 보낸 사람」): 「김민지 (서해구 톡톡)」·「유성 (카카오)」·「서해구 쌍둥이 (홈페이지)」, 이름 없는 홈페이지 = 「홈페이지 문의」.
+//   ⚠️exe 미리보기 창(PEEK_HTML .s)은 제목 줄에 말줄임이 없다 → 긴 이름은 여기서 이름만 줄여 「(…)」는 남긴다(exe를 안 바꾸려고). 글자 폭 = 그 창과 같은 글꼴 12px로 잼
+var PEEK_TITLE_W = 214;   // 창 260 − 좌우 여백 26 − 빨간 점 7 − 사이 6 − 여유 7
+function inqTitle(r){
+  var p = nameParts(r || {}), tail;
+  if (r && r.ch) tail = r.ch === 'kk' ? '카카오' : (p.base ? p.base + ' 톡톡' : '톡톡');
+  else tail = '홈페이지';
+  if (!p.top) return tail + ' 문의';
+  var name = Array.from(p.top), fit = function(s){ return inqTextW(s + ' (' + tail + ')') <= PEEK_TITLE_W; };
+  if (fit(p.top)) return p.top + ' (' + tail + ')';
+  while (name.length > 1 && !fit(name.join('') + '…')) name.pop();
+  return name.join('') + '… (' + tail + ')';
+}
+var inqCanvas = null;
+function inqTextW(s){
+  try {
+    inqCanvas = inqCanvas || document.createElement('canvas').getContext('2d');
+    inqCanvas.font = "12px 'Pretendard Variable', Pretendard, 'Malgun Gothic', sans-serif";
+    return inqCanvas.measureText(s).width;
+  } catch (e) { return Array.from(s).length * 12; }   // 그릴 수 없는 곳(시험 가짜) = 한 글자 12px로
+}
 // 로그용 시각 「HH:MM:SS」 — ISO 글자든 버전표(ms.우연수)든. 모르면 「-」
 function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(v || '')) ? parseInt(v, 10) : Date.parse(v)); if (!t || isNaN(t)) return '-'; var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
 
@@ -901,50 +927,53 @@ function inqHms(v){ var t = typeof v === 'number' ? v : (/^\d{12,}/.test(String(
    · 정책은 여기(웹)가 정하고 exe는 몸 상태만 본다(전체 화면=숨김, 패널 펼침=소리만, 앱 창 맨 앞=흔들림만 — exe Alert.Decide).
    · 학부모 새 줄 = 새 대화든 있던 대화든 **소리 + 미리보기 + 두 번 흔들림**(10-12 카톡식 — 유성 「새로운 문의가 왔을 때는 항상 미리보기 … 카톡도 …」에 이어
      「카카오채널로 온 문의 … 울리지도 않고」. 옛 5차 「있던 대화 = 흔들림만」·v111 「소리는 새 대화만」을 뒤집음. 소리와 흔들림은 각각 10초에 한 번까지 = inqRingS·inqRingK, 그 안의 다음 글은 미리보기만 바뀜) /
-     학부모 말이 마지막인 채 3분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리 없음 — §5.1 소리 과용 금지).
-   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄도 같음(10-12 카톡식), **3분 재알림 없음**
-     (답했는지 모름 — 계획 4-4). 미리보기 제목 = 「톡톡 문의」·「카카오 문의」. exe는 안 바꾼다(웹만).
+     학부모 말이 마지막인 채 2분 = 미리보기 + 두 번 흔들림(대화마다 한 번, 새 줄이 오면 다시 셈. 소리 없음 — §5.1 소리 과용 금지. 10-12 유성 「3분 x, 2분으로」).
+   · 톡톡·카카오 카드(2단계) = 새 카드는 새 홈페이지 대화와 같이(소리, 미리보기, 흔들림), 같은 분의 다음 줄도 같음(10-12 카톡식), **2분 재알림 없음**
+     (답했는지 모름 — 계획 4-4). 미리보기 제목 = 보낸 사람(inqTitle — 10-12 ②). exe는 안 바꾼다(웹만).
    · 행정이 출근 중일 때(유성 10-10 「퇴근하면 업무는 끝」, 남은 문의는 다음 근무일로) + 한유성이 로그인 중일 때(10-12 — 출근 없이도, 로그아웃이면 0. 옛 D10 「관리자 보기는 숫자만」은 끝).
-     3분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
+     2분은 **이 PC가 그 줄을 본 때부터** 센다 — 서버 시각과 PC 시계가 어긋나도 안 흔들리고, 출근 전에 와 있던 줄이 출근 순간 한꺼번에 울리지 않는다.
    · ⚠️exe가 `caps`(v4)를 보낸 뒤에만 보낸다 — 3판 exe는 notify를 모르고, open은 토글이라 열린 앱 창을 닫는다.
    · ⚠️학부모 글은 `text`에만 싣는다 — 호스트가 `m` 칸을 PC 로그 파일(edge.log)에 쓴다. */
 var caps = null;
-var INQ_LATE_MS = 3 * 60 * 1000;
-var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC가 본 때 + 3분, p: 미리보기 }
+var INQ_LATE_MS = 2 * 60 * 1000;   // 10-12 유성 「문의 다시 울림 3분 x, 2분으로」 — 받은함 「2분 넘음」(LATE_MS)과 같은 값
+var inqLate = {};   // 방 id → { at: 그 학부모 줄의 lastAt, due: 이 PC가 본 때 + 2분, row: 그 줄(미리보기 글·제목) }
+// 미리보기 누름 → 그 대화(10-12 ①): 마지막으로 미리보기를 띄운 방. exe 미리보기 창은 4.5초(새 알림이면 다시 4.5초) 떠 있으니 8초 지난 기억은 안 쓴다
+var inqPeek = null, INQ_PEEK_MS = 8000;
 // 알림 켬 = 행정이 출근 중 **또는** 한유성(보기 서명)이 로그인 중(유성 10-12 「한유성 로그인했으면 울리게해. 출근버튼 누르지 않아도 … 로그아웃 했을때는 울리지 않게」 — D10 「관리자 보기는 숫자만」을 뒤집음).
 //   한유성 로그인 = 호스트 세션(auth)이 있고 앱 「로그아웃」 버튼 표시(att_bye)가 없음. **1시간 유휴 자동 잠금은 로그아웃이 아니다**(비밀번호만 다시 — 유성 10-12 「계속 울림」).
 //   멈추는 때 = 트레이 「로그아웃」·자정(호스트가 빈 auth → 위 auth 처리가 서명을 지움) · 앱 「로그아웃」 버튼(att_bye) · 다른 사람이 로그인(서명이 그 사람 것으로).
 //   유휴 잠금과 앱 로그아웃 버튼은 둘 다 att_locked라 구별이 안 돼서 버튼만 att_bye를 따로 적는다(로그인하면 지움 — 앱 두 길·알약 startActSession).
 function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch (e) { return false; } }
 function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
-// 마지막으로 소리를 낸 때 / 흔든 때(각각 10초에 한 번까지 — 카톡식 규칙 6). 따로 세는 이유 = 3분 다시 알림은 소리 없이 흔들기만 해서,
+// 마지막으로 소리를 낸 때 / 흔든 때(각각 10초에 한 번까지 — 카톡식 규칙 6). 따로 세는 이유 = 2분 다시 알림은 소리 없이 흔들기만 해서,
 //   하나로 세면 그 직후 진짜 새 글의 소리까지 먹는다(10-12 리뷰)
 var inqRingS = 0, inqRingK = 0;
-function inqNotify(kind, preview, ch){
+function inqNotify(kind, row){
   if (!caps || !caps.notify) return;
   var now = Date.now(), snd = kind !== 'late' && now - inqRingS >= 10000, shk = now - inqRingK >= 10000;
   if (snd) inqRingS = now;
   if (shk) inqRingK = now;
-  toHost({ type:'notify', kind: kind, sound: snd, peek: true, shake: shk,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 3분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
-           title: ch === 'kk' ? '카카오 문의' : (ch ? '톡톡 문의' : '홈페이지 문의'), text: String(preview || '').split('\n')[0] });
+  inqPeek = { id: row.id, at: now };   // 미리보기 창은 늘 이 알림 글로 바뀐다(exe Pop) → 누르면 이 방
+  toHost({ type:'notify', kind: kind, sound: snd, peek: true, shake: shk,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 2분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
+           title: inqTitle(row), text: String(row.preview || '').split('\n')[0] });   // 제목 = 보낸 사람(exe는 제목·글을 로그에 안 쓴다 — widget.cs OnNotify)
 }
 function inqAlert(rows, fresh){
   if (!inqDuty()) { inqLate = {}; return; }
   var now = Date.now();
-  // 답장했거나(마지막 말이 우리) 목록에서 빠진 대화는 3분 대기에서 뺀다
+  // 답장했거나(마지막 말이 우리) 목록에서 빠진 대화는 2분 대기에서 뺀다
   var by = {}; rows.forEach(function(x){ by[x.id] = x; });
   Object.keys(inqLate).forEach(function(k){ var x = by[k]; if (!x || x.lastWho !== 'v' || x.lastAt !== inqLate[k].at) delete inqLate[k]; });
   if (!fresh.length) return;
-  fresh.forEach(function(f){ if (!f.row.ch) inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, p: f.row.preview }; });   // 카드는 3분 재알림 없음
+  fresh.forEach(function(f){ if (!f.row.ch) inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, row: f.row }; });   // 카드는 2분 재알림 없음
   // 여러 줄이 한 번에 오면 알림은 한 번 — 새 대화가 있으면 그것(목록이 최근순이라 첫 것이 가장 최근)
   var room = fresh.filter(function(f){ return f.room; })[0];
-  if (room) inqNotify('new', room.row.preview, room.row.ch); else inqNotify('more', fresh[0].row.preview, fresh[0].row.ch);
+  if (room) inqNotify('new', room.row); else inqNotify('more', fresh[0].row);
 }
 function inqLateCheck(){
   if (!inqDuty()) { inqLate = {}; return; }
   var now = Date.now(), due = null;
   Object.keys(inqLate).forEach(function(k){ if (inqLate[k].due <= now) { if (!due) due = inqLate[k]; delete inqLate[k]; } });
-  if (due) inqNotify('late', due.p);
+  if (due) inqNotify('late', due.row);
 }
 /* 받은함 = 앱 창 안의 새 페이지(attend/inbox/, D9). att_go 표시를 남기면 앱이 1초 안에 보고 받은함으로 간다.
    · exe 4판(caps 받음) = show-app: 닫지 않고 열기, 이미 열려 있으면 앞으로(하던 화면은 앱이 att_go로 판단).

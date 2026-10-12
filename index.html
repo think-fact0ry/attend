@@ -1083,7 +1083,7 @@ if (window.chrome && window.chrome.webview) {
    · 받은함의 창 신호(− 닫기, 위 12px 이동, ← 뒤로)는 **여기(부모)를 거쳐** 호스트로 간다 — iframe 안 chrome.webview 메시지는
      호스트가 받는다는 보장이 없다(exe는 FrameCreated를 구독하지 않는다). */
 var IS_HOST = !!(window.chrome && window.chrome.webview);
-var inqUi = { frame: null, pending: false, sig: '', preT: null };
+var inqUi = { frame: null, pending: false, sig: '', preT: null, ready: false, goId: '', goAt: 0 };   // ready = 받은함 창 load 끝, goId = 미리보기로 연 방(10-12 ①)
 // 문의 신원 = **계정** 하나(10-10 유성 「기준은 계정」) — 19가 로그인·알약 조회 때 그 계정 것을 준다(등록 PC에서만).
 //   한유성 = 보기 서명(role viewer), 행정 = 행정 서명(role staff). 옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(부팅 때 지움).
 function inqIdApp() {
@@ -1125,7 +1125,7 @@ function inqSync() {
     inqPost({ type: 'dot', on: n > 0 });   // 문의 채팅 머리의 메뉴 아이콘 점도(10-10 메뉴 넣기)
   }
   if (ok === true) {
-    if (inqUi.pending) { inqUi.pending = false; go('inq'); }
+    if (inqUi.pending) { inqUi.pending = false; go('inq'); inqGoSend(); }
     else if (!inqUi.frame && !inqUi.preT) inqUi.preT = setTimeout(function () { inqUi.preT = null; if (inqAllowed() === true) inqFrameEnsure(); }, 1500);   // 출근 중이면 미리 불러 둔다(계획 §4 제안 2) — 앱 첫 그림과 안 겹치게 조금 뒤에
   } else if (ok === false) {
     if (store.token && !localStorage.getItem('att_locked')) inqUi.pending = false;   // 잠금 중엔 남긴다(비밀번호 뒤에 열 것)
@@ -1137,11 +1137,23 @@ function inqFrameEnsure() {
   if (inqUi.frame) return;
   var f = document.createElement('iframe');
   f.id = 'inqFrame'; f.title = '문의 채팅'; f.src = './inbox/';
-  f.addEventListener('load', function () { inqPost({ type: 'dot', on: +(String(inqUi.sig).split('|')[1] || 0) > 0 }); });   // 막 뜬 창에도 지금 점 상태(sig = '보임|숫자')
+  f.addEventListener('load', function () { inqUi.ready = true; inqPost({ type: 'dot', on: +(String(inqUi.sig).split('|')[1] || 0) > 0 }); inqGoSend(); });   // 막 뜬 창에도 지금 점 상태(sig = '보임|숫자') + 기다리던 「그 방」
+  inqUi.ready = false;
   $('s-inq').appendChild(f); inqUi.frame = f;
+}
+// 미리보기를 눌러 온 「그 방」(10-12 ① 유성 「카톡 알림을 누르면 그 채팅방이 열려요」) — 창이 다 뜬 뒤 한 번 보낸다.
+//   잠겨 있으면 비밀번호 뒤까지 기억하되 2분이 지나면 버린다(늦게 열린 창이 엉뚱한 방으로 가지 않게 — 그땐 받은함 목록만)
+var INQ_GO_MS = 120000;
+function inqGoKeep(id) { inqUi.goId = id || ''; inqUi.goAt = Date.now(); }
+function inqGoSend() {
+  if (!inqUi.goId) return;
+  if (Date.now() - (inqUi.goAt || 0) > INQ_GO_MS) { inqUi.goId = ''; return; }
+  if (!inqUi.frame || !inqUi.ready) return;   // 창이 뜨면(load) 다시 부른다
+  inqPost({ type: 'go', id: inqUi.goId }); inqUi.goId = '';
 }
 function inqUnload() {
   clearTimeout(inqUi.preT); inqUi.preT = null;
+  inqUi.ready = false;
   if (!inqUi.frame) return;
   try { inqUi.frame.remove(); } catch (e) { }
   inqUi.frame = null;
@@ -1151,36 +1163,40 @@ function inqVis(on) {
   if (on) inqFrameEnsure();
   inqPost({ type: 'vis', on: !!on });
 }
-// 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending)
-function inqOpen() {
+// 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending). id = 미리보기로 띄운 방(있으면 받은함이 그 방을 연다)
+function inqOpen(id) {
   if (!IS_HOST) return;
+  if (id) inqGoKeep(id);
   if (!store.token || localStorage.getItem('att_locked')) { inqUi.pending = true; return; }
   var ok = inqAllowed();
-  if (ok === false) return;   // 퇴근 뒤 등 — 알약에도 문의 칸이 없는 때
+  if (ok === false) { inqUi.goId = ''; return; }   // 퇴근 뒤 등 — 알약에도 문의 칸이 없는 때
   inqUi.pending = false;
   go('inq');                  // 상태를 아직 모르면(null) 먼저 열고, 상태가 오면 inqSync가 다시 판정한다
+  inqGoSend();
 }
 // 알약이 남긴 표시(att_go) — 15초만 유효(늦게 열린 창이 엉뚱하게 넘어가지 않게). 한 번 쓰면 지운다.
+//   'inbox|시각' 또는 'inbox|시각|방'(10-12 ① 미리보기 누름) → { id: 방 또는 '' } / 아니면 false
 function takeInqGo() {
   try {
     var g = localStorage.getItem('att_go'); if (!g) return false;
     localStorage.removeItem('att_go');
     var p = g.split('|');
-    return p[0] === 'inbox' && Date.now() - (+p[1] || 0) < 15000;
+    if (p[0] !== 'inbox' || Date.now() - (+p[1] || 0) >= 15000) return false;
+    return { id: String(p[2] || '').slice(0, 40) };
   } catch (e) { return false; }
 }
 if (IS_HOST) {
   // storage 이벤트(다른 WebView2 문서 사이 전파는 확인한 적 없는 사실) + 1초 확인 둘 다 — 한쪽에만 기대지 않는다(24차-2 교훈)
   window.addEventListener('storage', function (e) {
     if (!e) return;
-    if (e.key === 'att_go' && e.newValue) { if (takeInqGo()) inqOpen(); }
+    if (e.key === 'att_go' && e.newValue) { var gg = takeInqGo(); if (gg) inqOpen(gg.id); }
     else if (e.key === 'att_inqc' || e.key === 'att_inq') inqSync();
     // 알약 키패드로 로그인(startActSession이 잠금을 지움) → 열려 있던 이 창의 비밀번호 화면도 닫고 그 세션으로 — 세션은 하나(10-10 유성
     //   「퇴근 뒤 행정은 키패드, 문의는 로그인된 걸로」). noCancel = 로그인 관문(관리자 비밀번호 같은 다른 키패드는 안 건드림)
     else if (e.key === 'att_locked' && !e.newValue && pinCtx && pinCtx.noCancel && store.token) { pinHelpers.close(); syncNow(); }
   });
   setInterval(function () {
-    try { if (localStorage.getItem('att_go') && takeInqGo()) inqOpen(); } catch (e) { }
+    try { var g1 = localStorage.getItem('att_go') && takeInqGo(); if (g1) inqOpen(g1.id); } catch (e) { }
     inqSync();
   }, 1000);
   // 받은함 안 창이 보내는 것 — 같은 출처 + 그 창에서 온 것만
@@ -3578,7 +3594,7 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
 (function boot() {
   // 알약 「문의」로 열린 창(att_go) — 10-10부터 페이지를 바꾸지 않고 부팅 뒤 「문의 채팅」 화면으로(잠겨 있으면 비밀번호 뒤에)
   var wantInq = IS_HOST && takeInqGo();
-  if (wantInq) inqUi.pending = true;
+  if (wantInq) { inqUi.pending = true; if (wantInq.id) inqGoKeep(wantInq.id); }
   try { localStorage.removeItem('att_inqv'); } catch (e) { }   // 옛 「PC에 붙는 관리자 보기」 열쇠(10-10 계정 기준으로 바꿈) — 남겨 두면 날짜 없는 서명이 그 PC에 계속 산다
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
   // 자정 잠금(08-01) — 확정 규칙 "세션 종료=퇴근·유휴 1시간·자정" 중 자정이 앱엔 미구현이었다:
