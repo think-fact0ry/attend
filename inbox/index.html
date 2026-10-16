@@ -115,6 +115,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .it .l1 .tag.pin{color:var(--g900);font-weight:700;padding:0 6px 0 5px}
 .it .l1 .tag.pin svg{width:11px;height:11px;fill:currentColor;stroke:none}
 .it .l1 .tag.live{color:var(--green800);background:var(--green100)}
+/* 이용 중 가정(10-12 ⑥, 26이 10-19 0시부터 use를 싣는다) — 채운 「보는 중」과 갈리게 테두리만. 길면 이 뱃지가 먼저 줄어든다 */
+.it .l1 .tag.use{color:var(--green700);background:none;box-shadow:inset 0 0 0 1px var(--green200);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .it .l2{font-size:var(--fs-sm);color:var(--g700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .it .rt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:none}
 .it .el{font-size:11.5px;color:var(--g600);white-space:nowrap}
@@ -149,7 +151,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rh .x{width:34px;height:34px;border:0;background:none;color:var(--g700);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:10px;transition:transform .16s;flex:none}
 .rh .x:active{transform:scale(.86)}
 .rh .x svg{width:20px;height:20px}
-.rh .nm{font-size:15px;font-weight:700}
+.rh .nm{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;min-width:0}
+.rh .nm .use{display:none;font-size:11px;font-weight:600;color:var(--green700);box-shadow:inset 0 0 0 1px var(--green200);border-radius:6px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rh .nm .use.on{display:inline-block}
 .rh .st{font-size:var(--fs-caption);color:var(--g600);display:flex;align-items:center;gap:5px}
 .rh .st i{width:7px;height:7px;border-radius:50%;background:var(--green600);flex:none}
 .rh .st.off i{background:var(--g400)}
@@ -171,10 +175,11 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day + .row{margin-top:0}
 .row.me{justify-content:flex-end}
 .row .who{font-size:var(--fs-caption);color:var(--g600);margin:0 0 4px 2px}
-.bub{max-width:300px;padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.bub{max-width:300px;padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}   /* 단어 단위로 꺾기 = 카톡, 홈페이지 창과 같게(10-15 유성 「익숙한 걸로」 — break-word는 「금액 / 은」처럼 글자 사이에서 끊었다) */
 .them .bub{background:var(--g100);color:var(--g900)}
 .them:not(.cont) .bub{border-top-left-radius:6px}
 .me .bub{background:var(--g800);color:#fff}
+.me .bub.rc{background:var(--g100);color:var(--g600)}   /* 거둔 답장 흔적(10-12) — 받은함에만, 학부모 화면엔 없음 */
 /* 우리 쪽 마지막 말풍선의 오른쪽 아래만 6px이던 꼬리 모서리는 뺐다 — 「오른쪽이 일부 잘려 있는 듯」(유성 10-10). 실측으로는 잘린 곳 0
    (실제 창 = 125%에서 CSS 368px, 말풍선 오른쪽 끝 354 = 대화 칸 안쪽 끝, 자르는 조상 끝 368), 오른쪽에서 모양이 다른 곳은 그 모서리 하나였다 */
 .meta2{font-size:11px;color:var(--g600);white-space:nowrap;margin-bottom:2px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
@@ -259,6 +264,65 @@ body.fileon .ta{padding-right:40px}
 
 .atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:9}
 .atoast.on{opacity:1;transform:translateX(-50%)}
+
+/* 아이 찾기 띠(10-15 유성 「나머지는 다 괜찮다. go」 — prototype/26_문의채팅_아이찾기카드_4방향_프리뷰.html 「A 다시」 3차).
+   카톡 대화방 공지처럼 머리 아래 떠 있는 흰 띠. 상태 = 점 + 글자(대기 중 = 주황 점, 배정됨 = 초록 빈 점, 이용 중 = 초록 점), 버튼 = 펼친 맨 아래 글자 버튼.
+   26이 kid를 실어 줄 때만 그린다(처리방침 넓힘 시행 뒤). 클래스는 kb- 머리(받은함의 .st, .who와 안 겹치게) */
+.kbw{position:relative;height:0;z-index:4;flex:none}
+.kb{position:absolute;left:10px;right:10px;top:8px;background:#fff;border-radius:14px;border:1px solid #eceef1;box-shadow:0 1px 2px rgba(25,31,40,.05),0 6px 18px rgba(25,31,40,.08)}
+.kb-row{display:flex;align-items:center;gap:9px;width:100%;padding:11px 12px 11px 14px;border:0;background:none;text-align:left;color:inherit;border-radius:14px;font:inherit;cursor:pointer}
+.kb-row:hover{background:#fafbfc}
+.kb-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap;flex:none}
+.kb-st i{width:8px;height:8px;border-radius:50%;flex:none}
+.kb-st.wait{color:var(--warn-weak-fg)}.kb-st.wait i{background:var(--warn)}
+.kb-st.assigned{color:var(--green700)}.kb-st.assigned i{background:#fff;box-shadow:inset 0 0 0 2px var(--green600)}
+.kb-st.using{color:var(--green700)}.kb-st.using i{background:var(--green600)}
+.kb-st.none{color:var(--g600)}.kb-st.none i{background:var(--g400)}
+.kb-row .kb-who{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--g700)}
+.kb-row .kb-who b{color:var(--g900);font-weight:700}
+.kb-chev{width:18px;height:18px;color:var(--g400);flex:none;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.kb.open .kb-row .kb-chev{transform:rotate(180deg)}
+.kb-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+.kb.open .kb-more{grid-template-rows:1fr}
+.kb-more>div{overflow-x:hidden;overflow-y:auto;min-height:0;max-height:calc(100vh - 200px);scrollbar-width:none}   /* 아이 셋을 펼쳐도 입력 칸을 안 덮게(실제 창 세로 CSS 563 — 머리, 띠 줄, 입력 줄 몫 200) */
+.kb-more>div::-webkit-scrollbar{width:0}
+.kb-kid{padding:0 14px 12px}
+.kb-kid+.kb-kid{border-top:1px solid var(--g100);padding-top:12px}
+.kb-kid .kh{font-size:13.5px;margin-bottom:6px;display:flex;align-items:center;gap:8px;min-width:0}
+.kb-kid .kh span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-kid .kh b{font-weight:700}
+.kb-dl{display:grid;grid-template-columns:34px 1fr;gap:4px 10px;margin:0;font-size:13.5px}
+.kb-dl dt{color:var(--g500)}
+.kb-dl dd{margin:0;color:var(--g900);min-width:0;overflow-wrap:anywhere}
+.kb-foot{display:flex;border-top:1px solid var(--g100)}
+.kb-foot button{flex:1;height:44px;border:0;background:none;font:inherit;font-size:13.5px;font-weight:600;color:var(--g700);cursor:pointer}
+.kb-foot button+button{border-left:1px solid var(--g100)}
+.kb-foot button.pri{color:var(--green700);font-weight:700}
+.kb-foot button:hover{background:#fafbfc}
+.kb-kid .kb-foot{margin:10px -14px -12px}
+.kb-note{padding:0 14px 10px;font-size:13px;color:var(--g600);display:flex;align-items:center;gap:8px}
+.kb-note span{flex:1;min-width:0}
+.kb-note button{border:0;background:var(--g100);color:var(--g700);font:inherit;font-size:12.5px;font-weight:600;border-radius:99px;padding:4px 10px;cursor:pointer;flex:none}
+.kb-find{position:relative;padding:8px 10px}
+.kb-find.inrow{padding:0 10px 10px}
+.kb-in{width:100%;border:0;background:var(--g100);border-radius:10px;padding:10px 12px 10px 36px;font:inherit;font-size:14px;color:var(--g900);outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b95a1' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='20' y1='20' x2='16.5' y2='16.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+.kb-in:focus{box-shadow:inset 0 0 0 1.5px var(--green600);background-color:#fff}
+.kb-in::placeholder{color:var(--g500)}
+.kb-res{list-style:none;margin:6px 0 0;padding:4px 0;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #eceef1,0 8px 20px rgba(25,31,40,.10);max-height:280px;overflow:auto;display:none}
+.kb-res.show{display:block}
+.kb-res li{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:13.5px}
+.kb-res li.on,.kb-res li:hover{background:var(--g100)}
+.kb-res .n{flex:none;font-weight:600}
+.kb-res .n mark{background:none;color:var(--green700);font-weight:800}
+.kb-res .m{flex:1;min-width:0;color:var(--g600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.kb-res .p{flex:none;color:var(--g500);font-size:12px;font-variant-numeric:tabular-nums}
+.kb-res .p mark{background:none;color:var(--green700);font-weight:700}
+.kb-res .empty{color:var(--g500);cursor:default}
+.kb-res .empty:hover{background:none}
+#room.kbon .thread{padding-top:64px}   /* 띠가 첫 말풍선을 가리지 않게 */
+.ta.fill{animation:taFill .5s var(--ease)}
+@keyframes taFill{from{background:var(--green100)}}
+@media (prefers-reduced-motion:reduce){.kb-more,.kb-chev{transition:none}.ta.fill{animation:none}}
 </style>
 </head>
 <body>
@@ -277,8 +341,9 @@ body.fileon .ta{padding-right:40px}
 
   <div class="room" id="room">
     <div class="rh"><button class="x" id="rBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-      <div><div class="nm" id="rNm">홈페이지 문의</div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
+      <div style="min-width:0"><div class="nm"><span id="rNm">홈페이지 문의</span><span class="use" id="rUse"></span></div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
       <span class="own" id="rOwn"></span><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
+    <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
     <div class="comp"><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
@@ -456,6 +521,7 @@ function rowHtml(r){
   var tag = '';
   if (r.pin) tag += '<span class="tag pin">' + PINF_SVG + esc(r.owner ? '고정' : (r.pinName || '고정')) + '</span>';
   if (VIEWER && r.owner) tag += '<span class="tag">' + esc(ownerName(r.owner)) + '</span>';
+  if (r.use) tag += '<span class="tag use">이용 중. ' + esc(r.use) + '</span>';   // 유성 a2 「'이용 중. 오감 김하린' 으로 할 것」(형제 = 「외 1」, 26이 만든 글자)
   if (S.live[r.id]) tag += '<span class="tag live">보는 중</span>';
   // 오른쪽 칸 = 위 글자(시각 / 「답장 전」 / 「2분 넘음」 / 「답장함」) + 아래 안 읽은 수(카톡처럼, 10-12 — 0이면 없음). 카드도 같은 자리
   var right, ub = unreadOf(r) > 0 ? '<span class="ub">' + (unreadOf(r) > 99 ? '99+' : unreadOf(r)) + '</span>' : '';
@@ -578,7 +644,7 @@ function poll(){
     if (S.cur) {
       var now = findRow(S.cur.id);
       setPst();
-      if (now && (!prevCur || now.lastAt !== prevCur.lastAt) && now.lastAt !== S.cur.lastAt) loadRoom(S.cur.id, true);
+      if (now && (!prevCur || verOf(now) !== verOf(prevCur)) && verOf(now) !== S.cur.ver) loadRoom(S.cur.id, true);
       // 문자 판정이 아직인 우리 줄(wait)이 있으면 목록이 바뀔 때(26이 판정 순간 gver를 올림) 그 방도 다시 읽는다 — 마지막 시각은 안 바뀌어서
       //   위 조건만으론 「안 읽음」이 「문자로 보냈어요」·「읽음」으로 안 바뀌었다(claude-71 10-10: 답장 순간 판정 → 1분 뒤 판정)
       else if (!r.same && R.id === S.cur.id && R.msgs.some(function(m){ return m.who !== 'v' && m.sms === 'wait'; })) loadRoom(S.cur.id, true);
@@ -623,13 +689,15 @@ function findRow(id){ var L = S.wait.concat(S.mine); for (var i = 0; i < L.lengt
    · 이 창 메모리에만 둔다(RCACHE) — 학부모 글을 PC 디스크에 남기지 않는다. 잠기면 앱이 이 창을 빼서 같이 사라진다.
    · 구판 26(@6까지)은 「알 수 없는 요청」 → 이 창에선 다시 안 묻는다(예전처럼 열 때 받음) */
 var RCACHE = {}, tails = { busy: false, off: false, tried: {} };
+// 대화 판 = 마지막 시각 + 거둔 줄 수(10-12 — 가운데 줄을 거두면 시각은 그대로라 거둔 수로도 가른다). 받아 둔 대화·열린 방을 다시 읽을지 이걸로 본다
+function verOf(r){ return r ? (r.lastAt || '') + (r.rv ? '#' + r.rv : '') : ''; }
 function prefetch(){
   if (!me || tails.busy || tails.off) return;
   var want = {}, ids = S.wait.concat(S.mine).filter(function(r){
     if (isCard(r)) return false;   // 카드는 대화방이 없다(누르면 파트너센터)
-    var c = RCACHE[r.id]; if (c && c.lastAt === r.lastAt) return false;
-    if (tails.tried[r.id] === r.lastAt) return false;   // 받으려 했는데 없던 방(지워짐) — 같은 시각이면 또 안 묻는다
-    want[r.id] = r.lastAt; return true;
+    var c = RCACHE[r.id]; if (c && c.ver === verOf(r)) return false;
+    if (tails.tried[r.id] === verOf(r)) return false;   // 받으려 했는데 없던 방(지워짐) — 같은 판이면 또 안 묻는다
+    want[r.id] = verOf(r); return true;
   }).map(function(r){ return r.id; }).slice(0, 30);
   if (!ids.length) return;
   tails.busy = true;
@@ -639,8 +707,8 @@ function prefetch(){
     ids.forEach(function(id){
       tails.tried[id] = want[id];
       var t = res.tails[id]; if (!t || !t.msgs) return;
-      if (RCACHE[id] && RCACHE[id].lastAt === want[id]) return;   // 그 사이 방 열기(s_room)가 같은 시각 것을 더 많이 받아 왔다
-      RCACHE[id] = { msgs: t.msgs, more: !!t.more, lastAt: want[id] };
+      if (RCACHE[id] && RCACHE[id].ver === want[id]) return;   // 그 사이 방 열기(s_room)가 같은 판 것을 더 많이 받아 왔다
+      RCACHE[id] = { msgs: t.msgs, more: !!t.more, ver: want[id] };
       if (R.id === id && !R.loaded) { R.msgs = t.msgs.slice(); R.more = !!t.more; R.loaded = true; drawThread(null, true); }   // 뼈대로 열려 있던 방 = 바로 그린다
     });
   }, function(){ tails.busy = false; });
@@ -729,11 +797,12 @@ function openRoom(id){
   keepDraft();
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
   seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 자기 숫자만, 10-12)
-  S.cur = { id: id, lastAt: c && c.lastAt === row.lastAt ? row.lastAt : '' };
+  S.cur = { id: id, ver: c && c.ver === verOf(row) ? c.ver : '' };
   R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c };
   var dr = DRAFT[id]; delete DRAFT[id];
   ta.value = dr ? dr.t : ''; ATT = dr ? dr.a : []; drawAtts(); autosize(); syncSend(); closeView();   // 칩의 blob 주소는 그대로(그 방에 돌아와 보낼 수 있게)
   setPst();
+  kbSet(c ? c.kid : null);   // 아이 찾기 띠(10-15) — 받아 둔 것 먼저, 서버 것이 오면 바뀐 때만 다시
   if (c) drawThread(null, true);   // 받아 둔 대화 = 바로(서버 것은 뒤에서 와서 덮는다 — 행정은 그때 읽음이 찍힌다)
   else { T.innerHTML = roomSkel(); fThread(); }
   $('room').classList.add('on');
@@ -750,7 +819,7 @@ function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
   var req = pre && Date.now() - pre.at < 10000 ? pre.p : askRead({ action:'s_room', auth: me, id: id });
   req.then(function(r){
-    if (r && r.ok) RCACHE[id] = { msgs: r.msgs.slice(), more: !!r.more, lastAt: (findRow(id) || {}).lastAt || '' };   // 다음에 열면 바로(이 창 메모리만)
+    if (r && r.ok) RCACHE[id] = { msgs: r.msgs.slice(), more: !!r.more, ver: verOf(findRow(id)), kid: r.kid || null };   // 다음에 열면 바로(이 창 메모리만)
     if (R.id !== id) return;          // 그새 다른 방으로 갔다
     if (!r || !r.ok) {
       if (r && r.code === 'gone') { toastA(r.error || '대화를 찾을 수 없어요'); closeRoom(); return; }
@@ -770,8 +839,9 @@ function loadRoom(id, quietNew){
       return false;
     }));
     R.more = !!r.more; R.hasPhone = !!r.hasPhone; R.live = !!r.live; R.owner = r.owner || '';
-    S.cur.lastAt = (findRow(id) || {}).lastAt || '';
+    S.cur.ver = verOf(findRow(id));
     setPst();
+    kbSet(r.kid || null);
     drawThread(quietNew ? had : null, true);
   }).catch(function(){ if (R.id !== id) return; if (!R.loaded) roomFail(id); else toastA('연결이 안 돼요'); });
 }
@@ -794,6 +864,8 @@ function setPst(){
   if (!R.id) return;
   var row = findRow(R.id);
   $('rNm').textContent = row && row.label ? row.label : '홈페이지 문의';   // 이름을 붙였으면 그 이름(10-11)
+  var use = $('rUse'), u = row && row.use ? '이용 중. ' + row.use : '';   // 이용 중 가정(10-12 ⑥) — 목록 줄과 같은 글자
+  use.textContent = u; use.classList.toggle('on', !!u);
   // 주인: 목록이 주인을 말하면 그대로, 목록이 「주인 있음 → 없음」으로 바뀌면(돌려놓기) 비운다 — 목록이 늦어 빈칸인 동안은 방 열기가 준 주인을 유지
   if (row) { R.hasPhone = !!row.hasPhone; if (row.owner) R.owner = row.owner; else if (R.rowOwner) R.owner = ''; R.rowOwner = row.owner || ''; }
   var own = $('rOwn'), showOwn = VIEWER && !!R.owner;   // 한유성 화면 = 맡은 사람 이름표(대기 대화엔 없음)
@@ -805,8 +877,152 @@ function setPst(){
   // 돌려놓기 = 내가 맡은 방에서만(다른 사람 방은 서버도 거절 — taken)
   $('rel').style.display = (!VIEWER && R.owner === me.emp) ? '' : 'none';
 }
+/* ══════════ 아이 찾기 띠(10-15 유성 「나머지는 다 괜찮다. go」 — prototype/26_문의채팅_아이찾기카드_4방향_프리뷰.html 「A 다시」 3차) ══════════
+   26 s_room이 kid = {phone, pin, kids:[{k, n, s, b, d, st, t, a, h}]}를 실을 때만(처리방침 넓힘 시행 뒤). 띠 = 대기 「김하린 오감 (서해구 심곡동)」,
+   배정·이용 중 「김도윤 아청심 - 박지은 선생님」. 펼치면 생년, 신청, (대기가 아니면 동네), 희망 + 답 넣기, 지도에서 보기.
+   번호가 없거나 맞는 신청이 없으면 찾기 칸(제공인력 지도 doSearch 규칙 — 숫자만 2자리부터 = 번호 안, 아니면 이름 안) → 고르면 s_kidpin(이 대화에 붙음, 다른 PC도 같이).
+   찾기 목록(s_kdir)은 칸을 처음 누를 때 한 번 받아 이 창 메모리에만(10분 지나면 다시). 번호는 끝 네 자리만 보인다 */
+var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, sel: -1, list: [] };
+var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음' };
+var KB_MAP = 'https://think-fact0ry.github.io/saenggak/provider-map.html';
+var KB_CNT = ['', '', '둘', '셋'];
+// 답 넣기 글 — 배정 = 13번, 신청 없음 = 6번 + 신청폼 주소(⑤⑦ 사전계획 확정). 대기 중 = ⚠️초안(보류 7·8, 유성 확인 전). ⑤ 자주 쓰는 답변이 생기면 그 단일 소스로 옮긴다
+var KB_ANS = {
+  // wait(대기 중 답) = 유성이 새 4안에서 고르는 중(10-15 1차 「오래 기다리시게 해서 죄송해요…」 반려) — 고르기 전엔 단추 없음
+  assigned: { lab: '배정 답 넣기', txt: function(){ return '확인해 보니 아직 담당 선생님께서 연락을 못 드렸어요. 선생님께서 직접 연락드려 첫 회기 날짜를 맞추실 거예요.\n\n며칠이 지나도 연락이 없으면 다시 말씀해 주세요. 바로 확인해 드릴게요.'; } },
+  none: { lab: '신청 안내 넣기', txt: function(){ return '서비스와 거주하시는 동네, 가능한 요일과 시간에 따라 자리가 달라서, 신청폼에 넉넉히 적어 주시면 선생님 일정을 보고 접수 순서대로 연락드려요.\n\n신청하시는 분이 많아서 맞는 자리가 생길 때만 연락드리고 있어요. 현재 대기 상황은 신청폼에서 보실 수 있어요.\nhttps://think-factory.kr/contact'; } }
+};
+function kbDay(a){ var yy = String(new Date().getFullYear()).slice(2) + '년 '; a = String(a || ''); return a.indexOf(yy) === 0 ? a.slice(yy.length) : a; }   // 올해 신청이면 「9월 12일」
+var KB_IC = '<svg class="kb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+function kbStw(st){ return '<span class="kb-st ' + st + '"><i></i>' + KB_ST[st] + '</span>'; }
+function kbTail(k){ return k.st === 'wait' ? (k.d ? ' (' + esc(k.d) + ')' : '') : ' - ' + esc(k.t ? k.t + ' 선생님' : k.d); }
+function kbFind(inrow){ return '<div class="kb-find' + (inrow ? ' inrow' : '') + '"><input class="kb-in" placeholder="아이 이름, 전화번호" aria-label="아이 이름, 전화번호" autocomplete="off" spellcheck="false"><ul class="kb-res" role="listbox"></ul></div>'; }
+function kbFoot(k, i){
+  var a = KB_ANS[k.st];
+  return '<div class="kb-foot">' + (a ? '<button type="button" class="pri" data-a="ans" data-i="' + i + '">' + a.lab + '</button>' : '') + '<button type="button" data-a="map" data-i="' + i + '">지도에서 보기</button></div>';
+}
+function kbKid(k, i, many){
+  var row = function(t, v){ return v ? '<dt>' + t + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+  var dl = '<dl class="kb-dl">' + row('생년', k.b) + row('신청', k.a) + (k.st === 'wait' ? '' : row('동네', k.d)) + row('희망', k.h) + '</dl>';
+  return '<div class="kb-kid">' + (many ? '<div class="kh">' + kbStw(k.st) + '<span><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span></div>' : '') + dl + kbFoot(k, i) + '</div>';
+}
+function kbSet(card){
+  var sig = card ? JSON.stringify(card) : '';
+  if (sig === KB.sig) return;   // 같은 카드 = 펼침, 찾기 칸 그대로
+  KB.card = card || null; KB.sig = sig; KB.open = false; KB.sel = -1;
+  kbDraw();
+}
+function kbDraw(){
+  var w = $('kbw'), c = KB.card;
+  $('room').classList.toggle('kbon', !!c);
+  if (!c) { w.innerHTML = ''; return; }
+  var ks = c.kids || [], html;
+  var pinNote = c.pin ? '<div class="kb-note"><span>찾아서 붙인 신청이에요.</span><button type="button" data-a="unpin">떼기</button></div>' : '';
+  if (!ks.length && !c.phone && !c.pin) html = '<div class="kb">' + kbFind(false) + '</div>';
+  else {
+    var row, more;
+    if (!ks.length) {
+      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw('none') + '<span class="kb-who">' + (c.pin ? '붙여 둔 신청이 지금은 없어요' : '이 번호로 찾은 신청이 없어요') + '</span>' + KB_IC + '</button>';
+      more = (c.pin ? pinNote : '<div class="kb-note"><span>다른 번호로 신청했을 수 있어요. 이름이나 번호로 찾아보세요.</span></div>') + kbFind(true) + '<div class="kb-foot"><button type="button" class="pri" data-a="ans" data-i="-1">' + KB_ANS.none.lab + '</button></div>';
+    } else if (ks.length > 1) {
+      row = '<button type="button" class="kb-row" data-a="tog">' + ks.map(function(k, i){ return '<span class="kb-st ' + k.st + '"' + (i ? ' style="margin-left:-5px"' : '') + '><i></i></span>'; }).join('')
+        + '<span class="kb-who"><b>아이 ' + (KB_CNT[ks.length] || ks.length) + '</b> ' + ks.map(function(k){ return esc(k.n) + ' ' + esc(k.s); }).join(', ') + '</span>' + KB_IC + '</button>';
+      more = pinNote + ks.map(function(k, i){ return kbKid(k, i, true); }).join('');
+    } else {
+      var k = ks[0];
+      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw(k.st) + '<span class="kb-who"><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span>' + KB_IC + '</button>';
+      more = pinNote + kbKid(k, 0, false);
+    }
+    html = '<div class="kb' + (KB.open ? ' open' : '') + '">' + row + '<div class="kb-more"><div>' + more + '</div></div></div>';
+  }
+  w.innerHTML = html;
+}
+// 찾기 = 제공인력 지도 doSearch와 같은 규칙(숫자만·공백·하이픈 = 2자리부터 번호 안, 아니면 공백 뺀 글자가 이름 안). 8개까지. 다른 점 = 기다림 없이 글자마다(목록이 메모리에)
+function kbLoadDir(){
+  if (KB.dir && Date.now() - KB.dirAt < 600000) return Promise.resolve(KB.dir);
+  if (KB.dirP) return KB.dirP;
+  KB.dirP = askRead({ action:'s_kdir', auth: me }).then(function(r){
+    KB.dirP = null;
+    if (!r || !r.ok) throw new Error((r && r.error) || '목록을 못 받았어요');
+    KB.dir = r.dir.map(function(x){ return { k: x[0], n: x[1], s: x[2], d: x[3], st: x[4], ph: String(x[5] || '').split(',').filter(Boolean) }; });
+    KB.dirAt = Date.now();
+    return KB.dir;
+  }, function(e){ KB.dirP = null; throw e; });
+  return KB.dirP;
+}
+function kbSearch(q){
+  var digits = q.replace(/\D/g, ''), isNum = digits.length > 0 && q.replace(/[\s\-0-9]/g, '') === '';
+  if (isNum) return digits.length < 2 ? { isNum: true, short: true, list: [] } : { isNum: true, q: digits, list: KB.dir.filter(function(d){ return d.ph.some(function(p){ return p.indexOf(digits) >= 0; }); }).slice(0, 8) };
+  var t = q.replace(/\s/g, '');
+  return { isNum: false, q: t, list: t ? KB.dir.filter(function(d){ return d.n.replace(/\s/g, '').indexOf(t) >= 0; }).slice(0, 8) : [] };
+}
+function kbHl(s, q){ var i = s.indexOf(q); return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length)); }
+function kbTail4(d, q, isNum){   // 끝 네 자리만. 번호로 찾았고 맞은 곳이 끝 네 자리에 걸리면 굵게
+  var ph = (isNum && q ? d.ph.filter(function(p){ return p.indexOf(q) >= 0; })[0] : d.ph[0]) || '';
+  if (!ph) return '';
+  var t = ph.slice(-4);
+  if (!isNum || !q) return '끝 ' + t;
+  var i = ph.indexOf(q), a = Math.max(i, ph.length - 4), b = Math.min(i + q.length, ph.length);
+  if (b <= a) return '끝 ' + t;
+  a -= ph.length - 4; b -= ph.length - 4;
+  return '끝 ' + esc(t.slice(0, a)) + '<mark>' + esc(t.slice(a, b)) + '</mark>' + esc(t.slice(b));
+}
+function kbPaint(inp){
+  var ul = inp.parentNode.querySelector('.kb-res'), v = inp.value.trim();
+  if (!v) { ul.classList.remove('show'); ul.innerHTML = ''; KB.sel = -1; KB.list = []; return; }
+  if (!KB.dir) { ul.innerHTML = '<li class="empty">목록을 받는 중이에요<span class="ldd"><i></i><i></i><i></i></span></li>'; ul.classList.add('show');
+    kbLoadDir().then(function(){ if (document.activeElement === inp || inp.value.trim()) kbPaint(inp); }, function(e){ ul.innerHTML = '<li class="empty">' + esc(e.message || '목록을 못 받았어요') + '</li>'; }); return; }
+  var r = kbSearch(v);
+  KB.list = r.list; KB.sel = r.list.length ? 0 : -1;
+  ul.innerHTML = r.list.length ? r.list.map(function(d, i){
+    return '<li role="option" data-i="' + i + '" class="' + (i === 0 ? 'on' : '') + '">' + kbStw(d.st) + '<span class="n">' + (r.isNum ? esc(d.n) : kbHl(d.n, r.q)) + '</span><span class="m">' + esc(d.s) + (d.d ? ', ' + esc(d.d) : '') + '</span><span class="p">' + kbTail4(d, r.q, r.isNum) + '</span></li>';
+  }).join('') : '<li class="empty">' + (r.short ? '숫자는 두 자리부터 찾아요' : '맞는 신청이 없어요') + '</li>';
+  ul.classList.add('show');
+}
+function kbPin(k){
+  var id = R.id; if (!id) return;
+  askRead({ action:'s_kidpin', auth: me, id: id, k: k }).then(function(r){
+    if (!r || !r.ok) { toastA((r && r.error) || '붙이지 못했어요'); return; }
+    if (RCACHE[id]) RCACHE[id].kid = r.kid || null;
+    if (R.id !== id) return;
+    KB.sig = ''; kbSet(r.kid || null); KB.open = !!k; kbDraw();
+    toastA(k ? '이 대화에 붙였어요' : '뗐어요');
+  }, function(){ toastA('연결이 안 돼요'); });
+}
+function kbFill(txt){
+  var cur = ta.value.replace(/\s+$/, '');
+  ta.value = cur ? cur + '\n\n' + txt : txt;   // 쓰던 글이 있으면 지우지 않고 아래에
+  autosize(); syncSend();
+  ta.classList.remove('fill'); void ta.offsetWidth; ta.classList.add('fill');
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+$('kbw').addEventListener('input', function(e){ if (e.target.classList.contains('kb-in')) kbPaint(e.target); });
+$('kbw').addEventListener('focusin', function(e){ if (e.target.classList.contains('kb-in')) kbLoadDir().catch(function(){}); });   // 칸을 누르는 순간 목록을 받기 시작(치기 전에 와 있게)
+$('kbw').addEventListener('keydown', function(e){
+  if (!e.target.classList.contains('kb-in')) return;
+  var items = e.target.parentNode.querySelectorAll('.kb-res li[data-i]');
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!items.length) return; e.preventDefault();
+    KB.sel = (KB.sel + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items.forEach(function(li, i){ li.classList.toggle('on', i === KB.sel); });
+    items[KB.sel].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') { if (KB.sel >= 0 && KB.list[KB.sel]) { e.preventDefault(); kbPin(KB.list[KB.sel].k); } }
+  else if (e.key === 'Escape') { e.target.value = ''; kbPaint(e.target); }
+});
+$('kbw').addEventListener('click', function(e){
+  var li = e.target.closest('.kb-res li[data-i]'); if (li) { var d = KB.list[+li.getAttribute('data-i')]; if (d) kbPin(d.k); return; }
+  var b = e.target.closest('[data-a]'); if (!b) return;
+  var a = b.getAttribute('data-a'), ks = (KB.card && KB.card.kids) || [], k = ks[+b.getAttribute('data-i')];
+  if (a === 'tog') { KB.open = !KB.open; b.closest('.kb').classList.toggle('open', KB.open); return; }
+  if (a === 'unpin') { kbPin(''); return; }
+  if (a === 'ans') { var x = k ? KB_ANS[k.st] : KB_ANS.none; if (x) kbFill(x.txt(k || {})); return; }
+  if (a === 'map' && k) { window.open(KB_MAP + '#find=' + encodeURIComponent(k.k.split('|')[0] + '|' + k.n), '_blank'); }   // 새 창 = PC 프로그램이 기본 브라우저로(관리자 지도가 그 아이를 찾아 둠)
+});
+document.addEventListener('click', function(e){ if (!e.target.closest('.kb-find')) document.querySelectorAll('.kb-res.show').forEach(function(u){ u.classList.remove('show'); }); });
+
 /* 행정 답장의 아래 글자: 문자로 갔으면 그 말, 실패면 실패, 아니면 학부모가 그 뒤에 말했거나 지금 보고 있으면 읽음 */
 function meLabel(m, i){
+  if (m.rc) return m.sms === 'sent' ? '<span class="bad">문자로는 이미 갔어요</span>' : '';   // 거둔 답장(10-12) — 문자가 이미 나간 것만 알린다(거둔 줄 알고 넘어가지 않게)
   if (m.pending) return '<span>보내는 중</span>';
   if (m.unknown) return '<span>결과를 아직 못 받았어요</span>';   // 중립 — 실패라고 단정하지 않는다(서버가 실패라고 한 것만 빨강)
   if (m.failed) return '<span class="bad">안 보내졌어요</span>';
@@ -851,8 +1067,8 @@ function drawThread(had, keepBottom){
         bodyHtml(m) + '</div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
     } else {
       var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
-      html += '<div class="row me' + (cont ? ' cont' : '') + nw + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
-        '<div class="mcol">' + name + bodyHtml(m) + '</div></div>';
+      html += '<div class="row me' + (cont ? ' cont' : '') + nw + '" data-seq="' + (+m.seq || 0) + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
+        '<div class="mcol">' + name + (m.rc ? '<div class="bub rc">거둔 답장이에요</div>' : bodyHtml(m)) + '</div></div>';
     }
     prevWho = who;
   });
@@ -884,8 +1100,8 @@ function release(id){
    · 이름: 대화 하나에 이름 하나, 볼 수 있는 사람 누구나. 원래 이름(카드는 닉네임도)을 적거나 비우면 기본으로(26이 정한다).
    · 대기로 돌려놓기: 내 대화 칸, 행정만(한유성은 맡지 않음). 카드는 이 메뉴가 유일한 길(대화방이 없다).
    · 26이 pins:1을 안 주는 구판이면 메뉴 없음(기본 메뉴도 안 뜨게 막기만). 키보드 메뉴 키·Shift+F10도 같은 contextmenu */
-var cmFor = '';
-function closeCm(){ var m = $('cm'); if (!m.classList.contains('on')) return; m.classList.remove('on'); cmFor = ''; }
+var cmFor = '', cmSeq = 0;   // cmSeq = 대화방 말풍선 메뉴(거두기, 10-12)
+function closeCm(){ var m = $('cm'); if (!m.classList.contains('on')) return; m.classList.remove('on'); cmFor = ''; cmSeq = 0; }
 $('list').addEventListener('contextmenu', function(e){
   if (e.target.closest('.renw')) return;   // 이름 칸 안 = 글자 편집용 기본 동작(붙여넣기)은 프로그램이 이미 꺼 둠 — 막지 않는다
   e.preventDefault();
@@ -906,6 +1122,7 @@ $('list').addEventListener('contextmenu', function(e){
 });
 $('cm').addEventListener('click', function(e){
   var b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.a === 'recall') { var s = cmSeq; closeCm(); recallMsg(s); return; }
   var id = cmFor, r = findRow(id), a = b.dataset.a; closeCm();
   if (!r) return;
   if (a === 'pin') setPin(r, !r.pin);
@@ -918,6 +1135,59 @@ $('cm').addEventListener('click', function(e){
 document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#cm') && !e.target.closest('#list .it')) closeCm(); }, true);
 $('list').addEventListener('scroll', closeCm);
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('cm').classList.contains('on')) { e.preventDefault(); closeCm(); } });
+/* ══════════ 내 답장 거두기(10-12 ③ 유성 a1 「행정인력이나 관리자만 거둘 수 있게 … 상대방에게 거둔 답장이라고 남기지 말것. 아예 없어지게」) ══════════
+   · 내가 보낸 말풍선을 오른쪽 클릭 → 「거두기」. 보낸 지 1분(서버 시각) 안만 메뉴가 뜬다(26 서버 한도 90초 = 응답 늦음 몫). 지난 말풍선은 기본 메뉴(복사) 그대로.
+   · 학부모 화면 = 흔적 0(26이 거른다). 받은함 = 회색 「거둔 답장이에요」 + 문자가 이미 나갔으면 그 아래 빨강 「문자로는 이미 갔어요」.
+   · 응답을 못 받으면 같은 작업 번호로 결과만 묻는다(두 번 거둬도 같은 결과 — 26 _job_) */
+var RECALL_MS = 60000;
+var RECALL_SAY = { cancel: '답장을 거뒀어요. 문자도 안 가요', none: '답장을 거뒀어요', sent: '답장을 거뒀어요. 문자로는 이미 갔어요', sending: '답장을 거뒀어요. 문자는 이미 나가는 중이었어요' };
+var I_RECALL = '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+function msgBySeq(seq){ for (var i = 0; i < R.msgs.length; i++) if (R.msgs[i].seq === seq) return R.msgs[i]; return null; }
+function recallable(m){ return !!m && !m.rc && !m.pending && !m.unknown && !m.failed && m.seq > 0 && m.seq < 1e9 && m.who === MY_WHO && nowS() - new Date(m.at).getTime() < RECALL_MS; }
+T.addEventListener('contextmenu', function(e){
+  var row = e.target.closest('.row.me[data-seq]'), m = row ? msgBySeq(+row.dataset.seq) : null;
+  if (!recallable(m)) return;   // 남의 줄·1분 지난 줄·보내는 중 = 기본 메뉴(복사)
+  e.preventDefault();
+  cmFor = ''; cmSeq = m.seq;
+  var cm = $('cm');
+  cm.innerHTML = '<button type="button" role="menuitem" data-a="recall">' + I_RECALL + '거두기</button>';
+  cm.classList.add('on');
+  var ar = $('app').getBoundingClientRect(), x = e.clientX - ar.left, y = e.clientY - ar.top;
+  if (!e.clientX && !e.clientY) { var br = row.getBoundingClientRect(); x = br.right - ar.left - 120; y = br.bottom - ar.top - 8; }   // 키보드로 연 메뉴 = 말풍선 아래
+  cm.style.left = Math.max(8, Math.min(x, ar.width - cm.offsetWidth - 8)) + 'px';
+  cm.style.top = Math.max(8, Math.min(y, ar.height - cm.offsetHeight - 8)) + 'px';
+});
+T.addEventListener('scroll', function(){ if (cmSeq) closeCm(); });
+function recallMsg(seq){
+  var id = R.id, m = msgBySeq(seq); if (!id || !m) return;
+  var keep = { text: m.text, file: m.file }, c = cid(), t0 = Date.now(), over = false;
+  m.rc = 1; m.text = ''; delete m.file; drawThread(seenAll(), true);   // 낙관 — 바로 회색 흔적
+  function done(r){
+    if (over) return; over = true;
+    if (r && r.ok) {
+      if (r.sms === 'sent') m.sms = 'sent';
+      delete RCACHE[id]; delete FC[id + ':' + seq];
+      toastA(RECALL_SAY[r.sms] || RECALL_SAY.none);
+    } else {   // 서버가 거절(1분 지남, 남의 줄 등) = 되돌린다
+      m.rc = 0; m.text = keep.text; if (keep.file) m.file = keep.file;
+      toastA((r && r.error) || '거두지 못했어요');
+    }
+    if (R.id === id) drawThread(seenAll(), true);
+    S.gver = ''; poll();
+  }
+  function askJob(){
+    if (Date.now() - t0 > 60000) { if (!over) { over = true; toastA('결과를 아직 못 받았어요. 대화를 다시 열어 보세요'); } return; }
+    setTimeout(function(){
+      ask({ action:'s_job', auth: me, cid: c }).then(function(j){
+        if (j && j.ok && j.state === 'done') { done(j.result); return; }
+        if (j && j.ok && j.state === 'none') { send(); return; }   // 서버에 안 닿았다 = 같은 번호로 다시(거두기는 두 번 와도 같은 결과 — 26 again)
+        askJob();
+      }, askJob);
+    }, 4000);
+  }
+  function send(){ ask({ action:'s_recall', auth: me, id: id, seq: seq, cid: c }).then(function(r){ if (!r || r.code === 'run') { askJob(); return; } done(r); }, askJob); }
+  send();
+}
 // 고정 — 바로 칩·순서를 바꾸고(낙관) 서버가 거절하면 토스트 + 목록 다시 받기
 function setPin(r, on){
   r.pin = on ? 1 : 0;
@@ -1010,7 +1280,7 @@ function sendOne(id, m, F){
       m.pending = false; m.unknown = false;
       if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
       else {
-        m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.lastAt = r.at;
+        m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.ver = verOf({ lastAt: r.at, rv: (findRow(id) || {}).rv });
         if (F) { if (r.file) m.file = r.file; FC[id + ':' + r.seq] = { url: F.url, t: F.type, n: m.file.n }; }   // 서버 줄로 바뀌어도 다시 안 받는다
       }
       if (R.id === id) drawThread(seenAll(), true);

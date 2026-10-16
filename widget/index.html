@@ -70,6 +70,10 @@ body.inq #inqw{display:flex}
 body.inqn #inqw{color:var(--g900)}
 #inqN{min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11.5px;display:none;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box;font-variant-numeric:tabular-nums}
 body.inqn #inqN{display:inline-flex}
+/* 새 문의 알림 = 문의 칸만 빨강으로 3번 반짝(10-13 유성 4방향 A 「빨강/3번/보통/끔. 단, 근태 관련인 왼쪽이 빨개지지 말고 문의 부분만」
+   — prototype/19_알약_문의알림_눈에띄게_4방향_프리뷰.html). 왼쪽 근태 칸(#zl)은 그대로. 끝나면 원래 색(「읽을 때까지 남기」 끔). 시각 = inqFlash() */
+body.inq #inqw.hot{background:var(--red);color:#fff;border-left-color:var(--red);transition:none}   /* body.inq = 숫자 있을 때 글자색(body.inqn #inqw)보다 세게 */
+body.inq #inqw.hot #inqN{background:#fff;color:var(--red)}
 
 /* ── 중간 위젯(공통) ── */
 #panel{display:none;position:relative;padding:14px 16px 16px;height:100%;box-sizing:border-box}
@@ -228,7 +232,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v114';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v115';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -948,11 +952,23 @@ function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && s
 // 마지막으로 소리를 낸 때 / 흔든 때(각각 10초에 한 번까지 — 카톡식 규칙 6). 따로 세는 이유 = 2분 다시 알림은 소리 없이 흔들기만 해서,
 //   하나로 세면 그 직후 진짜 새 글의 소리까지 먹는다(10-12 리뷰)
 var inqRingS = 0, inqRingK = 0;
+// 문의 칸 반짝임 = 흔들림과 같은 때에만(10초에 한 번까지). 보통 = 1초에 1.6번(한 번 625ms, 앞 반이 빨강), 3번 = 약 1.9초.
+//   1초 3번 미만이라 광과민 기준(WCAG 2.3.1) 안. 흔들림은 exe가 창을 움직이고(웹은 못 함), 이건 웹이 칸 색만 바꾼다
+var INQ_HOT_N = 3, INQ_HOT_MS = 625, inqHotT = [];
+function inqFlash(){
+  if (typeof $ !== 'function') return;
+  var el = $('inqw'); if (!el) return;
+  inqHotT.forEach(function(t){ clearTimeout(t); }); inqHotT = []; el.classList.remove('hot');
+  for (var i = 0; i < INQ_HOT_N; i++) {
+    inqHotT.push(setTimeout(function(){ el.classList.add('hot'); }, i * INQ_HOT_MS));
+    inqHotT.push(setTimeout(function(){ el.classList.remove('hot'); }, i * INQ_HOT_MS + INQ_HOT_MS / 2));
+  }
+}
 function inqNotify(kind, row){
   if (!caps || !caps.notify) return;
   var now = Date.now(), snd = kind !== 'late' && now - inqRingS >= 10000, shk = now - inqRingK >= 10000;
   if (snd) inqRingS = now;
-  if (shk) inqRingK = now;
+  if (shk) { inqRingK = now; inqFlash(); }
   inqPeek = { id: row.id, at: now };   // 미리보기 창은 늘 이 알림 글로 바뀐다(exe Pop) → 누르면 이 방
   toHost({ type:'notify', kind: kind, sound: snd, peek: true, shake: shk,   // 새 글마다 소리, 미리보기, 흔들림(10-12 카톡식 — 유성 「울리지도 않고」). 2분 다시 알림만 소리 없음. 10초 안 다음 알림은 미리보기만
            title: inqTitle(row), text: String(row.preview || '').split('\n')[0] });   // 제목 = 보낸 사람(exe는 제목·글을 로그에 안 쓴다 — widget.cs OnNotify)
