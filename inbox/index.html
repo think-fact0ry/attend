@@ -166,7 +166,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rh .own.on{display:block}
 .thread{flex:1;overflow-y:auto;padding:14px 14px 10px;display:flex;flex-direction:column;scrollbar-width:none;user-select:text}
 .thread::-webkit-scrollbar{width:0}
-.day{align-self:center;font-size:var(--fs-caption);color:var(--g600);margin:16px 0 12px}
+/* 날짜 줄 = 대화 폭 전체 가로 선 + 가운데 달력 + 「2026년 10월 12일 월요일」(유성 10-18 4안 중 B — 말풍선 옆 시각과 위계가 섞여 날짜 바뀜이 안 읽히던 것) */
+.day{align-self:stretch;display:flex;align-items:center;gap:10px;font-size:var(--fs-caption);font-weight:600;color:var(--g700);margin:24px 0 16px;white-space:nowrap}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--g200)}
+.day svg{width:13px;height:13px;flex:none;color:var(--g600);margin-right:-5px}
 .thread > .day:first-child{margin-top:0}
 .older{align-self:center;border:0;background:var(--g100);color:var(--g700);font-size:12.5px;font-weight:600;border-radius:99px;padding:5px 12px;margin-bottom:8px;cursor:pointer}
 /* 말풍선 간격: 같은 사람이 이어 보내면 4px, 말하는 사람이 바뀌면 16px(§4.18) */
@@ -486,7 +489,8 @@ function ago(iso){
   var t = new Date(iso); return (t.getMonth() + 1) + '월 ' + t.getDate() + '일';
 }
 function hm(iso){ var t = new Date(iso), h = t.getHours(), m = t.getMinutes(); return (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m; }
-function dayLabel(iso){ var t = new Date(iso); return (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + '일월화수목금토'.charAt(t.getDay()) + '요일'; }
+function dayLabel(iso){ var t = new Date(iso); return t.getFullYear() + '년 ' + (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + '일월화수목금토'.charAt(t.getDay()) + '요일'; }
+var DAY_CAL = '<svg class="li" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><line x1="3.5" y1="10" x2="20.5" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';   // 날짜 줄 달력(10-18 B)
 function ymd(iso){ var t = new Date(iso); return t.getFullYear() + '-' + t.getMonth() + '-' + t.getDate(); }
 
 /* ══════════ 넘칠 때만 그라디언트(막대 없음) ══════════ */
@@ -1066,7 +1070,7 @@ function drawThread(had, keepBottom){
   var lastDay = '', prevWho = '';
   R.msgs.forEach(function(m, i){
     var who = authorOf(m);
-    var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + dayLabel(m.at) + '</div>'; lastDay = d; prevWho = ''; }
+    var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + DAY_CAL + '<span>' + dayLabel(m.at) + '</span></div>'; lastDay = d; prevWho = ''; }
     var cont = prevWho === who, next = R.msgs[i + 1], lastOfRun = !next || authorOf(next) !== who || ymd(next.at) !== d;
     var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
     if (who === 'v') {
