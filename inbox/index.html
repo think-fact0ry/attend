@@ -464,6 +464,13 @@ window.addEventListener('message', function(e){
   if (d.type === 'vis' && d.on) { render(); poll(); }   // 다시 보이는 순간 바로 한 번(5초를 안 기다린다)
   if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱의 다른 메뉴 아이콘과 같은 값(알약 숫자 기준)
   if (d.type === 'go') goTo(String(d.id || ''));   // 미리보기 누름 → 그 방(10-12 ①)
+  // 폰 뒤로가기(10-18 한유성 문의 폰) — 앱이 먼저 묻는다: 크게 보기 → 메뉴 → 대화방 순으로 닫고, 다 닫혀 있으면 앱 메인으로
+  if (d.type === 'hwback') {
+    if ($('rView').classList.contains('on')) closeView();
+    else if ($('cm').classList.contains('on')) closeCm();
+    else if ($('room').classList.contains('on')) { closeRoom(); render(); }
+    else toApp({ type:'back' });
+  }
 });
 
 /* ══════════ 시간 글자 ══════════ */
@@ -630,7 +637,7 @@ function poll(){
   var t0 = Date.now();
   ask({ action:'s_poll', auth: me, gver: S.gver }).then(function(r){
     S.busy = false;
-    if (!r || !r.ok) { if (r && r.code === 'auth') dead('다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요'); return; }
+    if (!r || !r.ok) { if (r && r.code === 'auth') { dead(HOSTED ? '다시 로그인해 주세요. 알약에서 근태에 한 번 들어가면 돼요' : '문의 열쇠가 바뀌었어요'); if (!HOSTED) toApp({ type:'authfail' }); } return; }   // 폰(10-18) = 앱이 서명을 지우고 그 자리에 등록 화면
     S.dead = '';
     if (typeof r.now === 'number') S.skew = r.now - (t0 + Date.now()) / 2;   // 서버 시각 차이(왕복 절반 보정, 26 @12~)
     if (r.files && !document.body.classList.contains('fileon')) document.body.classList.add('fileon');   // 첨부 켜짐(26 @8~)
@@ -1235,7 +1242,9 @@ function autosize(){ ta.style.height = 'auto'; ta.style.height = Math.min(100, t
 function canSend(){ return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }
 function syncSend(){ sendB.disabled = !canSend(); }
 ta.addEventListener('input', function(){ syncSend(); autosize(); });
-ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendB.click(); } });
+// 폰(손가락 화면)은 엔터 = 줄바꿈, 보내기는 버튼(10-18 한유성 문의 폰 — 카톡과 같게). PC는 그대로 엔터 = 보내기
+var TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches);
+ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !TOUCH) { e.preventDefault(); sendB.click(); } });
 var LSEQ = 0;   // 낙관 줄 번호가 같은 1ms에 겹치지 않게(파일 여러 개를 한 번에)
 sendB.addEventListener('click', function(){
   if (!canSend()) return;

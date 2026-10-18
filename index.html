@@ -263,6 +263,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
      머리(← 제목 −)도 받은함이 그린다: 대화방이 화면 맨 위까지 덮어야 해서 앱 머리를 위에 두면 두 줄로 쌓인다(계획 §4 제안 4). ── */
 #inqFrame{display:block;flex:1;width:100%;min-height:0;border:0;background:#fff}
 #s-inq.on{height:100vh;height:100dvh}
+.inqreg{display:flex;flex-direction:column;flex:1;min-height:0}   /* 폰 등록 화면(10-18) — 문의 채팅 화면 안 */
+.inqreg .ir-t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;margin-top:24px;word-break:keep-all}
+.inqreg .ir-s{font-size:var(--fs-body);color:var(--g600);line-height:1.6;margin-top:10px;word-break:keep-all}
+.inqreg .btn{margin-top:auto}
 /* 닫힌 시트 5개(퇴근 확인, PC 확인, 미기록일, 반려, 날짜)는 화면 바로 아래 1.6~28px에 숨어 있어 위로 30px 번지는 그림자가 맨 아래에 띠로 비친다(10-10 실측).
    문의 채팅에선 그 띠가 답장 입력 줄에 얹혀 보여서 이 화면에서만 끈다(유성 10-10 「그 문의 채팅방으로 들어왔을때만 안 그렇게」). 열린 시트(.on)는 그대로 */
 #app:has(#s-inq.on) .vsheet:not(.on),#app:has(#s-inq.on) .csheet:not(.on){box-shadow:none}
@@ -861,7 +865,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <button class="mi" data-go="apply"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M12 3v4M8 3v4M16 3v4"/><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M9 14l2 2 4-4"/></svg>휴가 신청</span></button>
     <button class="mi" data-go="my"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>나의 근태</span></button>
     <button class="mi" data-go="ledger"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>연차 내역</span></button>
-    <!-- 문의 채팅(10-10) = PC 프로그램 안 + 한유성(보기 서명)이거나 행정 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰엔 없다. 보이기는 inqSync -->
+    <!-- 문의 채팅(10-10) = PC 프로그램 안 + 한유성(보기 서명)이거나 행정 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰은 한유성 계정만(10-18 — 열쇠 전엔 등록 화면). 보이기는 inqSync -->
     <div class="div" id="inqDiv" style="display:none"></div>
     <button class="mi" data-go="inq" id="miInq" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span class="lab">문의 채팅<span class="nb" id="miInqN"></span></span></span></button>
     <div class="div"></div>
@@ -1084,6 +1088,18 @@ if (window.chrome && window.chrome.webview) {
      호스트가 받는다는 보장이 없다(exe는 FrameCreated를 구독하지 않는다). */
 var IS_HOST = !!(window.chrome && window.chrome.webview);
 var inqUi = { frame: null, pending: false, sig: '', preT: null, ready: false, goId: '', goAt: 0 };   // ready = 받은함 창 load 끝, goId = 미리보기로 연 방(10-12 ①)
+/* 한유성 문의 폰(10-18 유성 「문의채팅-관리자 모바일도입 급함 … pc를 키지 않았을때+외부에 있을때+주말 … 관리자인 한유성 이름으로」)
+   · PC 프로그램 밖(폰·브라우저)에선 **한유성 계정 + 이 폰 열쇠(att_inqdev)**일 때만 문의 칸. 행정 계정은 폰에서 여전히 없음(서버도 행정 서명을 폰에 안 준다).
+   · 열쇠 = 「문의 채팅」 화면에서 관리자 PIN 6자리 한 번(19 inq_phone) → 이 폰 저장소에만. 로그인·조회마다 api()가 같이 싣고 19가 보기 서명을 준다.
+   · 숫자 = 알약이 없어서 이 앱이 보이는 동안 30초마다 26 s_poll(박동 on 없음)을 직접 물어 att_inqc를 쓴다(알약과 같은 모양 — 메뉴 숫자·받은함 첫 그림이 그대로 쓴다).
+   · 키패드 = 문의 채팅 화면에서만 interactive-widget=resizes-content(키패드만큼 화면이 줄어 답장 칸이 안 가려짐 — 다른 화면 동작은 그대로). */
+var INQ_GAS_APP = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';   // 26 — 알약·받은함과 같은 배포
+function inqDevGet() { try { var d = JSON.parse(localStorage.getItem('att_inqdev') || 'null'); if (d && d.id && d.token) return d; } catch (e) { } return null; }
+// 폰에서 등록 화면을 보일 때 = 한유성 계정인데 아직 보기 서명이 없음(열쇠 전, 또는 열쇠가 다른 폰으로 넘어감)
+function inqRegWanted() {
+  if (IS_HOST || !store.token || localStorage.getItem('att_locked') || !state.db || !state.db.exempt) return false;
+  var id = inqIdApp(); return !(id && id.role === 'viewer');
+}
 // 문의 신원 = **계정** 하나(10-10 유성 「기준은 계정」) — 19가 로그인·알약 조회 때 그 계정 것을 준다(등록 PC에서만).
 //   한유성 = 보기 서명(role viewer), 행정 = 행정 서명(role staff). 옛 「PC에 붙는 관리자 보기」(att_inqv)는 없앴다(부팅 때 지움).
 function inqIdApp() {
@@ -1097,8 +1113,9 @@ function inqAdopt(r) {
 }
 // true = 보임 / false = 안 보임 / null = 아직 모름(부팅 중, 근태 상태가 아직 안 옴 — 이때 화면을 쫓아내지 않는다)
 function inqAllowed() {
-  if (!IS_HOST || !store.token || localStorage.getItem('att_locked')) return false;
+  if (!store.token || localStorage.getItem('att_locked')) return false;
   var id = inqIdApp(); if (!id) return false;
+  if (!IS_HOST) { if (id.role !== 'viewer') return false; if (!state.db) return null; return !!state.db.exempt; }   // 폰 = 한유성 보기 서명만(10-18)
   // 서명이 지금 계정 것인지 — 공용 PC에서 다른 사람이 로그인했는데 앞사람 서명이 남은 틈(알약이 곧 바꿔 쓰지만 그 사이에도 남의 문의가 안 보이게)
   if (id.role === 'viewer') { if (!state.db) return null; return !!state.db.exempt; }   // 보기 서명은 한유성(근태 면제) 계정일 때만
   if (id.role !== 'staff' || (id.emp && id.emp !== store.emp)) return false;
@@ -1114,19 +1131,24 @@ function inqCountApp(id) {
   } catch (e) { return 0; }
 }
 function inqSync() {
-  if (!IS_HOST) return;
-  var ok = inqAllowed(), n = ok ? inqCountApp(inqIdApp()) : 0;
-  var sig = (ok === true ? 1 : 0) + '|' + n;
+  var ok = inqAllowed(), reg = ok !== true && inqRegWanted(), n = ok === true ? inqCountApp(inqIdApp()) : 0;
+  var sig = (ok === true ? 1 : reg ? 2 : 0) + '|' + n;
   if (sig !== inqUi.sig) {   // 1초마다 돌아서 바뀔 때만 그린다
     inqUi.sig = sig;
-    $('miInq').style.display = ok === true ? '' : 'none'; $('inqDiv').style.display = ok === true ? '' : 'none';
+    var show = ok === true || reg;   // reg = 폰 등록 전(10-18) — 칸은 보이고 누르면 등록 화면
+    $('miInq').style.display = show ? '' : 'none'; $('inqDiv').style.display = show ? '' : 'none';
     $('miInqN').textContent = n > 99 ? '99+' : String(n); $('miInqN').classList.toggle('show', n > 0);
     document.querySelectorAll('.mdot').forEach(function (d) { d.classList.toggle('on', n > 0); });
     inqPost({ type: 'dot', on: n > 0 });   // 문의 채팅 머리의 메뉴 아이콘 점도(10-10 메뉴 넣기)
   }
+  inqRegShow(reg);
   if (ok === true) {
     if (inqUi.pending) { inqUi.pending = false; go('inq'); inqGoSend(); }
+    else if ($('s-inq').classList.contains('on') && !inqUi.frame) inqVis(true);   // 등록 화면에서 막 열쇠를 받은 순간(10-18) — 그 자리에서 받은함
     else if (!inqUi.frame && !inqUi.preT) inqUi.preT = setTimeout(function () { inqUi.preT = null; if (inqAllowed() === true) inqFrameEnsure(); }, 1500);   // 출근 중이면 미리 불러 둔다(계획 §4 제안 2) — 앱 첫 그림과 안 겹치게 조금 뒤에
+  } else if (reg) {
+    if (inqUi.pending) { inqUi.pending = false; inqUi.goId = ''; go('inq'); }   // 문자 링크로 왔는데 열쇠 전 = 등록 화면
+    inqUnload();
   } else if (ok === false) {
     if (store.token && !localStorage.getItem('att_locked')) inqUi.pending = false;   // 잠금 중엔 남긴다(비밀번호 뒤에 열 것)
     if ($('s-inq').classList.contains('on')) { go('main'); refreshMain(); }   // 퇴근 등으로 자격이 사라졌다
@@ -1160,16 +1182,85 @@ function inqUnload() {
 }
 function inqPost(o) { o.tf = 'inq'; try { if (inqUi.frame && inqUi.frame.contentWindow) inqUi.frame.contentWindow.postMessage(o, location.origin); } catch (e) { } }
 function inqVis(on) {
-  if (on) inqFrameEnsure();
+  if (on && !$('inqReg')) inqFrameEnsure();   // 폰 등록 화면이 떠 있으면 받은함을 안 띄운다(서명이 없어 「다시 로그인」만 보인다)
   inqPost({ type: 'vis', on: !!on });
+}
+// 폰 등록 화면(10-18) — 「문의 채팅」 화면 안. 머리는 연차 내역과 같은 3칸(← 제목 ≡). 열쇠를 받으면 inqSync가 지우고 받은함을 띄운다
+function inqRegShow(on) {
+  var el = $('inqReg');
+  if (!on) { if (el) el.remove(); return; }
+  if (el) return;
+  el = document.createElement('div'); el.id = 'inqReg'; el.className = 'inqreg';
+  el.innerHTML = '<div class="hd"><button class="ic" id="inqRegBack" title="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>'
+    + '<div class="t">문의 채팅</div><div style="display:flex;gap:2px"><button class="ic goMenu" title="메뉴"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button></div></div>'
+    + '<div class="body"><div class="ir-t">이 폰에서도 문의 채팅을 열어요</div>'
+    + '<div class="ir-s">처음 한 번만 관리자 PIN을 넣으면 돼요.</div>'
+    + '<button class="btn fill" id="inqRegGo">관리자 PIN 넣기</button></div>';
+  $('s-inq').appendChild(el);
+  $('inqRegBack').addEventListener('click', function () { go('main'); refreshMain(); });
+  $('inqRegGo').addEventListener('click', inqRegPin);
+}
+function inqRegPin() {
+  pinPrompt({
+    title: '관리자 PIN을 입력해주세요', digits: 6, back: true,
+    onDone: function (p, h) {
+      api('inq_phone', { adminPin: p }, true).then(function (r) {
+        if (!r.ok) { h.fail(r.code === 'admin' ? 'PIN이 맞지 않아요' : (r.error || '열지 못했어요')); return; }
+        try { localStorage.setItem('att_inqdev', JSON.stringify(r.dev)); } catch (e) { }
+        inqAdopt(r);
+        h.close(); toast('이 폰에서 문의 채팅을 열었어요', true);
+        inqSync(); inqPhonePoll();
+      }).catch(function () { toast('연결이 안 돼요'); });
+    }
+  });
+}
+// 폰 숫자(10-18) — 알약이 없어서 앱이 보이는 동안 30초마다 직접 묻는다. 받은함이 보이는 동안은 받은함이 5초마다 물으므로 쉰다.
+//   박동(on)은 안 싣는다(한유성은 원래 채팅 모드 판정에 안 들어간다 — 26 D3). 응답 모양 = 알약이 쓰는 att_inqc 그대로
+var inqPh = { t: null, busy: false, gver: '' };
+function inqPhonePoll() {
+  clearTimeout(inqPh.t); inqPh.t = setTimeout(inqPhonePoll, 30000);
+  if (IS_HOST || (DEMO && !/[?&]ipoll=1/.test(location.search)) || document.hidden || inqPh.busy || inqAllowed() !== true || $('s-inq').classList.contains('on')) return;
+  var id = inqIdApp(), ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var tm = setTimeout(function () { if (ctl) ctl.abort(); }, 15000);   // 시한 없는 fetch가 폴링을 영구히 멈춘 알약 07-31 사고와 같은 결
+  inqPh.busy = true;
+  var opt = { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 's_poll', auth: id, gver: inqPh.gver }) };
+  if (ctl) opt.signal = ctl.signal;
+  fetch(INQ_GAS_APP, opt).then(function (res) { return res.text(); }).then(function (s) {
+    clearTimeout(tm); inqPh.busy = false;
+    var r; try { r = JSON.parse(s); } catch (e) { return; }   // GAS가 가끔 구글 HTML로 답한다 — 다음 차례에
+    if (!r || !r.ok) {
+      if (r && r.code === 'auth') { try { localStorage.removeItem('att_inq'); localStorage.removeItem('att_inqc'); } catch (e) { } inqPh.gver = ''; inqSync(); }   // 회수됨(INQ_VIEW_MIN_AT) = 등록 화면으로
+      return;
+    }
+    try {
+      if (!r.same) { inqPh.gver = r.gver || ''; localStorage.setItem('att_inqc', JSON.stringify({ t: Date.now(), role: id.role, emp: id.emp || '', r: r })); }
+      else { var c = JSON.parse(localStorage.getItem('att_inqc') || 'null'); if (c && c.r && c.r.gver === r.gver) { c.t = Date.now(); localStorage.setItem('att_inqc', JSON.stringify(c)); } }
+    } catch (e) { }
+    inqSync();
+  }, function () { clearTimeout(tm); inqPh.busy = false; });
+}
+if (!IS_HOST) {
+  setTimeout(inqPhonePoll, 2500);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { clearTimeout(inqPh.t); inqPh.t = setTimeout(inqPhonePoll, 300); } });
+}
+// 폰 키패드(10-18) — 문의 채팅 화면에서만 키패드만큼 화면을 줄인다(받은함 답장 칸이 키패드 위에). 다른 화면은 원래 뷰포트 그대로
+var VP_META = document.querySelector('meta[name="viewport"]'), VP_BASE = VP_META ? VP_META.getAttribute('content') : '';
+function inqViewport(name) {
+  if (IS_HOST || !VP_META) return;
+  var want = name === 'inq' ? VP_BASE + ', interactive-widget=resizes-content' : VP_BASE;
+  if (VP_META.getAttribute('content') !== want) VP_META.setAttribute('content', want);
 }
 // 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending). id = 미리보기로 띄운 방(있으면 받은함이 그 방을 연다)
 function inqOpen(id) {
-  if (!IS_HOST) return;
   if (id) inqGoKeep(id);
   if (!store.token || localStorage.getItem('att_locked')) { inqUi.pending = true; return; }
   var ok = inqAllowed();
-  if (ok === false) { inqUi.goId = ''; return; }   // 퇴근 뒤 등 — 알약에도 문의 칸이 없는 때
+  if (ok === false) {
+    if (!IS_HOST && !state.db) { inqUi.pending = true; return; }   // 폰 부팅 직후(문자 링크) = 계정 상태를 아직 모름 → 알면 inqSync가 연다
+    inqUi.goId = '';
+    if (inqRegWanted()) go('inq');   // 폰 열쇠 전 = 등록 화면(10-18)
+    return;   // 퇴근 뒤 등 — 알약에도 문의 칸이 없는 때
+  }
   inqUi.pending = false;
   go('inq');                  // 상태를 아직 모르면(null) 먼저 열고, 상태가 오면 inqSync가 다시 판정한다
   inqGoSend();
@@ -1185,7 +1276,7 @@ function takeInqGo() {
     return { id: String(p[2] || '').slice(0, 40) };
   } catch (e) { return false; }
 }
-if (IS_HOST) {
+{   // PC 프로그램 안 + 폰(10-18 한유성 문의 폰 — 판정은 inqAllowed·inqRegWanted가 한다. 행정 폰은 칸 없음 그대로)
   // storage 이벤트(다른 WebView2 문서 사이 전파는 확인한 적 없는 사실) + 1초 확인 둘 다 — 한쪽에만 기대지 않는다(24차-2 교훈)
   window.addEventListener('storage', function (e) {
     if (!e) return;
@@ -1204,6 +1295,7 @@ if (IS_HOST) {
     if (!inqUi.frame || e.source !== inqUi.frame.contentWindow || e.origin !== location.origin) return;
     var d = e.data || {}; if (d.tf !== 'inq') return;
     if (d.type === 'back') { go('main'); refreshMain(); }
+    else if (d.type === 'authfail' && !IS_HOST) { try { localStorage.removeItem('att_inq'); localStorage.removeItem('att_inqc'); } catch (x) { } inqSync(); }   // 폰 보기 서명 회수됨(26 INQ_VIEW_MIN_AT) = 등록 화면(10-18)
     else if (d.type === 'menu') openDrawer();   // 문의 채팅 머리의 ≡(10-10 유성 「우상단 메뉴바 넣기」)
     else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
     else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
@@ -1286,6 +1378,7 @@ function calView(ym) { // 서버 _month_와 같은 모양
 }
 // sync 페이로드(원장+설정) 채택 — sync·login 응답이 같은 모양이라 한 곳에서만 조립한다(형태가 갈리면 조용히 어긋난다)
 function adoptSync(r) {
+  if (!IS_HOST && r && 'inq' in r) inqAdopt(r);   // 한유성 문의 폰(10-18) — 조회마다 새 보기 서명(폰 열쇠를 실어 보냈을 때만 서버가 inq 칸을 준다)
   state.db = {
     // 아직 확답이 안 온 낙관 이벤트를 서버본 **위에** 다시 얹는다 — 다른 요청의 응답이 내 방금 기록을
     //   되감아 유령 시트를 띄우던 사고(26차-15) 차단. 끝에 붙이는 건 optimisticEvents와 같은 자리다.
@@ -1329,6 +1422,8 @@ function api(action, data, isWrite) {
   var body = Object.assign({ action: action, token: store.token, emp: store.emp, inst: instId() }, data || {});
   var dev = store.dev;
   if (dev) { body.device = dev.id; body.deviceToken = dev.token; }
+  var idv = inqDevGet();   // 한유성 문의 폰 열쇠(10-18) — 있으면 19가 그 폰에 보기 서명을 준다(한유성 계정일 때만)
+  if (idv) { body.inqDev = idv.id; body.inqDevToken = idv.token; }
   var attempt = function (n) {
     return fetch(GAS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -1458,6 +1553,7 @@ function go(name) {
   if (name === 'ledger') loadLedger();
   if (name === 'me') loadMe();
   inqVis(name === 'inq');   // 문의 채팅 안 창에 보이는지 알린다(가려진 동안 받은함은 서버를 안 부른다)
+  inqViewport(name);        // 폰 키패드 = 문의 채팅에서만 화면을 줄인다(10-18)
 }
 function closeDrawer() { $('drawer').classList.remove('on'); $('dim').classList.remove('on'); $('outDim').classList.remove('on'); }
 function openDrawer() { $('drawer').classList.add('on'); $('dim').classList.add('on'); $('outDim').classList.add('on'); } // 19차: 바깥(body)도 같이 어둡게
@@ -2675,6 +2771,8 @@ document.addEventListener('pointerdown', function () { if (exitArmed) disarmExit
 window.addEventListener('popstate', function () {
   // 겹을 닫거나 화면을 옮기는 뒤로가기는 '나가려는 뒤로'가 아니다 — 무장을 푼다(안 그러면 다음 한 번에 꺼진다)
   if (closeTopLayer()) { hideExitHint(); backGuardPush(); return; }
+  // 문의 채팅(10-18 폰) — 받은함이 먼저 받는다: 크게 보기, 메뉴, 대화방 순으로 닫고 다 닫혀 있으면 {type:'back'}을 돌려줘 메인으로
+  if ($('s-inq').classList.contains('on') && inqUi.frame && inqUi.ready) { hideExitHint(); inqPost({ type: 'hwback' }); backGuardPush(); return; }
   if (!$('s-main').classList.contains('on')) { hideExitHint(); go('main'); refreshMain(); backGuardPush(); return; }
   if (exitArmed) { hideExitHint(); history.go(-1); return; }        // 아래에 앱 칸이 남아 있던 경우(브라우저 탭 등)의 종료
   showExitHint(); exitArmed = true;                                 // 첫 번째 → 머무르고 안내(가드는 다시 안 쌓는다)
@@ -3525,6 +3623,10 @@ function demoApi(action, data) {
     var bal = E.balance(demo.events, DEMO_SETTINGS, today);
     return Promise.resolve({ ok: true, state: '대기', name: '이현아', date: item.date, kd: item.date.slice(5).replace('-', '/'), kind: item.kind, hours: item.hours, reqAt: item.reqAt, beforeMin: bal.baseMin + bal.bonusMin + item.hours * 60, afterMin: bal.baseMin + bal.bonusMin, planStart: '11:00', planEnd: '15:00' });
   }
+  if (action === 'inq_phone') {   // 한유성 문의 폰 등록(10-18) — 데모는 000000만 틀림(시험이 틀린 PIN 장면에 씀)
+    if (String(data.adminPin) === '000000') return Promise.resolve({ ok: false, code: 'admin', error: '관리자 비밀번호가 맞지 않아요' });
+    return Promise.resolve({ ok: true, dev: { id: 'pdemo00000', token: new Array(65).join('d') }, inq: { role: 'viewer', at: String(Date.now()), sig: 'demo' } });
+  }
   if (action === 'admin_summary') {
     var reqs = E.listRequests(demo.events, DEMO_SETTINGS, today, '14:10:00');
     var pend = [], hist = [];
@@ -3593,7 +3695,7 @@ function mainSkeleton() { // §5.4 — 첫 로딩 '—' 대신 구조 미리보�
 }
 (function boot() {
   // 알약 「문의」로 열린 창(att_go) — 10-10부터 페이지를 바꾸지 않고 부팅 뒤 「문의 채팅」 화면으로(잠겨 있으면 비밀번호 뒤에)
-  var wantInq = IS_HOST && takeInqGo();
+  var wantInq = takeInqGo();   // 폰도(10-18 — 유성 폰 문자 링크 inbox/ → att_go). 행정 폰은 inqOpen이 아무것도 안 한다
   if (wantInq) { inqUi.pending = true; if (wantInq.id) inqGoKeep(wantInq.id); }
   try { localStorage.removeItem('att_inqv'); } catch (e) { }   // 옛 「PC에 붙는 관리자 보기」 열쇠(10-10 계정 기준으로 바꿈) — 남겨 두면 날짜 없는 서명이 그 PC에 계속 산다
   if (DEMO) { if (/[?&]lg=1/.test(location.search)) { localStorage.removeItem('att_token'); } else { store.token || (localStorage.setItem('att_token', 'demo')); } } // &lg=1=PIN 로그인 화면 촬영
