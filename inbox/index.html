@@ -508,7 +508,7 @@ var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('
 // slow = 20초 넘게 못 받음 → 뼈대를 비우고 「아직 못 불러왔어요」(§5.4, 뒤에서는 계속 다시 묻는다). names = 맡은 사람 이름표(한유성만 받음)
 var SLOW_MS = 20000;
 // pins = 26이 고정과 이름을 받는 판(s_poll pins:1, @10~) — 구판이면 오른쪽 클릭 메뉴를 안 띄운다. editing = 이름을 적고 있는 줄 id
-var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, editing: '', flying: '', seen: {}, skew: 0 };
+var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, editing: '', flying: '', seen: {}, skew: 0, hold: {} };
 // seen = 이 창에서 읽은 줄 {id: 그때 마지막 시각} — 서버 목록이 읽음보다 늦게 와도 숫자가 다시 안 뜬다(새 글이 오면 시각이 바뀌어 다시 셈). skew = 서버 시각 − 이 PC 시각(10-12)
 function rowsOfTab(){ return S.tab === 'wait' ? S.wait : S.mine; }   // 한유성도 같은 두 칸 — mine = 누가 맡았든 맡은 대화
 function ownerName(emp){ return S.names[emp] || '행정'; }   // 이름을 아직 모르면(구판 26·19) 「행정」
@@ -603,6 +603,7 @@ function take(r){   // 서버 목록 → 화면 상태
   if (r.names) S.names = r.names;
   if (r.wait || r.mine) { S.wait = r.wait || []; S.mine = r.mine || []; }
   else { var L = r.all || []; S.wait = L.filter(function(x){ return !x.owner; }); S.mine = L.filter(function(x){ return !!x.owner; }); }   // 구판 26(@6까지 한유성 = all 하나)·알약이 남긴 옛 목록
+  holdApply();   // 내가 방금 바꾼 이름·고정은 서버가 따라올 때까지 내 값(아래 holdSet)
   S.wait.concat(S.mine).forEach(function(x){ if (S.seen[x.id] && S.seen[x.id] === x.lastAt) x.unread = 0; });   // 이 창에서 이미 읽은 줄(서버 반영 전 목록이어도)
   return true;
 }
@@ -784,6 +785,7 @@ function claim(id){
   var r = null;
   S.wait = S.wait.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
   if (r) { r.owner = me.emp; r.pin = 0; r.pinName = ''; S.mine.unshift(r); S.tab = 'mine'; showTab('mine'); }   // 맡으면 대기 고정은 풀린다(26 규칙)
+  holdDrop(id, 'pin');
   ask({ action:'s_claim', auth: me, id: id, cid: cid() }).then(function(res){
     if (res && res.ok) return;
     toastA((res && res.error) || '맡지 못했어요');
@@ -1099,6 +1101,7 @@ function release(id){
   var r = null;
   S.mine = S.mine.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
   if (r) { r.owner = ''; r.pin = 0; r.pinName = ''; S.wait.unshift(r); }   // 돌려놓으면 개인 고정은 풀린다(26 규칙)
+  holdDrop(id, 'pin');
   showTab('wait'); toastA('대기로 돌려놨어요');
   ask({ action:'s_release', auth: me, id: id, cid: cid() }).then(function(res){
     if (!res || !res.ok) toastA((res && res.error) || '돌려놓지 못했어요');
@@ -1199,16 +1202,40 @@ function recallMsg(seq){
   function send(){ ask({ action:'s_recall', auth: me, id: id, seq: seq, cid: c }).then(function(r){ if (!r || r.code === 'run') { askJob(); return; } done(r); }, askJob); }
   send();
 }
+/* 내가 바꾼 칸 지키기(10-18 유성 「이름 수정하기 해서 이름을 수정했을 때 그 즉시 수정되지 않고 조금 딜레이」)
+   실측: 이름을 저장한 직후 다른 대화 변화(읽음, 새 글, 박동)로 새 목록이 오면 서버엔 아직 옛 이름이라 새 이름 → 1.6초 옛 이름 → 6.6초 새 이름으로 깜빡였다.
+   → 내가 바꾼 이름·고정은 서버 목록이 같은 값을 보여 줄 때까지(답을 받은 뒤, 최대 30초) 내 값으로 둔다. 서버가 거절하면 바로 지우고 다시 받는다(옛 값으로 = 맞음).
+   맡기·돌려놓기는 서버가 고정을 푸니 그 줄의 고정 지키기도 지운다. 요청마다 표(h) = 연달아 바꾸면 마지막 요청의 답만 반영(첫 답이 둘째 값을 덮지 않게). */
+var HOLD_MS = 30000;
+function holdSet(id, k, v, name){ var o = S.hold[id] || (S.hold[id] = {}); return (o[k] = { v: v, name: name || '', at: Date.now(), done: false }); }
+function holdDone(id, k, h, v){ var o = S.hold[id]; if (!o || o[k] !== h) return false; h.done = true; h.at = Date.now(); if (v !== undefined) h.v = v; return true; }   // false = 그 뒤에 또 바꿈
+function holdDrop(id, k, h){ var o = S.hold[id]; if (!o || (h && o[k] !== h)) return; delete o[k]; if (!Object.keys(o).length) delete S.hold[id]; }   // h 없음 = 무조건(맡기·돌려놓기)
+function holdApply(){
+  var now = Date.now();
+  Object.keys(S.hold).forEach(function(id){
+    var o = S.hold[id], r = findRow(id);
+    Object.keys(o).forEach(function(k){
+      var h = o[k];
+      if (now - h.at > HOLD_MS) { delete o[k]; return; }
+      if (!r) return;
+      var cur = k === 'pin' ? (+r.pin ? 1 : 0) : (r[k] || '');
+      if (cur === h.v) { if (h.done) delete o[k]; return; }   // 서버가 따라왔다
+      if (k === 'pin') { r.pin = h.v; if (!r.owner) r.pinName = h.v ? h.name : ''; } else r[k] = h.v;
+    });
+    if (!Object.keys(o).length) delete S.hold[id];
+  });
+}
 // 고정 — 바로 칩·순서를 바꾸고(낙관) 서버가 거절하면 토스트 + 목록 다시 받기
 function setPin(r, on){
   r.pin = on ? 1 : 0;
   if (!r.owner) r.pinName = on ? (VIEWER ? '한유성' : ((me && me.name) || '행정')) : '';   // 행정 서명엔 이름이 실려 있다(19 _inqSig_)
+  var hd = holdSet(r.id, 'pin', on ? 1 : 0, r.pinName);
   renderFlip();
   toastA(on ? '맨 위에 고정했어요' : '고정을 풀었어요');
   ask({ action:'s_pin', auth: me, id: r.id, on: on, cid: cid() }).then(function(res){
-    if (res && res.ok) return;
-    toastA((res && res.error) || '고정하지 못했어요'); S.gver = ''; poll();
-  }).catch(function(){ toastA('연결이 안 돼요'); S.gver = ''; poll(); });
+    if (res && res.ok) { holdDone(r.id, 'pin', hd); return; }
+    holdDrop(r.id, 'pin', hd); toastA((res && res.error) || '고정하지 못했어요'); S.gver = ''; poll();
+  }).catch(function(){ holdDrop(r.id, 'pin', hd); toastA('연결이 안 돼요'); S.gver = ''; poll(); });
 }
 // 이름 칸 — 그린 뒤 붙인다. Enter 저장(한글 조합 중 Enter는 무시), Esc 취소, 밖을 누르면 저장, ↩ = 원래 이름으로
 function bindRen(){
@@ -1232,12 +1259,16 @@ function saveLabel(v){
   v = Array.from(String(v || '').replace(/\s+/g, ' ').trim()).slice(0, LABEL_MAX).join('').trim();
   if (v === baseOf(r) || (isCard(r) && v === r.nick)) v = '';   // 원래 이름을 적으면 = 기본으로(26과 같은 규칙)
   if (v === (r.label || '')) { render(); return; }   // 안 바뀜 = 서버를 안 부른다
-  r.label = v; render();
+  r.label = v; var hd = holdSet(id, 'label', v); render();
   toastA(v ? '이름을 붙였어요' : '원래 이름으로 돌렸어요');
   ask({ action:'s_label', auth: me, id: id, label: v, cid: cid() }).then(function(res){
-    if (res && res.ok) { if (typeof res.label === 'string' && res.label !== r.label) { r.label = res.label; render(); } return; }
-    toastA((res && res.error) || '이름을 못 붙였어요'); S.gver = ''; poll();
-  }).catch(function(){ toastA('연결이 안 돼요'); S.gver = ''; poll(); });
+    if (res && res.ok) {
+      var got = typeof res.label === 'string' ? res.label : v;
+      if (holdDone(id, 'label', hd, got)) { var cur = findRow(id) || r; if (got !== (cur.label || '')) { cur.label = got; render(); } }   // 목록이 그사이 새로 왔으면 새 줄 객체에. 그 뒤에 또 바꿨으면 손대지 않음
+      return;
+    }
+    holdDrop(id, 'label', hd); toastA((res && res.error) || '이름을 못 붙였어요'); S.gver = ''; poll();
+  }).catch(function(){ holdDrop(id, 'label', hd); toastA('연결이 안 돼요'); S.gver = ''; poll(); });
 }
 
 /* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════
