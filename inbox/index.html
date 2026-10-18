@@ -785,13 +785,14 @@ function claim(id){
   var r = null;
   S.wait = S.wait.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
   if (r) { r.owner = me.emp; r.pin = 0; r.pinName = ''; S.mine.unshift(r); S.tab = 'mine'; showTab('mine'); }   // 맡으면 대기 고정은 풀린다(26 규칙)
-  holdDrop(id, 'pin');
+  holdDrop(id, 'pin'); var hd = holdSet(id, 'own', me.emp);
   ask({ action:'s_claim', auth: me, id: id, cid: cid() }).then(function(res){
-    if (res && res.ok) return;
+    if (res && res.ok) { holdDone(id, 'own', hd); return; }
+    holdDrop(id, 'own', hd);
     toastA((res && res.error) || '맡지 못했어요');
     if (res && res.code === 'taken') { closeRoom(); }
     S.gver = ''; poll();
-  }).catch(function(){ S.gver = ''; poll(); });
+  }).catch(function(){ holdDrop(id, 'own', hd); S.gver = ''; poll(); });
 }
 
 /* ══════════ 대화방 ══════════ */
@@ -1101,12 +1102,13 @@ function release(id){
   var r = null;
   S.mine = S.mine.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
   if (r) { r.owner = ''; r.pin = 0; r.pinName = ''; S.wait.unshift(r); }   // 돌려놓으면 개인 고정은 풀린다(26 규칙)
-  holdDrop(id, 'pin');
+  holdDrop(id, 'pin'); var hd = holdSet(id, 'own', '');
   showTab('wait'); toastA('대기로 돌려놨어요');
   ask({ action:'s_release', auth: me, id: id, cid: cid() }).then(function(res){
-    if (!res || !res.ok) toastA((res && res.error) || '돌려놓지 못했어요');
+    if (!res || !res.ok) { holdDrop(id, 'own', hd); toastA((res && res.error) || '돌려놓지 못했어요'); }
+    else holdDone(id, 'own', hd);
     S.gver = ''; poll();
-  }).catch(function(){ S.gver = ''; poll(); });
+  }).catch(function(){ holdDrop(id, 'own', hd); S.gver = ''; poll(); });
 }
 
 /* ══════════ 오른쪽 클릭 메뉴 — 맨 위에 고정 / 이름 붙이기 / 대기로 돌려놓기(10-11 유성 GO, 고정과이름 검토 + 카드이름 프리뷰) ══════════
@@ -1205,7 +1207,9 @@ function recallMsg(seq){
 /* 내가 바꾼 칸 지키기(10-18 유성 「이름 수정하기 해서 이름을 수정했을 때 그 즉시 수정되지 않고 조금 딜레이」)
    실측: 이름을 저장한 직후 다른 대화 변화(읽음, 새 글, 박동)로 새 목록이 오면 서버엔 아직 옛 이름이라 새 이름 → 1.6초 옛 이름 → 6.6초 새 이름으로 깜빡였다.
    → 내가 바꾼 이름·고정은 서버 목록이 같은 값을 보여 줄 때까지(답을 받은 뒤, 최대 30초) 내 값으로 둔다. 서버가 거절하면 바로 지우고 다시 받는다(옛 값으로 = 맞음).
-   맡기·돌려놓기는 서버가 고정을 푸니 그 줄의 고정 지키기도 지운다. 요청마다 표(h) = 연달아 바꾸면 마지막 요청의 답만 반영(첫 답이 둘째 값을 덮지 않게). */
+   맡기·돌려놓기는 서버가 고정을 푸니 그 줄의 고정 지키기도 지운다. 요청마다 표(h) = 연달아 바꾸면 마지막 요청의 답만 반영(첫 답이 둘째 값을 덮지 않게).
+   own = 맡기·돌려놓기(같은 날 「아직 안 고친 것은 고칠것」) — 실측: 맡기만 해도 1.0초 내 대화 → 2.7초 사라짐 → 7.7초 다시(카드 누름의 읽음, 방 열기가
+   목록 판을 올려 맡기 반영 전 목록이 온다), 돌려놓기 = 1.3초 대기 → 2.9초 원래 칸 → 4.7초 대기. → 서버가 따라올 때까지 그 줄을 내가 옮긴 칸에 둔다. */
 var HOLD_MS = 30000;
 function holdSet(id, k, v, name){ var o = S.hold[id] || (S.hold[id] = {}); return (o[k] = { v: v, name: name || '', at: Date.now(), done: false }); }
 function holdDone(id, k, h, v){ var o = S.hold[id]; if (!o || o[k] !== h) return false; h.done = true; h.at = Date.now(); if (v !== undefined) h.v = v; return true; }   // false = 그 뒤에 또 바꿈
@@ -1218,9 +1222,13 @@ function holdApply(){
       var h = o[k];
       if (now - h.at > HOLD_MS) { delete o[k]; return; }
       if (!r) return;
-      var cur = k === 'pin' ? (+r.pin ? 1 : 0) : (r[k] || '');
+      var cur = k === 'pin' ? (+r.pin ? 1 : 0) : k === 'own' ? (r.owner || '') : (r[k] || '');
       if (cur === h.v) { if (h.done) delete o[k]; return; }   // 서버가 따라왔다
-      if (k === 'pin') { r.pin = h.v; if (!r.owner) r.pinName = h.v ? h.name : ''; } else r[k] = h.v;
+      if (k === 'own') {   // 칸 옮기기 = claim·release의 낙관과 같게(맡거나 돌려놓으면 고정은 풀린다, 옮긴 칸 맨 위)
+        S.wait = S.wait.filter(function(x){ return x !== r; }); S.mine = S.mine.filter(function(x){ return x !== r; });
+        r.owner = h.v; r.pin = 0; r.pinName = ''; (h.v ? S.mine : S.wait).unshift(r);
+      }
+      else if (k === 'pin') { r.pin = h.v; if (!r.owner) r.pinName = h.v ? h.name : ''; } else r[k] = h.v;
     });
     if (!Object.keys(o).length) delete S.hold[id];
   });
