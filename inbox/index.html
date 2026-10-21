@@ -325,7 +325,34 @@ body.fileon .ta{padding-right:40px}
 #room.kbon .thread{padding-top:64px}   /* 띠가 첫 말풍선을 가리지 않게 */
 .ta.fill{animation:taFill .5s var(--ease)}
 @keyframes taFill{from{background:var(--green100)}}
-@media (prefers-reduced-motion:reduce){.kb-more,.kb-chev{transition:none}.ta.fill{animation:none}}
+/* 대기 중 답(10-21 유성 GO — prototype/26_문의채팅_받은함카드_대기답_4방향_프리뷰.html A 3판 CSS 그대로): 입력 칸 위 한 줄 = 상황 한 단어 + 근거(접힘) + 확인(흰 버튼 + 그림자, 채움 X) */
+.wa{display:none;padding:0 2px 8px}
+.wa.on{display:block}
+.wa .row{display:flex;align-items:center;gap:10px;font-size:13px;min-height:30px}
+.wa .row .sp{flex:1}
+.wa .word{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--g800);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.wa .word i{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.wa .lnk{border:0;background:none;padding:0;font:inherit;font-size:12.5px;color:var(--g600);text-decoration:underline;text-underline-offset:2px;cursor:pointer;flex:none}
+.wa .ok{flex:none;height:30px;padding:0 14px;border:0;border-radius:9px;background:#fff;color:var(--g900);font:inherit;font-size:13px;font-weight:700;box-shadow:0 0 0 1px var(--g200),0 2px 6px rgba(25,31,40,.10);cursor:pointer;transition:transform .12s}
+.wa .ok:active{transform:scale(.97);background:var(--g50)}
+.wa .why{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s var(--ease)}
+.wa .why.open{grid-template-rows:1fr}
+.wa .why>div{overflow:hidden;min-height:0}
+.wa .why.vis>div{overflow:visible}   /* 다 펼친 뒤엔 마우스 설명이 위로 삐져나와도 안 잘리게 */
+.wa .brief{margin:7px 0 5px;font-size:13px;color:var(--g800)}
+.wa .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0 0 2px;font-size:12.5px}
+.wa .facts dt{color:var(--g500);white-space:nowrap}
+.wa .facts dd{margin:0;color:var(--g800);min-width:0;overflow-wrap:anywhere}
+.wa .paren{font-size:11.5px;color:var(--g400)}
+.wa .tip{position:relative;cursor:help;text-decoration:underline dotted var(--g300);text-underline-offset:3px}
+.wa .tipbox{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);width:236px;background:var(--g800);color:#f9fbfa;font-size:12px;line-height:1.5;padding:9px 11px;border-radius:10px;box-shadow:0 6px 18px rgba(25,31,40,.2);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:5;text-align:left;white-space:normal}
+.wa .tipbox::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--g800)}
+.wa .tip:hover .tipbox,.wa .tip:focus .tipbox{opacity:1;transform:translateX(-50%)}
+.wa .done{font-size:12.5px;color:var(--g700);min-height:30px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.wa .done b{color:var(--green700);display:inline-flex;align-items:center;gap:4px}
+.wa .done svg{width:13px;height:13px}
+.wa .ld{font-size:12.5px;color:var(--g500);min-height:30px;display:flex;align-items:center}
+@media (prefers-reduced-motion:reduce){.kb-more,.kb-chev,.wa .why,.wa .tipbox{transition:none}.ta.fill{animation:none}}
 </style>
 </head>
 <body>
@@ -349,7 +376,7 @@ body.fileon .ta{padding-right:40px}
     <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
-    <div class="comp"><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
+    <div class="comp"><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
     <input type="file" id="rFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
     <div class="drop">여기에 놓아 주세요</div>
     <div class="view" id="rView" role="dialog" aria-label="첨부 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
@@ -817,6 +844,7 @@ function openRoom(id){
   ta.value = dr ? dr.t : ''; ATT = dr ? dr.a : []; drawAtts(); autosize(); syncSend(); closeView();   // 칩의 blob 주소는 그대로(그 방에 돌아와 보낼 수 있게)
   setPst();
   kbSet(c ? c.kid : null);   // 아이 찾기 띠(10-15) — 받아 둔 것 먼저, 서버 것이 오면 바뀐 때만 다시
+  waReset(); waSync();       // 대기 중 답(10-21) — 방마다 새로
   if (c) drawThread(null, true);   // 받아 둔 대화 = 바로(서버 것은 뒤에서 와서 덮는다 — 행정은 그때 읽음이 찍힌다)
   else { T.innerHTML = roomSkel(); fThread(); }
   $('room').classList.add('on');
@@ -827,7 +855,7 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); keepDraft(); closeView(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
+function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); keepDraft(); closeView(); waReset(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
@@ -857,6 +885,7 @@ function loadRoom(id, quietNew){
     setPst();
     kbSet(r.kid || null);
     drawThread(quietNew ? had : null, true);
+    waSync();   // 대기 중 답(10-21) — 학부모 새 글이면 카드를 다시 받는다
   }).catch(function(){ if (R.id !== id) return; if (!R.loaded) roomFail(id); else toastA('연결이 안 돼요'); });
 }
 // 뼈대인 채 못 받았으면 뼈대를 비우고 다시 불러오기(§5.4 — 뼈대가 오류 뒤에 남아 훑으면 「아직 로딩 중」 오신호). 받아 둔 게 보이는 중이면 토스트만
@@ -900,9 +929,9 @@ var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, se
 var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음' };
 var KB_MAP = 'https://think-fact0ry.github.io/saenggak/provider-map.html';
 var KB_CNT = ['', '', '둘', '셋'];
-// 답 넣기 글 — 배정 = 13번, 신청 없음 = 6번 + 신청폼 주소(⑤⑦ 사전계획 확정). 대기 중 = ⚠️초안(보류 7·8, 유성 확인 전). ⑤ 자주 쓰는 답변이 생기면 그 단일 소스로 옮긴다
+// 답 넣기 글 — 배정 = 13번, 신청 없음 = 6번 + 신청폼 주소(⑤⑦ 사전계획 확정). ⑤ 자주 쓰는 답변이 생기면 그 단일 소스로 옮긴다
 var KB_ANS = {
-  // wait(대기 중 답) = 유성이 새 4안에서 고르는 중(10-15 1차 「오래 기다리시게 해서 죄송해요…」 반려) — 고르기 전엔 단추 없음
+  // wait = 띠 단추 없음 — 대기 중 답은 입력 칸 위 카드 A가 맡는다(아래 WA, 26 s_wait가 06 상황을 읽고 정한 글, 10-21)
   assigned: { lab: '배정 답 넣기', txt: function(){ return '확인해 보니 아직 담당 선생님께서 연락을 못 드렸어요. 선생님께서 직접 연락드려 첫 회기 날짜를 맞추실 거예요.\n\n며칠이 지나도 연락이 없으면 다시 말씀해 주세요. 바로 확인해 드릴게요.'; } },
   none: { lab: '신청 안내 넣기', txt: function(){ return '서비스와 거주하시는 동네, 가능한 요일과 시간에 따라 자리가 달라서, 신청폼에 넉넉히 적어 주시면 선생님 일정을 보고 접수 순서대로 연락드려요.\n\n신청하시는 분이 많아서 맞는 자리가 생길 때만 연락드리고 있어요. 현재 대기 상황은 신청폼에서 보실 수 있어요.\nhttps://think-factory.kr/contact'; } }
 };
@@ -1033,6 +1062,91 @@ $('kbw').addEventListener('click', function(e){
   if (a === 'map' && k) { window.open(KB_MAP + '#find=' + encodeURIComponent(k.k.split('|')[0] + '|' + k.n), '_blank'); }   // 새 창 = PC 프로그램이 기본 브라우저로(관리자 지도가 그 아이를 찾아 둠)
 });
 document.addEventListener('click', function(e){ if (!e.target.closest('.kb-find')) document.querySelectorAll('.kb-res.show').forEach(function(u){ u.classList.remove('show'); }); });
+
+/* ══════════ 대기 중 답(10-21 유성 GO — 카드 = prototype/26_문의채팅_받은함카드_대기답_4방향_프리뷰.html A 3판, 서버 = 26 대기답.js) ══════════
+   띠에 「대기 중」 아이가 있는 방 = 26 s_wait로 카드를 받아 입력 칸 위 한 줄에: 상황 한 단어 + 「근거」(접힘) + 「확인」.
+   초안은 입력 칸에 흐린 글(placeholder)로 먼저 → 「확인」이나 빈 입력 칸을 누르면 진짜 글로(유성 「인풋을 눌렀을 때 답이 없어짐」 반려).
+   카드에 go.add가 있으면(시간 받음) 그 순간 06 희망 시간 더하기, done.mark가 있으면 보낸 뒤 06 여쭙기 마크 → 「보냈어요.」 + 06이 받았을 때만 한 줄.
+   ⛔토스트 0(유성 「토스트 전부 X」), Tab 표시 0, 스크롤 UI 0. 학부모 새 글이 오면 다시 받는다(서버 캐시 키 = 학부모 마지막 줄) */
+var WA = { id: '', k: '', card: null, lastV: 0, open: false, filled: false, sent: false, sentLine: '', addOk: false, req: 0, ph: '' };
+var WA_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>';
+function waKid(){ var ks = (KB.card && KB.card.kids) || []; for (var i = 0; i < ks.length; i++) if (ks[i].st === 'wait') return ks[i]; return null; }   // 형제 중 대기 중인 첫 아이
+function waLastV(){ var n = 0; R.msgs.forEach(function(m){ if (m.who === 'v' && !m.rc && m.seq < 1e9) n = Math.max(n, m.seq); }); return n; }
+function waReset(){ WA = { id: '', k: '', card: null, lastV: 0, open: false, filled: false, sent: false, sentLine: '', addOk: false, req: WA.req + 1, ph: '' }; waPh(''); waDraw(); }
+function waPh(t){   // 흐린 초안 = 입력 칸 placeholder. 비어 있는 입력 칸이면 초안 글 높이만큼 키운다(최대 100px, 넘치면 칸 페이드)
+  ta.placeholder = t || '답장 적기';
+  if (!t || ta.value) { autosize(); return; }
+  ta.value = t; ta.style.height = 'auto'; var h = Math.min(100, ta.scrollHeight + 3); ta.value = ''; ta.style.height = h + 'px'; fTa();
+}
+// 방이 열리거나 다시 읽힐 때 — 대기 아이와 학부모 마지막 줄이 그대로면 아무것도 안 함
+function waSync(){
+  var kid = waKid(), id = R.id;
+  if (!id || !kid) { if (WA.card || WA.id) waReset(); return; }
+  var lv = waLastV();
+  if (WA.id === id && WA.k === kid.k && WA.lastV === lv) return;
+  var keepSent = WA.id === id && WA.sent && WA.lastV === lv;
+  if (keepSent) return;
+  WA.id = id; WA.k = kid.k; WA.lastV = lv; WA.card = null; WA.open = false; WA.filled = false; WA.sent = false; WA.sentLine = ''; WA.addOk = false;
+  var my = ++WA.req;
+  if (!lv) { waPh(''); waDraw(); return; }
+  waDraw(true);
+  askRead({ action:'s_wait', auth: me, id: id, k: kid.k }).then(function(r){
+    if (my !== WA.req || R.id !== id) return;
+    WA.card = r && r.ok && r.wait ? r.wait : null;
+    if (WA.card && WA.card.ans && !ta.value) waPh(WA.card.ans); else waPh('');
+    waDraw();
+  }, function(){ if (my !== WA.req) return; WA.card = null; waPh(''); waDraw(); });
+}
+function waFacts(fs){
+  return '<dl class="facts">' + (fs || []).map(function(f){
+    var p = f[2] ? ' <span class="paren">(' + (f[3] ? '<span class="tip" tabindex="0">' + esc(f[2]) + '<span class="tipbox">' + esc(f[3]) + '</span></span>' : esc(f[2])) + ')</span>' : '';
+    return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + p + '</dd>';
+  }).join('') + '</dl>';
+}
+function waDraw(loading){
+  var w = $('rWa'), c = WA.card;
+  if (loading) { w.className = 'wa on'; w.innerHTML = '<div class="ld">상황 읽는 중<span class="ldd"><i></i><i></i><i></i></span></div>'; return; }
+  if (WA.sent) { w.className = 'wa on'; w.innerHTML = '<div class="done"><b>' + WA_CHECK + '보냈어요.</b>' + (WA.sentLine ? '<span>' + esc(WA.sentLine) + '</span>' : '') + '</div>'; return; }
+  if (!c || !c.word) { w.className = 'wa'; w.innerHTML = ''; return; }
+  w.className = 'wa on';
+  w.innerHTML = '<div class="row"><span class="word"><i></i>' + esc(c.word) + '</span><button type="button" class="lnk" data-w="why">' + (WA.open ? '근거 접기' : '근거') + '</button><span class="sp"></span>' +
+    (c.ans && !WA.filled ? '<button type="button" class="ok" data-w="take">확인</button>' : '') + '</div>' +
+    '<div class="why' + (WA.open ? ' open vis' : '') + '"><div><p class="brief">' + esc(c.brief) + '</p>' + waFacts(c.facts) + '</div></div>';
+}
+// 초안 → 진짜 글. 쓰던 글이 있으면 지우지 않고 아래에(kbFill과 같음). 시간 받음이면 06 희망 시간 더하기도 이때(행정만 — 한유성 보기는 서버가 거절)
+function waTake(){
+  var c = WA.card; if (!c || !c.ans || WA.filled || WA.id !== R.id) return;
+  WA.filled = true; waPh(''); kbFill(c.ans); waDraw();
+  if (c.go && c.go.add && !VIEWER) {
+    var id = WA.id, k = WA.k;
+    ask({ action:'s_waitgo', auth: me, id: id, k: k, op: 'add', slots: c.go.add }).then(function(r){ if (WA.id === id && WA.k === k) WA.addOk = !!(r && r.ok); }, function(){});
+  }
+}
+// 보낸 뒤 — 초안을 넣어 보낸 경우만 「보냈어요.」. 마크가 필요하면 06에 남기고, 06이 받았을 때만 할 일 한 줄(시간 받음 = 더하기까지 받았을 때)
+function waSent(id){
+  if (WA.id !== id || !WA.filled || WA.sent) return;
+  var c = WA.card || {}, k = WA.k;
+  WA.sent = true; WA.sentLine = ''; WA.open = false; waDraw();
+  if (!c.done || !c.done.mark || VIEWER) return;
+  ask({ action:'s_waitgo', auth: me, id: id, k: k, op: 'mark' }).then(function(r){
+    if (WA.id !== id || !WA.sent || !(r && r.ok)) return;
+    if (c.go && c.go.add && !WA.addOk) return;
+    WA.sentLine = c.sent || ''; waDraw();
+  }, function(){});
+}
+$('rWa').addEventListener('click', function(e){
+  var b = e.target.closest('[data-w]'); if (!b) return;
+  var a = b.getAttribute('data-w');
+  if (a === 'why') {
+    WA.open = !WA.open;
+    var wy = $('rWa').querySelector('.why'); b.textContent = WA.open ? '근거 접기' : '근거';
+    if (wy) { wy.classList.toggle('open', WA.open); wy.classList.remove('vis'); if (WA.open) setTimeout(function(){ if (WA.open) wy.classList.add('vis'); }, 260); }
+    return;
+  }
+  if (a === 'take') waTake();
+});
+ta.addEventListener('mousedown', function(e){ if (WA.card && WA.card.ans && !WA.filled && !ta.value) { e.preventDefault(); waTake(); } });   // 빈 입력 칸을 누르면 초안이 진짜 글로
+
 
 /* 행정 답장의 아래 글자: 문자로 갔으면 그 말, 실패면 실패, 아니면 학부모가 그 뒤에 말했거나 지금 보고 있으면 읽음 */
 function meLabel(m, i){
@@ -1296,6 +1410,7 @@ sendB.addEventListener('click', function(){
   var items = files.map(function(a){ return { text: '', file: a }; });
   if (v) items.push({ text: v });
   sendBatch(R.id, items);
+  waSent(R.id);   // 대기 중 답(10-21) — 초안을 넣어 보냈으면 「보냈어요.」
 });
 function seenAll(){ var h = {}; R.msgs.forEach(function(x){ h[x.seq] = 1; }); return h; }   // 결과만 바뀐 다시 그리기 = 올라오는 모션 없음
 function msgLabel(m){ return m.text || (m.file ? (m.file.t === 'application/pdf' ? '파일 ' + m.file.n : '사진') : ''); }   // 26 _msgLabel_과 같은 말(목록 줄 글)
