@@ -224,6 +224,34 @@ body.fileon .ta{padding-right:40px}
 .taw .clip:hover{color:var(--g900)}
 .taw .clip:active{transform:scale(.86)}
 .taw .clip svg{width:19px;height:19px}
+/* 자주 쓰는 답변(⑤ 10-23 — 정본 = 생각공작소 prototype/26_문의채팅_자주쓰는답변_첫화면질문_사전계획_프리뷰.html ⑤ 탭 t1~t4): 클립 옆 말풍선 단추 → 입력 줄 위 오른쪽 목록.
+   26이 faq:1을 주는 판일 때만(body.faqon). 목록 = 흰 바탕, radius 16, 그림자 = 오른쪽 클릭 메뉴(.cm)와 같은 2겹. 줄 = 제목 굵게 + 첫 줄 회색 한 줄 */
+.comp{position:relative}
+.taw .faqb{position:absolute;right:3px;bottom:3px;width:32px;height:32px;border:0;background:none;border-radius:10px;color:var(--g600);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;padding:0;transition:transform .16s,color .15s}
+body.faqon .taw .faqb{display:flex}
+body.faqon.fileon .taw .faqb{right:37px}
+body.faqon .ta{padding-right:40px}
+body.faqon.fileon .ta{padding-right:74px}
+.taw .faqb:hover,.taw .faqb.on{color:var(--g900)}
+.taw .faqb:active{transform:scale(.86)}
+.taw .faqb svg{width:19px;height:19px}
+.fql{position:absolute;right:10px;bottom:calc(100% + 6px);width:min(320px,calc(100% - 20px));max-height:min(440px,62vh);display:none;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.14);z-index:15;overflow:hidden}
+.fql.on{display:flex}
+.fql .fh{font-size:13px;color:var(--g600);padding:14px 16px 6px;flex:none}
+.fql .fs{overflow-y:auto;padding:0 6px 6px;scrollbar-width:none;min-height:0}
+.fql .fs::-webkit-scrollbar{width:0}
+.fql .fi{display:block;width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px;cursor:pointer;font:inherit}
+.fql .fi:hover,.fql .fi.sel{background:var(--g100)}
+.fql .fi:active{background:var(--g200)}
+.fql .fi b{display:block;font-size:14.5px;font-weight:700;color:var(--g900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fql .fi span{display:block;font-size:13px;color:var(--g600);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fql .fi.new{animation:fqNew 1.2s ease}
+@keyframes fqNew{0%,40%{background:var(--green50,#eef7f1)}100%{background:none}}
+.fql .fe{padding:12px 16px 16px;font-size:13px;color:var(--g600)}
+.fql .fa{display:flex;align-items:center;gap:8px;flex:none;border:0;border-top:1px solid var(--g100);background:none;padding:12px 16px;font:inherit;font-size:14px;font-weight:500;color:var(--g800);cursor:pointer;text-align:left}
+.fql .fa:hover{background:var(--g50)}
+.fql .fa:disabled{color:var(--g400);cursor:default;background:none}
+.fql .fa svg{width:17px;height:17px;flex:none}
 .atts{display:none;gap:8px;padding:2px 0 8px;overflow-x:auto;scrollbar-width:none}
 .atts::-webkit-scrollbar{height:0}
 .atts.on{display:flex}
@@ -376,7 +404,7 @@ body.fileon .ta{padding-right:40px}
     <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
-    <div class="comp"><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></div>
+    <div class="comp"><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="faqb" id="rFaq" title="자주 쓰는 답변" aria-label="자주 쓰는 답변" aria-expanded="false"><svg class="li" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></button><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div><div class="fql" id="rFql" role="dialog" aria-label="자주 쓰는 답변"></div></div>
     <input type="file" id="rFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
     <div class="drop">여기에 놓아 주세요</div>
     <div class="view" id="rView" role="dialog" aria-label="첨부 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
@@ -673,6 +701,7 @@ function poll(){
     S.dead = '';
     if (typeof r.now === 'number') S.skew = r.now - (t0 + Date.now()) / 2;   // 서버 시각 차이(왕복 절반 보정, 26 @12~)
     if (r.files && !document.body.classList.contains('fileon')) document.body.classList.add('fileon');   // 첨부 켜짐(26 @8~)
+    if (r.faq && !document.body.classList.contains('faqon')) { document.body.classList.add('faqon'); fqLoad().catch(function(){}); }   // 자주 쓰는 답변 켜짐(26 @19~) — 목록을 미리 받아 둔다(누르면 바로)
     var prevCur = S.cur ? findRow(S.cur.id) : null, first = !S.loaded;
     var changed = take(r);
     S.loaded = true; S.srv = true;   // srv = 서버 목록을 한 번이라도 받음(미리보기로 온 방을 찾을 수 있는 때)
@@ -855,7 +884,7 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); keepDraft(); closeView(); waReset(); $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
+function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); keepDraft(); closeView(); waReset(); fqClose(); FQ.ins = null; $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
@@ -1230,8 +1259,8 @@ function release(id){
    · 이름: 대화 하나에 이름 하나, 볼 수 있는 사람 누구나. 원래 이름(카드는 닉네임도)을 적거나 비우면 기본으로(26이 정한다).
    · 대기로 돌려놓기: 내 대화 칸, 행정만(한유성은 맡지 않음). 카드는 이 메뉴가 유일한 길(대화방이 없다).
    · 26이 pins:1을 안 주는 구판이면 메뉴 없음(기본 메뉴도 안 뜨게 막기만). 키보드 메뉴 키·Shift+F10도 같은 contextmenu */
-var cmFor = '', cmSeq = 0;   // cmSeq = 대화방 말풍선 메뉴(거두기, 10-12)
-function closeCm(){ var m = $('cm'); if (!m.classList.contains('on')) return; m.classList.remove('on'); cmFor = ''; cmSeq = 0; }
+var cmFor = '', cmSeq = 0, cmFq = '';   // cmSeq = 대화방 말풍선 메뉴(거두기, 10-12) · cmFq = 자주 쓰는 답변 목록 줄(빼기, 10-23)
+function closeCm(){ var m = $('cm'); if (!m.classList.contains('on')) return; m.classList.remove('on'); cmFor = ''; cmSeq = 0; cmFq = ''; }
 $('list').addEventListener('contextmenu', function(e){
   if (e.target.closest('.renw')) return;   // 이름 칸 안 = 글자 편집용 기본 동작(붙여넣기)은 프로그램이 이미 꺼 둠 — 막지 않는다
   e.preventDefault();
@@ -1253,6 +1282,8 @@ $('list').addEventListener('contextmenu', function(e){
 $('cm').addEventListener('click', function(e){
   var b = e.target.closest('button'); if (!b) return;
   if (b.dataset.a === 'recall') { var s = cmSeq; closeCm(); recallMsg(s); return; }
+  if (b.dataset.a === 'faqput') { var fm = msgBySeq(cmSeq); closeCm(); if (fm) fqSave(fm.text); return; }
+  if (b.dataset.a === 'faqdel') { var fid = cmFq; closeCm(); fqDel(fid); return; }
   var id = cmFor, r = findRow(id), a = b.dataset.a; closeCm();
   if (!r) return;
   if (a === 'pin') setPin(r, !r.pin);
@@ -1262,7 +1293,7 @@ $('cm').addEventListener('click', function(e){
     if (it) flyTo(it, id, 'wait'); else release(id);
   }
 });
-document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#cm') && !e.target.closest('#list .it')) closeCm(); }, true);
+document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#cm') && !e.target.closest('#list .it') && !e.target.closest('#rFql .fi')) closeCm(); }, true);
 $('list').addEventListener('scroll', closeCm);
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('cm').classList.contains('on')) { e.preventDefault(); closeCm(); } });
 /* ══════════ 내 답장 거두기(10-12 ③ 유성 a1 「행정인력이나 관리자만 거둘 수 있게 … 상대방에게 거둔 답장이라고 남기지 말것. 아예 없어지게」) ══════════
@@ -1276,11 +1307,15 @@ function msgBySeq(seq){ for (var i = 0; i < R.msgs.length; i++) if (R.msgs[i].se
 function recallable(m){ return !!m && !m.rc && !m.pending && !m.unknown && !m.failed && m.seq > 0 && m.seq < 1e9 && m.who === MY_WHO && nowS() - new Date(m.at).getTime() < RECALL_MS; }
 T.addEventListener('contextmenu', function(e){
   var row = e.target.closest('.row.me[data-seq]'), m = row ? msgBySeq(+row.dataset.seq) : null;
-  if (!recallable(m)) return;   // 남의 줄·1분 지난 줄·보내는 중 = 기본 메뉴(복사)
+  var canRc = recallable(m), canFq = fqCanSave(m);
+  if (!canRc && !canFq) return;   // 학부모 줄·보내는 중 = 기본 메뉴(복사)
+  var sel = window.getSelection && String(window.getSelection() || '');
+  if (sel && row.contains(window.getSelection().anchorNode)) return;   // 글자를 골라 둔 채 누름 = 기본 메뉴(복사) 그대로
   e.preventDefault();
   cmFor = ''; cmSeq = m.seq;
   var cm = $('cm');
-  cm.innerHTML = '<button type="button" role="menuitem" data-a="recall">' + I_RECALL + '거두기</button>';
+  cm.innerHTML = (canRc ? '<button type="button" role="menuitem" data-a="recall">' + I_RECALL + '거두기</button>' : '') +
+    (canFq ? '<button type="button" role="menuitem" data-a="faqput">' + I_FAQADD + '자주 쓰는 답변에 넣기</button>' : '');
   cm.classList.add('on');
   var ar = $('app').getBoundingClientRect(), x = e.clientX - ar.left, y = e.clientY - ar.top;
   if (!e.clientX && !e.clientY) { var br = row.getBoundingClientRect(); x = br.right - ar.left - 120; y = br.bottom - ar.top - 8; }   // 키보드로 연 메뉴 = 말풍선 아래
@@ -1411,6 +1446,7 @@ sendB.addEventListener('click', function(){
   if (v) items.push({ text: v });
   sendBatch(R.id, items);
   waSent(R.id);   // 대기 중 답(10-21) — 초안을 넣어 보냈으면 「보냈어요.」
+  fqSent(R.id, v);   // 자주 쓰는 답변(10-23) — 넣은 답을 보냈으면 그대로 / 고쳐서 한 번
 });
 function seenAll(){ var h = {}; R.msgs.forEach(function(x){ h[x.seq] = 1; }); return h; }   // 결과만 바뀐 다시 그리기 = 올라오는 모션 없음
 function msgLabel(m){ return m.text || (m.file ? (m.file.t === 'application/pdf' ? '파일 ' + m.file.n : '사진') : ''); }   // 26 _msgLabel_과 같은 말(목록 줄 글)
@@ -1615,6 +1651,134 @@ function closeView(){ var v = $('rView'); if (!v.classList.contains('on')) retur
 $('rView').addEventListener('click', function(e){ if (e.target === this || e.target.classList.contains('vb') || e.target.closest('.vx')) closeView(); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('rView').classList.contains('on')) { e.preventDefault(); closeView(); } });
 
+/* ══════════ 자주 쓰는 답변(⑤ 10-23 첫 판 — 정본 = 생각공작소 prototype/26_문의채팅_자주쓰는답변_첫화면질문_사전계획_프리뷰.html ⑤ 탭, 서버 = 26 자주답변.js, 글 = tools/문의답변/정본.js) ══════════
+   · 클립 옆 말풍선 단추 → 목록. 26이 faq:1을 주는 판일 때만 단추(구판에 s_faq를 부르면 「알 수 없는 요청」).
+   · 순서 = 학부모 글(우리 마지막 답 앞뒤로 가장 가까운 학부모 줄들) × 낱말 사전. 띄어쓰기 빼고 맞춤, 둘 이상 맞으면 1.5배, 서비스 이름이 나오면 그 서비스 갈래가 위로·다른 서비스 갈래는 아래로.
+     정본만 사전이 있고, 맞은 정본 → 안 맞은 정본(원래 순서) → 저장한 답(새로 저장한 것 먼저). AI 호출 0(유성 10-15 2차 「사전계획」).
+   · 넣기 = 입력 칸이 비어 있고 그 대화에 우리 답장이 아직 없으면(거둔 답장은 안 셈, 앞 줄이 더 있으면 있는 셈) 앞에 「네 안녕하세요! 」 — 답이 「안녕하세요」나 「네, 」로 시작하면 안 붙임. 쓰던 글이 있으면 그 아래에(kbFill).
+   · 저장 = 목록 맨 아래 「지금 쓴 글 저장하기」 / 우리 말풍선 오른쪽 클릭 「자주 쓰는 답변에 넣기」. ⛔그 대화 이름표, 닉네임, 아이 이름, 선생님 이름, 전화번호가 든 글은 안 넣는다(목록은 모든 대화에 뜬다 — 번호는 26도 한 번 더 거름).
+   · 빼기 = 목록 줄 오른쪽 클릭 「목록에서 빼기」. 넣은 답을 보내면 26에 한 번(그대로 / 고쳐서) — 자주 고쳐 보내는 답 = 안 맞는 답(유성 10-15 「행동으로 찾기」) */
+var FQ = { data: null, at: 0, p: null, open: false, ins: null, sel: -1, rows: [], fresh: '' };   // ins = 마지막으로 넣은 답 {id, room, text} · fresh = 방금 저장한 줄(한 번 반짝) · at = 받은 때(10분 지나면 열 때 뒤에서 새로 — 다른 PC가 저장한 답)
+var I_FAQADD = '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>';
+var I_FAQDEL = '<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
+var FQ_GREET = '네 안녕하세요! ', FQ_PHONE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/;
+function fqLoad(force){
+  if (FQ.p && !force) return FQ.p;
+  var p = FQ.p = askRead({ action:'s_faq', auth: me }).then(function(r){ if (!r || !r.ok) throw new Error((r && r.error) || 'faq'); FQ.data = r; FQ.at = Date.now(); return r; });
+  p.catch(function(){ if (FQ.p === p) FQ.p = null; });   // 못 받았으면 다음에 다시
+  return p;
+}
+function fqNorm(t){ return String(t || '').replace(/\s+/g, '').toLowerCase(); }
+function fqAsked(){   // 학부모 글 = 끝에서부터 우리 줄은 건너뛰고, 학부모 줄을 만나면 그 앞 우리 줄까지(최대 6줄)
+  var out = [];
+  for (var i = R.msgs.length - 1; i >= 0 && out.length < 6; i--) {
+    var m = R.msgs[i]; if (m.rc) continue;
+    if (m.who !== 'v') { if (out.length) break; continue; }
+    out.unshift(m.text || '');
+  }
+  return fqNorm(out.join(' '));
+}
+function fqScore(row, txt, hit, any){
+  var kw = row.kw, sc = 0, n = 0;
+  if (!kw || !txt) return 0;
+  for (var k in kw) if (Object.prototype.hasOwnProperty.call(kw, k) && txt.indexOf(fqNorm(k)) >= 0) { sc += +kw[k] || 0; n++; }
+  if (n >= 2) sc *= 1.5;
+  if (sc > 0 && typeof row.svc === 'string') sc += row.svc ? (hit[row.svc] ? 3 : any ? -3 : -0.5) : (any ? -2 : 0.5);
+  return sc;
+}
+function fqOrder(){   // → 목록 줄 [{id, t(제목), p(첫 줄), a(넣을 글), mine}]
+  var d = FQ.data; if (!d) return [];
+  var txt = fqAsked(), hit = {}, any = 0;
+  Object.keys(d.svc || {}).forEach(function(c){ var kw = d.svc[c]; for (var k in kw) if (txt && txt.indexOf(fqNorm(k)) >= 0) { hit[c] = 1; any = 1; break; } });
+  var base = (d.base || []).map(function(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, sc: fqScore(b, txt, hit, any), i: i }; });
+  var on = base.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
+  var off = base.filter(function(x){ return !(x.sc > 0); });
+  var mine = (d.mine || []).map(function(m){ var one = m.a.replace(/\s+/g, ' ').trim(), cut = one.search(/[.?!](\s|$)/); var t = cut > 0 && cut < 30 ? one.slice(0, cut + 1) : one.slice(0, 24); return { id: m.id, t: t, p: one.slice(t.length).trim() || one, a: m.a, mine: 1 }; });
+  return on.concat(off, mine);
+}
+function fqDraw(){
+  var L = $('rFql'), d = FQ.data, canAdd = !!ta.value.trim();
+  var foot = '<button type="button" class="fa" data-f="add"' + (canAdd ? '' : ' disabled') + '>' + '<svg class="li" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>지금 쓴 글 저장하기</button>';
+  if (!d) { L.innerHTML = '<div class="fh">자주 쓰는 답변</div><div class="fe">' + (FQ.p ? '불러오는 중<span class="ldd"><i></i><i></i><i></i></span>' : '목록을 아직 못 불러왔어요. 다시 눌러 주세요') + '</div>'; return; }
+  FQ.rows = fqOrder();
+  L.innerHTML = '<div class="fh">자주 쓰는 답변</div><div class="fs">' + FQ.rows.map(function(x, i){
+    return '<button type="button" class="fi' + (i === FQ.sel ? ' sel' : '') + (x.id === FQ.fresh ? ' new' : '') + '" data-i="' + i + '"><b>' + esc(x.t) + '</b><span>' + esc(x.p) + '</span></button>';
+  }).join('') + '</div>' + foot;
+  if (FQ.fresh) { var nw = L.querySelector('.fi.new'); if (nw) nw.scrollIntoView({ block: 'nearest' }); FQ.fresh = ''; }
+}
+function fqOpen(){
+  if (!R.id || !document.body.classList.contains('faqon')) return;
+  closeCm(); FQ.open = true; FQ.sel = -1; $('rFql').classList.add('on'); $('rFaq').classList.add('on'); $('rFaq').setAttribute('aria-expanded', 'true');
+  fqDraw();
+  if (!FQ.data || Date.now() - FQ.at > 600000) fqLoad(!!FQ.data).then(function(){ if (FQ.open) fqDraw(); }, function(){ if (FQ.open) fqDraw(); });
+}
+function fqClose(){ if (!FQ.open) return; FQ.open = false; $('rFql').classList.remove('on'); $('rFaq').classList.remove('on'); $('rFaq').setAttribute('aria-expanded', 'false'); }
+function fqPut(x){
+  var mineSaid = R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; });
+  var greet = !ta.value.trim() && !mineSaid && !/^(안녕하세요|네,)/.test(x.a);
+  fqClose();
+  kbFill((greet ? FQ_GREET : '') + x.a);
+  FQ.ins = { id: x.id, room: R.id, text: ta.value.trim() };
+}
+function fqSent(id, v){
+  var x = FQ.ins; FQ.ins = null; fqClose();   // 목록을 연 채 엔터로 보냈으면 닫기
+  if (!x || x.room !== id || !v) return;
+  ask({ action:'s_faquse', auth: me, id: x.id, ed: v.trim() === x.text ? 0 : 1 }).then(function(){}, function(){});   // 세기만 — 실패해도 답장엔 영향 0
+}
+function fqCanSave(m){ return !!m && document.body.classList.contains('faqon') && m.who !== 'v' && !m.rc && !m.pending && !m.failed && !m.unknown && !!(m.text || '').trim(); }
+function fqPii(t){   // 이 대화에서 나온 이름, 번호가 든 글인가 — 목록은 모든 대화에 뜬다
+  if (FQ_PHONE.test(t)) return true;
+  var row = findRow(R.id), names = [];
+  if (row) { if (row.label) names.push(row.label); if (row.nick) names.push(row.nick); }
+  ((KB.card && KB.card.kids) || []).forEach(function(k){ if (k.n) names.push(k.n); if (k.t) names.push(k.t); });
+  return names.some(function(n){ n = String(n).trim(); return n.length >= 2 && t.indexOf(n) >= 0; });
+}
+function fqSave(text){
+  var t = String(text || '').trim(); if (!t) return;
+  if (fqPii(t)) { toastA('이름이나 전화번호가 들어 있어서 넣지 않았어요'); return; }
+  ask({ action:'s_faqadd', auth: me, text: t }).then(function(r){
+    if (!r || !r.ok) { toastA((r && r.error) || '못 넣었어요'); return; }
+    FQ.data = r; FQ.at = Date.now(); FQ.p = Promise.resolve(r); FQ.fresh = r.added || '';
+    toastA(r.again ? '이미 자주 쓰는 답변에 있어요' : '자주 쓰는 답변에 넣었어요');
+    if (FQ.open) fqDraw();
+  }, function(){ toastA('연결이 안 돼요'); });
+}
+function fqDel(id){
+  if (!id || !FQ.data) return;
+  var keep = FQ.data;
+  FQ.data = { ok: true, ver: keep.ver, svc: keep.svc, base: keep.base.filter(function(b){ return b.id !== id; }), mine: keep.mine.filter(function(m){ return m.id !== id; }) };   // 낙관 — 바로 빠짐
+  if (FQ.open) fqDraw();
+  ask({ action:'s_faqdel', auth: me, id: id }).then(function(r){
+    if (!r || !r.ok) { FQ.data = keep; if (FQ.open) fqDraw(); toastA((r && r.error) || '못 뺐어요'); return; }
+    FQ.data = r; FQ.at = Date.now(); FQ.p = Promise.resolve(r); if (FQ.open) fqDraw();
+  }, function(){ FQ.data = keep; if (FQ.open) fqDraw(); toastA('연결이 안 돼요'); });
+}
+$('rFaq').addEventListener('click', function(){ if (FQ.open) fqClose(); else fqOpen(); });
+$('rFql').addEventListener('click', function(e){
+  var a = e.target.closest('[data-f="add"]'); if (a) { if (!a.disabled) { var v = ta.value; fqSave(v); } return; }
+  var b = e.target.closest('.fi'); if (!b) return;
+  var x = FQ.rows[+b.dataset.i]; if (x) fqPut(x);
+});
+$('rFql').addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  var b = e.target.closest('.fi'), x = b ? FQ.rows[+b.dataset.i] : null; if (!x) { closeCm(); return; }
+  cmFor = ''; cmSeq = 0; cmFq = x.id;
+  var cm = $('cm');
+  cm.innerHTML = '<button type="button" role="menuitem" data-a="faqdel">' + I_FAQDEL + '목록에서 빼기</button>';
+  cm.classList.add('on');
+  var ar = $('app').getBoundingClientRect(), px = e.clientX - ar.left, py = e.clientY - ar.top;
+  if (!e.clientX && !e.clientY) { var br = b.getBoundingClientRect(); px = br.left - ar.left + 40; py = br.bottom - ar.top - 8; }
+  cm.style.left = Math.max(8, Math.min(px, ar.width - cm.offsetWidth - 8)) + 'px';
+  cm.style.top = Math.max(8, Math.min(py, ar.height - cm.offsetHeight - 8)) + 'px';
+});
+document.addEventListener('pointerdown', function(e){ if (FQ.open && !e.target.closest('#rFql') && !e.target.closest('#rFaq') && !e.target.closest('#cm')) fqClose(); }, true);
+document.addEventListener('keydown', function(e){
+  if (!FQ.open || $('cm').classList.contains('on')) return;
+  if (e.key === 'Escape') { e.preventDefault(); fqClose(); ta.focus(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); var n = FQ.rows.length; if (!n) return; FQ.sel = e.key === 'ArrowDown' ? (FQ.sel + 1) % n : (FQ.sel <= 0 ? n - 1 : FQ.sel - 1); fqDraw(); var sl = $('rFql').querySelector('.fi.sel'); if (sl) sl.scrollIntoView({ block: 'nearest' }); return; }
+  if (e.key === 'Enter' && FQ.sel >= 0 && FQ.rows[FQ.sel]) { e.preventDefault(); e.stopPropagation(); fqPut(FQ.rows[FQ.sel]); }
+}, true);
+ta.addEventListener('input', function(){ if (FQ.open) { var a = $('rFql').querySelector('[data-f="add"]'); if (a) a.disabled = !ta.value.trim(); } });
 function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2200); }
 
 /* ══════════ 시작 ══════════ */
