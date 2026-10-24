@@ -31,7 +31,8 @@
   --green50:#f8fbf9; --green100:#e9f8ee; --green200:#cef2db; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
   --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
   --danger-weak-bg:#fdecee; --danger-weak-fg:#c0392b;   /* §3.1 danger weak — 첨부 PDF 표시 */
-  --p-disabled:#b7e0c8;
+  --p-disabled:#b7e0c8; --danger:#D25357;   /* §4.14 fill-danger — 자주 쓰는 답변 빼기 확인(10-23) */
+  --fs-h3:20px;
   --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
   --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
   --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
@@ -182,6 +183,7 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .them .bub{background:var(--g100);color:var(--g900)}
 .them:not(.cont) .bub{border-top-left-radius:6px}
 .me .bub{background:var(--g800);color:#fff}
+.row.me.ed .bub{outline:2px solid var(--green600);outline-offset:2px}   /* 고치는 중인 말풍선(10-23 보낸 답장 고치기) */
 .me .bub.rc{background:var(--g100);color:var(--g600)}   /* 거둔 답장 흔적(10-12) — 받은함에만, 학부모 화면엔 없음 */
 /* 우리 쪽 마지막 말풍선의 오른쪽 아래만 6px이던 꼬리 모서리는 뺐다 — 「오른쪽이 일부 잘려 있는 듯」(유성 10-10). 실측으로는 잘린 곳 0
    (실제 창 = 125%에서 CSS 368px, 말풍선 오른쪽 끝 354 = 대화 칸 안쪽 끝, 자르는 조상 끝 368), 오른쪽에서 모양이 다른 곳은 그 모서리 하나였다 */
@@ -235,10 +237,27 @@ body.faqon.fileon .ta{padding-right:74px}
 .taw .faqb:hover,.taw .faqb.on{color:var(--g900)}
 .taw .faqb:active{transform:scale(.86)}
 .taw .faqb svg{width:19px;height:19px}
-.fql{position:absolute;right:10px;bottom:calc(100% + 6px);width:min(320px,calc(100% - 20px));max-height:min(440px,62vh);display:none;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.14);z-index:15;overflow:hidden}
+.fql{position:absolute;right:10px;bottom:calc(100% + 6px);width:min(340px,calc(100% - 20px));max-height:min(460px,64vh);display:none;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.14);z-index:15;overflow:hidden}
 .fql.on{display:flex}
-.fql .fh{font-size:13px;color:var(--g600);padding:14px 16px 6px;flex:none}
+.fql .fh{display:flex;align-items:center;gap:10px;padding:10px 10px 6px 16px;flex:none;min-height:46px}
+.fql .fh .tt{font-size:13px;color:var(--g600);flex:none}
+/* 찾기 칸(10-23 저녁 유성 「우측 상단에 검색」) = 아이 찾기 칸(.kb-in)과 같은 채움 입력 */
+.fql .fq{flex:1;min-width:0;border:0;background:var(--g100);border-radius:10px;padding:7px 10px 7px 31px;font:inherit;font-size:13.5px;color:var(--g900);outline:none;user-select:text;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%238b95a1' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='20' y1='20' x2='16.5' y2='16.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:10px center}
+.fql .fq:focus{box-shadow:inset 0 0 0 1.5px var(--green600);background-color:#fff}
+.fql .fq::placeholder{color:var(--g500)}
+.fql .sw{flex:0 1 auto}   /* 스크롤 칸 = 막대 없이 위아래 초록 흐림(§4.13-6, fadeWatch) */
 .fql .fs{overflow-y:auto;padding:0 6px 6px;scrollbar-width:none;min-height:0}
+.fql .fg{font-size:12px;font-weight:600;color:var(--g500);padding:10px 10px 4px}   /* 「기본 답변」 / 「저장한 답변」 칸 이름 */
+.fql .fw{position:relative}
+.fql .fw.mine .fi{padding-right:74px}   /* 고치기, 빼기 단추 자리 — 늘 비워 둬서 마우스를 올려도 글이 안 밀린다 */
+.fql .fx{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;gap:2px;opacity:0;pointer-events:none;transition:opacity .15s}
+.fql .fw:hover .fx,.fql .fw.sel .fx,.fql .fx:focus-within{opacity:1;pointer-events:auto}
+.fql .fx button{width:30px;height:30px;border:0;background:none;border-radius:8px;color:var(--g500);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:transform .12s}
+.fql .fx button:hover{background:var(--g200);color:var(--g800)}
+.fql .fx button.del:hover{background:var(--danger-weak-bg);color:var(--danger-weak-fg)}
+.fql .fx button:active{transform:scale(.9)}
+.fql .fx svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fql .fi b mark{background:none;color:var(--green700);font-weight:800}
 .fql .fs::-webkit-scrollbar{width:0}
 .fql .fi{display:block;width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px;cursor:pointer;font:inherit}
 .fql .fi:hover,.fql .fi.sel{background:var(--g100)}
@@ -247,7 +266,28 @@ body.faqon.fileon .ta{padding-right:74px}
 .fql .fi span{display:block;font-size:13px;color:var(--g600);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fql .fi.new{animation:fqNew 1.2s ease}
 @keyframes fqNew{0%,40%{background:var(--green50,#eef7f1)}100%{background:none}}
-.fql .fe{padding:12px 16px 16px;font-size:13px;color:var(--g600)}
+.fql .fe{padding:12px 10px 14px;font-size:13px;color:var(--g600)}
+/* 만들기, 고치기 칸(10-23 저녁 유성 「제목을 수정할 수도 없고 내용도 수정할 수가 없음」) — 목록 자리에서. 입력 = 채움형(g100 → 포커스 흰 + 초록 테두리), 버튼 = 왼쪽 닫기, 오른쪽 저장(§4.4) */
+.fql .fed{display:flex;flex-direction:column;padding:0 14px 14px;min-height:0;overflow:hidden}
+.fql .fed .lb{font-size:12px;font-weight:600;color:var(--g600);margin:8px 0 5px}
+.fql .fed .lb:first-child{margin-top:2px}
+.fql .fed input,.fql .fed textarea{display:block;width:100%;border:1.5px solid transparent;background:var(--g100);border-radius:10px;padding:8px 11px;font:inherit;font-size:14px;line-height:1.45;color:var(--g900);outline:none;user-select:text}
+.fql .fed input::placeholder{color:var(--g500)}
+.fql .fed textarea{resize:none;height:150px;scrollbar-width:none}
+.fql .fed textarea::-webkit-scrollbar{width:0}
+.fql .fed input:focus,.fql .fed textarea:focus{background:#fff;border-color:var(--green600)}
+.fql .ftw{position:relative;border-radius:10px;overflow:hidden;flex:none}
+.fql .ftw::before,.fql .ftw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:1}
+.fql .ftw::before{top:0;background:var(--sf-top)}
+.fql .ftw::after{bottom:0;background:var(--sf-bot)}
+.fql .ftw.more::after,.fql .ftw.moreTop::before{opacity:1}
+.fql .fbt{display:flex;gap:8px;margin-top:12px}
+.fql .fbt button{flex:1;height:40px;border:0;border-radius:12px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .12s}
+.fql .fbt button:active{transform:scale(.97)}
+.fql .fbt .no{background:var(--g100);color:var(--g600)}
+.fql .fbt .go{background:var(--green600);color:#fff}
+.fql .fbt .go:active{background:var(--green700)}
+.fql .fbt .go:disabled{background:var(--p-disabled);cursor:default;transform:none}
 .fql .fa{display:flex;align-items:center;gap:8px;flex:none;border:0;border-top:1px solid var(--g100);background:none;padding:12px 16px;font:inherit;font-size:14px;font-weight:500;color:var(--g800);cursor:pointer;text-align:left}
 .fql .fa:hover{background:var(--g50)}
 .fql .fa:disabled{color:var(--g400);cursor:default;background:none}
@@ -295,6 +335,25 @@ body.faqon.fileon .ta{padding-right:74px}
 
 .atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:9}
 .atoast.on{opacity:1;transform:translateX(-50%)}
+/* 가운데 확인 창(§4.4 — 근태 앱 .cmodal 값 그대로: 폭 100%-84 최대 320, radius 20, 제목 20px 800, 부제 13.5 g500 8px 위, 버튼 줄 16px 위, 글 왼쪽 정렬) */
+.mdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+.mdim.on{opacity:1;pointer-events:auto}
+.cmodal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 84px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:31;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4;overflow-wrap:anywhere}
+.cmodal .ms2{font-size:var(--fs-sm);color:var(--g500);margin-top:8px}
+.cmodal .mbtns{display:flex;gap:8px;margin-top:16px}
+.cmodal .mb{flex:1;border:0;border-radius:15px;padding:14px;font:inherit;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s}
+.cmodal .mb:active{transform:scale(.97)}
+.cmodal .mb.no{background:var(--g100);color:var(--g600)}
+.cmodal .mb.del{background:var(--danger);color:#fff}
+/* 답장 고치기 줄(10-23 — 입력 칸 위, 대기 중 답 줄과 같은 자리 문법) */
+.edbar{display:none;align-items:center;gap:8px;padding:0 2px 8px;font-size:13px;min-height:30px}
+.edbar.on{display:flex}
+.edbar svg{width:15px;height:15px;flex:none;color:var(--green700);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.edbar b{font-weight:700;color:var(--g900);flex:none}
+.edbar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--g500)}
+.edbar button{border:0;background:var(--g100);color:var(--g700);font:inherit;font-size:12.5px;font-weight:600;border-radius:99px;padding:4px 10px;cursor:pointer;flex:none}
 
 /* 아이 찾기 띠(10-15 유성 「나머지는 다 괜찮다. go」 — prototype/26_문의채팅_아이찾기카드_4방향_프리뷰.html 「A 다시」 3차).
    카톡 대화방 공지처럼 머리 아래 떠 있는 흰 띠. 상태 = 점 + 글자(대기 중 = 주황 점, 배정됨 = 초록 빈 점, 이용 중 = 초록 점), 버튼 = 펼친 맨 아래 글자 버튼.
@@ -305,6 +364,8 @@ body.faqon.fileon .ta{padding-right:74px}
 .kb-row:hover{background:#fafbfc}
 .kb-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap;flex:none}
 .kb-st i{width:8px;height:8px;border-radius:50%;flex:none}
+.kb-st.big{font-size:14.5px}   /* 신청 없음 = 띠 줄의 유일한 글(10-23 유성 「신청없음을 더 키우고」) */
+.kb-st.none.big{color:var(--g800)}
 .kb-st.wait{color:var(--warn-weak-fg)}.kb-st.wait i{background:var(--warn)}
 .kb-st.assigned{color:var(--green700)}.kb-st.assigned i{background:#fff;box-shadow:inset 0 0 0 2px var(--green600)}
 .kb-st.using{color:var(--green700)}.kb-st.using i{background:var(--green600)}
@@ -313,7 +374,12 @@ body.faqon.fileon .ta{padding-right:74px}
 .kb-row .kb-who b{color:var(--g900);font-weight:700}
 .kb-chev{width:18px;height:18px;color:var(--g400);flex:none;transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .kb.open .kb-row .kb-chev{transform:rotate(180deg)}
-.kb-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+.kb-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1);position:relative;border-radius:0 0 14px 14px;overflow:hidden}
+/* 펼친 띠, 찾기 결과 = 막대 없이 위아래 초록 흐림(§4.13-6 — 10-23 유성 「스크롤 ui가 왜 있지? 디자인 원칙 정독 안했음을 시사」. fadeWatch가 넘칠 때만 켠다) */
+.kb-more::before,.kb-more::after,.kb-rw::before,.kb-rw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
+.kb-more::before,.kb-rw::before{top:0;background:var(--sf-top)}
+.kb-more::after,.kb-rw::after{bottom:0;background:var(--sf-bot)}
+.kb-more.more::after,.kb-more.moreTop::before,.kb-rw.more::after,.kb-rw.moreTop::before{opacity:1}
 .kb.open .kb-more{grid-template-rows:1fr}
 .kb-more>div{overflow-x:hidden;overflow-y:auto;min-height:0;max-height:calc(100vh - 200px);scrollbar-width:none}   /* 아이 셋을 펼쳐도 입력 칸을 안 덮게(실제 창 세로 CSS 563 — 머리, 띠 줄, 입력 줄 몫 200) */
 .kb-more>div::-webkit-scrollbar{width:0}
@@ -339,8 +405,10 @@ body.faqon.fileon .ta{padding-right:74px}
 .kb-in{width:100%;border:0;background:var(--g100);border-radius:10px;padding:10px 12px 10px 36px;font:inherit;font-size:14px;color:var(--g900);outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b95a1' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='20' y1='20' x2='16.5' y2='16.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
 .kb-in:focus{box-shadow:inset 0 0 0 1.5px var(--green600);background-color:#fff}
 .kb-in::placeholder{color:var(--g500)}
-.kb-res{list-style:none;margin:6px 0 0;padding:4px 0;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #eceef1,0 8px 20px rgba(25,31,40,.10);max-height:280px;overflow:auto;display:none}
-.kb-res.show{display:block}
+.kb-rw{position:relative;margin-top:6px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #eceef1,0 8px 20px rgba(25,31,40,.10);overflow:hidden;display:none}
+.kb-rw.show{display:block}
+.kb-res{list-style:none;margin:0;padding:4px 0;max-height:280px;overflow:auto;scrollbar-width:none}
+.kb-res::-webkit-scrollbar{width:0}
 .kb-res li{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:13.5px}
 .kb-res li.on,.kb-res li:hover{background:var(--g100)}
 .kb-res .n{flex:none;font-weight:600}
@@ -351,6 +419,14 @@ body.faqon.fileon .ta{padding-right:74px}
 .kb-res .empty{color:var(--g500);cursor:default}
 .kb-res .empty:hover{background:none}
 #room.kbon .thread{padding-top:64px}   /* 띠가 첫 말풍선을 가리지 않게 */
+#room.kbon.kbcue .thread{padding-top:96px}   /* + 선생님 연락 줄 */
+/* 선생님 연락 줄(10-23 유성 「행정인력이 그 제공인력에게 바로 연락할 수 있게 … 연락드려야한다고 알리는 정보」) = 13번(배정) 답을 보낸 뒤 띠 줄 아래. 「전했어요」 = 지움(이 창에서만 기억) */
+.kb-cue{display:flex;align-items:center;gap:8px;padding:0 12px 10px 14px;font-size:13px;color:var(--g800)}
+.kb-cue i{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.kb-cue span{flex:1;min-width:0}
+.kb-cue b{font-weight:700}
+.kb-cue button{border:0;background:var(--g100);color:var(--g700);font:inherit;font-size:12.5px;font-weight:600;border-radius:99px;padding:4px 10px;cursor:pointer;flex:none}
+.kb>.kb-cue:first-child{padding-top:11px}
 .ta.fill{animation:taFill .5s var(--ease)}
 @keyframes taFill{from{background:var(--green100)}}
 /* 대기 중 답(10-21 유성 GO — prototype/26_문의채팅_받은함카드_대기답_4방향_프리뷰.html A 3판 CSS 그대로): 입력 칸 위 한 줄 = 상황 한 단어 + 근거(접힘) + 확인(흰 버튼 + 그림자, 채움 X) */
@@ -404,12 +480,14 @@ body.faqon.fileon .ta{padding-right:74px}
     <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
-    <div class="comp"><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="faqb" id="rFaq" title="자주 쓰는 답변" aria-label="자주 쓰는 답변" aria-expanded="false"><svg class="li" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></button><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div><div class="fql" id="rFql" role="dialog" aria-label="자주 쓰는 답변"></div></div>
+    <div class="comp"><div class="edbar" id="rEd"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><b>답장 고치기</b><span id="rEdT"></span><button type="button" id="rEdX">취소</button></div><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="faqb" id="rFaq" title="자주 쓰는 답변" aria-label="자주 쓰는 답변" aria-expanded="false"><svg class="li" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></button><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div><div class="fql" id="rFql" role="dialog" aria-label="자주 쓰는 답변"></div></div>
     <input type="file" id="rFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
     <div class="drop">여기에 놓아 주세요</div>
     <div class="view" id="rView" role="dialog" aria-label="첨부 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
   </div>
   <div class="atoast" id="atoast"></div>
+  <div class="mdim" id="fqDim"></div>
+  <div class="cmodal" id="fqDlg" role="alertdialog" aria-labelledby="fqDlgT"><div class="mt2" id="fqDlgT"></div><div class="ms2">모든 컴퓨터의 자주 쓰는 답변에서 빠져요</div><div class="mbtns"><button type="button" class="mb no" id="fqDlgNo">닫기</button><button type="button" class="mb del" id="fqDlgGo">빼기</button></div></div>
 </div>
 
 <script>
@@ -550,10 +628,11 @@ function ymd(iso){ var t = new Date(iso); return t.getFullYear() + '-' + t.getMo
 
 /* ══════════ 넘칠 때만 그라디언트(막대 없음) ══════════ */
 function fadeWatch(sc, host){
-  var f = function(){ var over = sc.scrollHeight > sc.clientHeight + 1;
-    host.classList.toggle('more', over && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1);
+  var f = function(){ var h = sc.clientHeight, over = h > 0 && sc.scrollHeight > h + 1;   // 접힌 칸(높이 0, 띠 접힘) = 끔 — 펼치면 크기가 바뀌어 다시 잰다
+    host.classList.toggle('more', over && sc.scrollTop + h < sc.scrollHeight - 1);
     host.classList.toggle('moreTop', over && sc.scrollTop > 1); };
   sc.addEventListener('scroll', f); if (typeof ResizeObserver !== 'undefined') new ResizeObserver(f).observe(sc);
+  if (typeof MutationObserver !== 'undefined' && sc.tagName !== 'TEXTAREA') new MutationObserver(f).observe(sc, { childList: true, subtree: true });   // 다시 그린 목록(§4.13-6 함정 ①)
   return f;
 }
 var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('tsw')), fTa = fadeWatch($('rTa'), $('rTa').parentNode);
@@ -757,8 +836,8 @@ function findRow(id){ var L = S.wait.concat(S.mine); for (var i = 0; i < L.lengt
    · 이 창 메모리에만 둔다(RCACHE) — 학부모 글을 PC 디스크에 남기지 않는다. 잠기면 앱이 이 창을 빼서 같이 사라진다.
    · 구판 26(@6까지)은 「알 수 없는 요청」 → 이 창에선 다시 안 묻는다(예전처럼 열 때 받음) */
 var RCACHE = {}, tails = { busy: false, off: false, tried: {} };
-// 대화 판 = 마지막 시각 + 거둔 줄 수(10-12 — 가운데 줄을 거두면 시각은 그대로라 거둔 수로도 가른다). 받아 둔 대화·열린 방을 다시 읽을지 이걸로 본다
-function verOf(r){ return r ? (r.lastAt || '') + (r.rv ? '#' + r.rv : '') : ''; }
+// 대화 판 = 마지막 시각 + 거둔 줄 수(10-12 — 가운데 줄을 거두면 시각은 그대로라 거둔 수로도 가른다) + 고친 답장 표(10-23). 받아 둔 대화·열린 방을 다시 읽을지 이걸로 본다
+function verOf(r){ return r ? (r.lastAt || '') + (r.rv ? '#' + r.rv : '') + (r.ev ? '~' + r.ev : '') : ''; }   // ev = 고친 답장 표(10-23 — 가운데 줄을 고쳐도 시각은 그대로)
 function prefetch(){
   if (!me || tails.busy || tails.off) return;
   var want = {}, ids = S.wait.concat(S.mine).filter(function(r){
@@ -776,7 +855,7 @@ function prefetch(){
       tails.tried[id] = want[id];
       var t = res.tails[id]; if (!t || !t.msgs) return;
       if (RCACHE[id] && RCACHE[id].ver === want[id]) return;   // 그 사이 방 열기(s_room)가 같은 판 것을 더 많이 받아 왔다
-      RCACHE[id] = { msgs: t.msgs, more: !!t.more, ver: want[id] };
+      RCACHE[id] = { msgs: edApply(id, t.msgs), more: !!t.more, ver: want[id] };
       if (R.id === id && !R.loaded) { R.msgs = t.msgs.slice(); R.more = !!t.more; R.loaded = true; drawThread(null, true); }   // 뼈대로 열려 있던 방 = 바로 그린다
     });
   }, function(){ tails.busy = false; });
@@ -864,7 +943,7 @@ function keepDraft(){
   if (ta.value.trim() || ATT.length) DRAFT[R.id] = { t: ta.value, a: ATT.slice() }; else delete DRAFT[R.id];
 }
 function openRoom(id){
-  keepDraft();
+  editStop(); keepDraft();
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
   seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 자기 숫자만, 10-12)
   S.cur = { id: id, ver: c && c.ver === verOf(row) ? c.ver : '' };
@@ -884,13 +963,13 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); keepDraft(); closeView(); waReset(); fqClose(); FQ.ins = null; $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
+function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); editStop(); keepDraft(); closeView(); waReset(); fqClose(); FQ.ins = null; $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
   var req = pre && Date.now() - pre.at < 10000 ? pre.p : askRead({ action:'s_room', auth: me, id: id });
   req.then(function(r){
-    if (r && r.ok) RCACHE[id] = { msgs: r.msgs.slice(), more: !!r.more, ver: verOf(findRow(id)), kid: r.kid || null };   // 다음에 열면 바로(이 창 메모리만)
+    if (r && r.ok) { edApply(id, r.msgs); RCACHE[id] = { msgs: r.msgs.slice(), more: !!r.more, ver: verOf(findRow(id)), kid: r.kid || null }; }   // 다음에 열면 바로(이 창 메모리만)
     if (R.id !== id) return;          // 그새 다른 방으로 갔다
     if (!r || !r.ok) {
       if (r && r.code === 'gone') { toastA(r.error || '대화를 찾을 수 없어요'); closeRoom(); return; }
@@ -954,21 +1033,40 @@ function setPst(){
    배정·이용 중 「김도윤 아청심 - 박지은 선생님」. 펼치면 생년, 신청, (대기가 아니면 동네), 희망 + 답 넣기, 지도에서 보기.
    번호가 없거나 맞는 신청이 없으면 찾기 칸(제공인력 지도 doSearch 규칙 — 숫자만 2자리부터 = 번호 안, 아니면 이름 안) → 고르면 s_kidpin(이 대화에 붙음, 다른 PC도 같이).
    찾기 목록(s_kdir)은 칸을 처음 누를 때 한 번 받아 이 창 메모리에만(10분 지나면 다시). 번호는 끝 네 자리만 보인다 */
-var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, sel: -1, list: [] };
+var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, sel: -1, list: [], cue: {} };   // cue = 선생님 연락 줄을 띄울 방(10-23, 이 창 메모리만)
 var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음' };
 var KB_MAP = 'https://think-fact0ry.github.io/saenggak/provider-map.html';
 var KB_CNT = ['', '', '둘', '셋'];
-// 답 넣기 글 — 배정 = 13번, 신청 없음 = 6번 + 신청폼 주소(⑤⑦ 사전계획 확정). ⑤ 자주 쓰는 답변이 생기면 그 단일 소스로 옮긴다
+// 답 넣기 — 글은 26 s_faq의 kb(정본 tools/문의답변/정본.js kb 표시 답: assigned = 13번, none = 신청 안내). 받은함에 글을 따로 두지 않는다(10-23 저녁 — 옛 사본이 6번 둘째 문단까지 넣어
+//   「신청하시는 분이 많아서」가 신청 안내에 끼었다, 유성 「왜 … 나오는지?」). id = 넣고 보낸 수를 셀 정본 답(none은 목록 밖 답이라 0)
 var KB_ANS = {
   // wait = 띠 단추 없음 — 대기 중 답은 입력 칸 위 카드 A가 맡는다(아래 WA, 26 s_wait가 06 상황을 읽고 정한 글, 10-21)
-  assigned: { lab: '배정 답 넣기', txt: function(){ return '확인해 보니 아직 담당 선생님께서 연락을 못 드렸어요. 선생님께서 직접 연락드려 첫 회기 날짜를 맞추실 거예요.\n\n며칠이 지나도 연락이 없으면 다시 말씀해 주세요. 바로 확인해 드릴게요.'; } },
-  none: { lab: '신청 안내 넣기', txt: function(){ return '서비스와 거주하시는 동네, 가능한 요일과 시간에 따라 자리가 달라서, 신청폼에 넉넉히 적어 주시면 선생님 일정을 보고 접수 순서대로 연락드려요.\n\n신청하시는 분이 많아서 맞는 자리가 생길 때만 연락드리고 있어요. 현재 대기 상황은 신청폼에서 보실 수 있어요.\nhttps://think-factory.kr/contact'; } }
+  assigned: { lab: '배정 답 넣기', id: 'confirm' },
+  none: { lab: '신청 안내 넣기', id: '' }
 };
+function kbAns(st){
+  var a = KB_ANS[st]; if (!a) return;
+  var put = function(){
+    var t = FQ.data && FQ.data.kb && FQ.data.kb[st];
+    if (!t) { toastA('답 글을 아직 못 받았어요'); return; }
+    kbFill(fqGreet(t) + t);
+    FQ.ins = { id: a.id, room: R.id, text: ta.value.trim() };
+  };
+  if (FQ.data && FQ.data.kb) put(); else { var id = R.id; fqLoad().then(function(){ if (R.id === id) put(); }, function(){ toastA('답 글을 아직 못 받았어요'); }); }
+}
+// 선생님 연락 줄 — 배정 아이의 선생님 이름(현아쌤 글 §8-7: 이름이 있으면 「○○○ 선생님」, 모르면 「해당 제공인력」)
+function kbCue(id){ KB.cue[id] = 1; if (R.id === id) kbDraw(); }
+function kbCueHtml(){
+  if (!KB.cue[R.id]) return '';
+  var names = [];
+  ((KB.card && KB.card.kids) || []).forEach(function(k){ if (k.st === 'assigned' && k.t) { var n = k.t + ' 선생님'; if (names.indexOf(n) < 0) names.push(n); } });
+  return '<div class="kb-cue"><i></i><span><b>' + esc(names.length ? names.join(', ') : '해당 제공인력') + '</b>이 보호자분께 바로 연락드리도록 전해 주세요.</span><button type="button" data-a="cueok">전했어요</button></div>';
+}
 function kbDay(a){ var yy = String(new Date().getFullYear()).slice(2) + '년 '; a = String(a || ''); return a.indexOf(yy) === 0 ? a.slice(yy.length) : a; }   // 올해 신청이면 「9월 12일」
 var KB_IC = '<svg class="kb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-function kbStw(st){ return '<span class="kb-st ' + st + '"><i></i>' + KB_ST[st] + '</span>'; }
+function kbStw(st, big){ return '<span class="kb-st ' + st + (big ? ' big' : '') + '"><i></i>' + KB_ST[st] + '</span>'; }
 function kbTail(k){ return k.st === 'wait' ? (k.d ? ' (' + esc(k.d) + ')' : '') : ' - ' + esc(k.t ? k.t + ' 선생님' : k.d); }
-function kbFind(inrow){ return '<div class="kb-find' + (inrow ? ' inrow' : '') + '"><input class="kb-in" placeholder="아이 이름, 전화번호" aria-label="아이 이름, 전화번호" autocomplete="off" spellcheck="false"><ul class="kb-res" role="listbox"></ul></div>'; }
+function kbFind(inrow){ return '<div class="kb-find' + (inrow ? ' inrow' : '') + '"><input class="kb-in" placeholder="아이 이름, 전화번호" aria-label="아이 이름, 전화번호" autocomplete="off" spellcheck="false"><div class="kb-rw"><ul class="kb-res" role="listbox"></ul></div></div>'; }   // kb-rw = 흐림 띠를 얹는 자리(ul은 스크롤 칸)
 function kbFoot(k, i){
   var a = KB_ANS[k.st];
   return '<div class="kb-foot">' + (a ? '<button type="button" class="pri" data-a="ans" data-i="' + i + '">' + a.lab + '</button>' : '') + '<button type="button" data-a="map" data-i="' + i + '">지도에서 보기</button></div>';
@@ -986,16 +1084,17 @@ function kbSet(card){
 }
 function kbDraw(){
   var w = $('kbw'), c = KB.card;
-  $('room').classList.toggle('kbon', !!c);
-  if (!c) { w.innerHTML = ''; return; }
+  var cue = kbCueHtml();
+  $('room').classList.toggle('kbon', !!c || !!cue); $('room').classList.toggle('kbcue', !!cue);
+  if (!c) { w.innerHTML = cue ? '<div class="kb">' + cue + '</div>' : ''; return; }
   var ks = c.kids || [], html;
   var pinNote = c.pin ? '<div class="kb-note"><span>찾아서 붙인 신청이에요.</span><button type="button" data-a="unpin">떼기</button></div>' : '';
-  if (!ks.length && !c.phone && !c.pin) html = '<div class="kb">' + kbFind(false) + '</div>';
+  if (!ks.length && !c.phone && !c.pin) html = '<div class="kb">' + cue + kbFind(false) + '</div>';
   else {
     var row, more;
     if (!ks.length) {
-      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw('none') + '<span class="kb-who">' + (c.pin ? '붙여 둔 신청이 지금은 없어요' : '이 번호로 찾은 신청이 없어요') + '</span>' + KB_IC + '</button>';
-      more = (c.pin ? pinNote : '<div class="kb-note"><span>다른 번호로 신청했을 수 있어요. 이름이나 번호로 찾아보세요.</span></div>') + kbFind(true) + '<div class="kb-foot"><button type="button" class="pri" data-a="ans" data-i="-1">' + KB_ANS.none.lab + '</button></div>';
+      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw('none', !c.pin) + '<span class="kb-who">' + (c.pin ? '붙여 둔 신청이 지금은 없어요' : '') + '</span>' + KB_IC + '</button>';   // 10-23 유성 「신청없음을 더 키우고, 이번호로 찾은 신청이 없어요 텍스트는 없애」
+      more = (c.pin ? pinNote : '<div class="kb-note"><span>다른 번호로 신청했을 수 있어요.</span></div>') + kbFind(true) + '<div class="kb-foot"><button type="button" class="pri" data-a="ans" data-i="-1">' + KB_ANS.none.lab + '</button></div>';
     } else if (ks.length > 1) {
       row = '<button type="button" class="kb-row" data-a="tog">' + ks.map(function(k, i){ return '<span class="kb-st ' + k.st + '"' + (i ? ' style="margin-left:-5px"' : '') + '><i></i></span>'; }).join('')
         + '<span class="kb-who"><b>아이 ' + (KB_CNT[ks.length] || ks.length) + '</b> ' + ks.map(function(k){ return esc(k.n) + ' ' + esc(k.s); }).join(', ') + '</span>' + KB_IC + '</button>';
@@ -1005,9 +1104,11 @@ function kbDraw(){
       row = '<button type="button" class="kb-row" data-a="tog">' + kbStw(k.st) + '<span class="kb-who"><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span>' + KB_IC + '</button>';
       more = pinNote + kbKid(k, 0, false);
     }
-    html = '<div class="kb' + (KB.open ? ' open' : '') + '">' + row + '<div class="kb-more"><div>' + more + '</div></div></div>';
+    html = '<div class="kb' + (KB.open ? ' open' : '') + '">' + row + cue + '<div class="kb-more"><div>' + more + '</div></div></div>';
   }
   w.innerHTML = html;
+  var km = w.querySelector('.kb-more>div'); if (km) km._ff = fadeWatch(km, km.parentNode);   // 펼친 칸, 찾기 결과 = 흐림(§4.13-6)
+  w.querySelectorAll('.kb-res').forEach(function(u){ u._ff = fadeWatch(u, u.parentNode); });
 }
 // 찾기 = 제공인력 지도 doSearch와 같은 규칙(숫자만·공백·하이픈 = 2자리부터 번호 안, 아니면 공백 뺀 글자가 이름 안). 8개까지. 다른 점 = 기다림 없이 글자마다(목록이 메모리에)
 function kbLoadDir(){
@@ -1029,27 +1130,27 @@ function kbSearch(q){
   return { isNum: false, q: t, list: t ? KB.dir.filter(function(d){ return d.n.replace(/\s/g, '').indexOf(t) >= 0; }).slice(0, 8) : [] };
 }
 function kbHl(s, q){ var i = s.indexOf(q); return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length)); }
-function kbTail4(d, q, isNum){   // 끝 네 자리만. 번호로 찾았고 맞은 곳이 끝 네 자리에 걸리면 굵게
+function kbTail4(d, q, isNum){   // 끝 네 자리만(「끝자리 9126」 — 10-23 유성 「끝 9126 … 전화번호라고 인식이 안되거든」). 번호로 찾았고 맞은 곳이 끝 네 자리에 걸리면 굵게
   var ph = (isNum && q ? d.ph.filter(function(p){ return p.indexOf(q) >= 0; })[0] : d.ph[0]) || '';
   if (!ph) return '';
   var t = ph.slice(-4);
-  if (!isNum || !q) return '끝 ' + t;
+  if (!isNum || !q) return '끝자리 ' + t;
   var i = ph.indexOf(q), a = Math.max(i, ph.length - 4), b = Math.min(i + q.length, ph.length);
-  if (b <= a) return '끝 ' + t;
+  if (b <= a) return '끝자리 ' + t;
   a -= ph.length - 4; b -= ph.length - 4;
-  return '끝 ' + esc(t.slice(0, a)) + '<mark>' + esc(t.slice(a, b)) + '</mark>' + esc(t.slice(b));
+  return '끝자리 ' + esc(t.slice(0, a)) + '<mark>' + esc(t.slice(a, b)) + '</mark>' + esc(t.slice(b));
 }
 function kbPaint(inp){
-  var ul = inp.parentNode.querySelector('.kb-res'), v = inp.value.trim();
-  if (!v) { ul.classList.remove('show'); ul.innerHTML = ''; KB.sel = -1; KB.list = []; return; }
-  if (!KB.dir) { ul.innerHTML = '<li class="empty">목록을 받는 중이에요<span class="ldd"><i></i><i></i><i></i></span></li>'; ul.classList.add('show');
+  var ul = inp.parentNode.querySelector('.kb-res'), rw = ul.parentNode, v = inp.value.trim();
+  if (!v) { rw.classList.remove('show'); ul.innerHTML = ''; KB.sel = -1; KB.list = []; return; }
+  if (!KB.dir) { ul.innerHTML = '<li class="empty">목록을 받는 중이에요<span class="ldd"><i></i><i></i><i></i></span></li>'; rw.classList.add('show');
     kbLoadDir().then(function(){ if (document.activeElement === inp || inp.value.trim()) kbPaint(inp); }, function(e){ ul.innerHTML = '<li class="empty">' + esc(e.message || '목록을 못 받았어요') + '</li>'; }); return; }
   var r = kbSearch(v);
   KB.list = r.list; KB.sel = r.list.length ? 0 : -1;
   ul.innerHTML = r.list.length ? r.list.map(function(d, i){
     return '<li role="option" data-i="' + i + '" class="' + (i === 0 ? 'on' : '') + '">' + kbStw(d.st) + '<span class="n">' + (r.isNum ? esc(d.n) : kbHl(d.n, r.q)) + '</span><span class="m">' + esc(d.s) + (d.d ? ', ' + esc(d.d) : '') + '</span><span class="p">' + kbTail4(d, r.q, r.isNum) + '</span></li>';
   }).join('') : '<li class="empty">' + (r.short ? '숫자는 두 자리부터 찾아요' : '맞는 신청이 없어요') + '</li>';
-  ul.classList.add('show');
+  rw.classList.add('show'); ul.scrollTop = 0; if (ul._ff) ul._ff();
 }
 function kbPin(k){
   var id = R.id; if (!id) return;
@@ -1061,12 +1162,13 @@ function kbPin(k){
     toastA(k ? '이 대화에 붙였어요' : '뗐어요');
   }, function(){ toastA('연결이 안 돼요'); });
 }
-function kbFill(txt){
-  var cur = ta.value.replace(/\s+$/, '');
-  ta.value = cur ? cur + '\n\n' + txt : txt;   // 쓰던 글이 있으면 지우지 않고 아래에
+function kbFill(txt){   // 넣기 = 입력 칸을 비우고 넣는다(10-23 저녁 유성 「인풋 창에 있는 텍스트들을 없애고 넣어져야해. 실수할 수 있음」 — 자주 쓰는 답변, 띠 답, 대기 중 답 확인이 다 이 길)
+  ta.focus(); ta.select();
+  var ok = false; try { ok = document.execCommand('insertText', false, txt); } catch (e) { }   // insertText = Ctrl+Z로 쓰던 글이 돌아온다
+  if (!ok || ta.value !== txt) ta.value = txt;
   autosize(); syncSend();
   ta.classList.remove('fill'); void ta.offsetWidth; ta.classList.add('fill');
-  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  ta.setSelectionRange(ta.value.length, ta.value.length);
 }
 $('kbw').addEventListener('input', function(e){ if (e.target.classList.contains('kb-in')) kbPaint(e.target); });
 $('kbw').addEventListener('focusin', function(e){ if (e.target.classList.contains('kb-in')) kbLoadDir().catch(function(){}); });   // 칸을 누르는 순간 목록을 받기 시작(치기 전에 와 있게)
@@ -1087,10 +1189,11 @@ $('kbw').addEventListener('click', function(e){
   var a = b.getAttribute('data-a'), ks = (KB.card && KB.card.kids) || [], k = ks[+b.getAttribute('data-i')];
   if (a === 'tog') { KB.open = !KB.open; b.closest('.kb').classList.toggle('open', KB.open); return; }
   if (a === 'unpin') { kbPin(''); return; }
-  if (a === 'ans') { var x = k ? KB_ANS[k.st] : KB_ANS.none; if (x) kbFill(x.txt(k || {})); return; }
+  if (a === 'ans') { kbAns(k ? k.st : 'none'); return; }
+  if (a === 'cueok') { delete KB.cue[R.id]; kbDraw(); return; }
   if (a === 'map' && k) { window.open(KB_MAP + '#find=' + encodeURIComponent(k.k.split('|')[0] + '|' + k.n), '_blank'); }   // 새 창 = PC 프로그램이 기본 브라우저로(관리자 지도가 그 아이를 찾아 둠)
 });
-document.addEventListener('click', function(e){ if (!e.target.closest('.kb-find')) document.querySelectorAll('.kb-res.show').forEach(function(u){ u.classList.remove('show'); }); });
+document.addEventListener('click', function(e){ if (!e.target.closest('.kb-find')) document.querySelectorAll('.kb-rw.show').forEach(function(u){ u.classList.remove('show'); }); });
 
 /* ══════════ 대기 중 답(10-21 유성 GO — 카드 = prototype/26_문의채팅_받은함카드_대기답_4방향_프리뷰.html A 3판, 서버 = 26 대기답.js) ══════════
    띠에 「대기 중」 아이가 있는 방 = 26 s_wait로 카드를 받아 입력 칸 위 한 줄에: 상황 한 단어 + 「근거」(접힘) + 「확인」.
@@ -1142,7 +1245,7 @@ function waDraw(loading){
     (c.ans && !WA.filled ? '<button type="button" class="ok" data-w="take">확인</button>' : '') + '</div>' +
     '<div class="why' + (WA.open ? ' open vis' : '') + '"><div><p class="brief">' + esc(c.brief) + '</p>' + waFacts(c.facts) + '</div></div>';
 }
-// 초안 → 진짜 글. 쓰던 글이 있으면 지우지 않고 아래에(kbFill과 같음). 시간 받음이면 06 희망 시간 더하기도 이때(행정만 — 한유성 보기는 서버가 거절)
+// 초안 → 진짜 글. 쓰던 글은 비우고 넣는다(kbFill과 같음 — 10-23 저녁, Ctrl+Z로 되돌림). 시간 받음이면 06 희망 시간 더하기도 이때(행정만 — 한유성 보기는 서버가 거절)
 function waTake(){
   var c = WA.card; if (!c || !c.ans || WA.filled || WA.id !== R.id) return;
   WA.filled = true; waPh(''); kbFill(c.ans); waDraw();
@@ -1224,7 +1327,7 @@ function drawThread(had, keepBottom){
         bodyHtml(m) + '</div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
     } else {
       var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
-      html += '<div class="row me' + (cont ? ' cont' : '') + nw + '" data-seq="' + (+m.seq || 0) + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
+      html += '<div class="row me' + (cont ? ' cont' : '') + nw + (ED && ED.id === R.id && ED.seq === m.seq ? ' ed' : '') + '" data-seq="' + (+m.seq || 0) + '">' + (lastOfRun ? '<div class="meta2">' + meLabel(m, i) + '<span>' + hm(m.at) + '</span></div>' : '') +
         '<div class="mcol">' + name + (m.rc ? '<div class="bub rc">거둔 답장이에요</div>' : bodyHtml(m)) + '</div></div>';
     }
     prevWho = who;
@@ -1259,7 +1362,7 @@ function release(id){
    · 이름: 대화 하나에 이름 하나, 볼 수 있는 사람 누구나. 원래 이름(카드는 닉네임도)을 적거나 비우면 기본으로(26이 정한다).
    · 대기로 돌려놓기: 내 대화 칸, 행정만(한유성은 맡지 않음). 카드는 이 메뉴가 유일한 길(대화방이 없다).
    · 26이 pins:1을 안 주는 구판이면 메뉴 없음(기본 메뉴도 안 뜨게 막기만). 키보드 메뉴 키·Shift+F10도 같은 contextmenu */
-var cmFor = '', cmSeq = 0, cmFq = '';   // cmSeq = 대화방 말풍선 메뉴(거두기, 10-12) · cmFq = 자주 쓰는 답변 목록 줄(빼기, 10-23)
+var cmFor = '', cmSeq = 0, cmFq = '';   // cmSeq = 대화방 말풍선 메뉴(거두기 10-12, 고치기 10-23) · cmFq = 자주 쓰는 답변 저장한 답 줄(고치기, 빼기 10-23)
 function closeCm(){ var m = $('cm'); if (!m.classList.contains('on')) return; m.classList.remove('on'); cmFor = ''; cmSeq = 0; cmFq = ''; }
 $('list').addEventListener('contextmenu', function(e){
   if (e.target.closest('.renw')) return;   // 이름 칸 안 = 글자 편집용 기본 동작(붙여넣기)은 프로그램이 이미 꺼 둠 — 막지 않는다
@@ -1282,8 +1385,10 @@ $('list').addEventListener('contextmenu', function(e){
 $('cm').addEventListener('click', function(e){
   var b = e.target.closest('button'); if (!b) return;
   if (b.dataset.a === 'recall') { var s = cmSeq; closeCm(); recallMsg(s); return; }
-  if (b.dataset.a === 'faqput') { var fm = msgBySeq(cmSeq); closeCm(); if (fm) fqSave(fm.text); return; }
-  if (b.dataset.a === 'faqdel') { var fid = cmFq; closeCm(); fqDel(fid); return; }
+  if (b.dataset.a === 'edit') { var es = cmSeq; closeCm(); editStart(es); return; }
+  if (b.dataset.a === 'faqput') { var fm = msgBySeq(cmSeq); closeCm(); if (fm) fqNew(fm.text, 'bubble'); return; }
+  if (b.dataset.a === 'faqed') { var fe = fqRowById(cmFq); closeCm(); fqEdit(fe); return; }
+  if (b.dataset.a === 'faqdel') { var fd = fqRowById(cmFq); closeCm(); fqAskDel(fd); return; }
   var id = cmFor, r = findRow(id), a = b.dataset.a; closeCm();
   if (!r) return;
   if (a === 'pin') setPin(r, !r.pin);
@@ -1293,7 +1398,7 @@ $('cm').addEventListener('click', function(e){
     if (it) flyTo(it, id, 'wait'); else release(id);
   }
 });
-document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#cm') && !e.target.closest('#list .it') && !e.target.closest('#rFql .fi')) closeCm(); }, true);
+document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#cm') && !e.target.closest('#list .it') && !e.target.closest('#rFql .fw')) closeCm(); }, true);
 $('list').addEventListener('scroll', closeCm);
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('cm').classList.contains('on')) { e.preventDefault(); closeCm(); } });
 /* ══════════ 내 답장 거두기(10-12 ③ 유성 a1 「행정인력이나 관리자만 거둘 수 있게 … 상대방에게 거둔 답장이라고 남기지 말것. 아예 없어지게」) ══════════
@@ -1307,14 +1412,15 @@ function msgBySeq(seq){ for (var i = 0; i < R.msgs.length; i++) if (R.msgs[i].se
 function recallable(m){ return !!m && !m.rc && !m.pending && !m.unknown && !m.failed && m.seq > 0 && m.seq < 1e9 && m.who === MY_WHO && nowS() - new Date(m.at).getTime() < RECALL_MS; }
 T.addEventListener('contextmenu', function(e){
   var row = e.target.closest('.row.me[data-seq]'), m = row ? msgBySeq(+row.dataset.seq) : null;
-  var canRc = recallable(m), canFq = fqCanSave(m);
-  if (!canRc && !canFq) return;   // 학부모 줄·보내는 중 = 기본 메뉴(복사)
+  var canRc = recallable(m), canFq = fqCanSave(m), canEd = editable(m);
+  if (!canRc && !canFq && !canEd) return;   // 학부모 줄·보내는 중 = 기본 메뉴(복사)
   var sel = window.getSelection && String(window.getSelection() || '');
   if (sel && row.contains(window.getSelection().anchorNode)) return;   // 글자를 골라 둔 채 누름 = 기본 메뉴(복사) 그대로
   e.preventDefault();
   cmFor = ''; cmSeq = m.seq;
   var cm = $('cm');
-  cm.innerHTML = (canRc ? '<button type="button" role="menuitem" data-a="recall">' + I_RECALL + '거두기</button>' : '') +
+  cm.innerHTML = (canEd ? '<button type="button" role="menuitem" data-a="edit">' + I_FAQED + '고치기</button>' : '') +
+    (canRc ? '<button type="button" role="menuitem" data-a="recall">' + I_RECALL + '거두기</button>' : '') +
     (canFq ? '<button type="button" role="menuitem" data-a="faqput">' + I_FAQADD + '자주 쓰는 답변에 넣기</button>' : '');
   cm.classList.add('on');
   var ar = $('app').getBoundingClientRect(), x = e.clientX - ar.left, y = e.clientY - ar.top;
@@ -1353,6 +1459,85 @@ function recallMsg(seq){
   function send(){ ask({ action:'s_recall', auth: me, id: id, seq: seq, cid: c }).then(function(r){ if (!r || r.code === 'run') { askJob(); return; } done(r); }, askJob); }
   send();
 }
+/* ══════════ 보낸 답장 고치기(10-23 저녁 유성 「관리자는 보낸 글을 수정할 수 있도록 할것. 수정됨 이라는 표시는 넣지 않을것. 수정하면 딜레이 없이 즉시 수정되게 할 것.」) ══════════
+   · 한유성(관리자 보기)만 — 26 INQ_EDIT_ROLES와 같은 범위. 내 말풍선(글 있는 줄) 오른쪽 클릭 「고치기」 → 입력 칸에 그 글 + 위에 「답장 고치기」 줄.
+     보내기(엔터) = 고침, Esc나 「취소」 = 그만(쓰던 글, 첨부 칩은 돌아옴). 시간 제한 없음(거두기는 1분).
+   · 낙관 = 누르는 순간 말풍선 글이 바뀐다. 26 s_edit(작업 번호 — 응답을 놓치면 s_job으로 결과만). 학부모 창은 다음 묻기(3초)에 바뀐 글, 「수정됨」 표시 0.
+   · 주기 조회가 반영 전 대화를 다시 가져와도 서버가 같은 글을 보일 때까지 내 글을 지킨다(EDH — 받은함 지키기 표와 같은 규칙, 답 받은 뒤 30초 상한).
+   · 문자가 이미 나간 줄이면 「문자로는 고치기 전 글이 갔어요」(26 sms:'sent') */
+var ED = null, EDH = {};   // ED = 고치는 중 {id, seq, draft, att} · EDH = '방:줄' → {t, at, done}
+var EDIT_MS = 30000;
+function editable(m){ return VIEWER && !!m && !m.rc && !m.pending && !m.unknown && !m.failed && m.seq > 0 && m.seq < 1e9 && m.who === MY_WHO && !!(m.text || '').trim(); }
+function edApply(id, msgs){   // 서버에서 받은 줄에 내 고친 글을 다시 얹는다(받은 직후, 그리기 전)
+  (msgs || []).forEach(function(m){
+    var k = id + ':' + m.seq, h = EDH[k]; if (!h) return;
+    if (m.text === h.t) { if (h.done) delete EDH[k]; return; }   // 서버가 따라왔다
+    if (h.done && Date.now() - h.at > EDIT_MS) { delete EDH[k]; return; }
+    if (!m.rc) m.text = h.t;
+  });
+  return msgs;
+}
+function edPatch(id, seq, t){ var c = RCACHE[id]; if (c) c.msgs.forEach(function(m){ if (m.seq === seq && !m.rc) m.text = t; }); }
+function editStart(seq){
+  var m = msgBySeq(seq); if (!editable(m)) return;
+  if (ED) editStop();
+  fqClose();
+  ED = { id: R.id, seq: seq, draft: ta.value, att: ATT };
+  ATT = []; drawAtts();
+  ta.value = m.text; autosize(); syncSend();
+  $('rEdT').textContent = String(m.text || '').split('\n')[0];
+  $('rEd').classList.add('on');
+  drawThread(seenAll(), false);
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+function editStop(){   // 그만 = 입력 칸을 고치기 전으로(쓰던 글, 첨부 칩)
+  if (!ED) return;
+  var e = ED; ED = null;
+  $('rEd').classList.remove('on');
+  if (R.id !== e.id) return;
+  ta.value = e.draft; ATT = e.att || []; drawAtts(); autosize(); syncSend();
+  drawThread(seenAll(), false);
+}
+function editSend(){
+  var e = ED, m = e && msgBySeq(e.seq), v = ta.value.replace(/\s+$/, '').replace(/^\s+/, '');
+  if (!e || !m || !v) return;
+  if (v === (m.text || '')) { editStop(); return; }   // 안 바뀜 = 서버를 안 부른다
+  var id = e.id, seq = e.seq, keep = m.text, c = cid(), t0 = Date.now(), over = false, k = id + ':' + seq;
+  var h = EDH[k] = { t: v, at: Date.now(), done: false };
+  m.text = v; edPatch(id, seq, v);
+  var vis = R.msgs.filter(function(x){ return !x.rc && !x.failed; }), row = findRow(id);
+  if (row && vis.length && vis[vis.length - 1].seq === seq) row.preview = v.slice(0, 60);   // 마지막 줄 = 목록 미리보기도(26이 같이 바꾼다)
+  editStop();
+  function done(r){
+    if (over) return; over = true;
+    if (r && r.ok) {
+      if (EDH[k] === h) { h.done = true; h.at = Date.now(); }
+      if (r.sms === 'sent') toastA('문자로는 고치기 전 글이 갔어요');
+    } else {   // 거절(거둔 줄 등) = 되돌린다 — 그 뒤에 또 고쳤으면 손대지 않음
+      if (EDH[k] === h) {
+        delete EDH[k];
+        var mm = R.id === id ? msgBySeq(seq) : null; if (mm && mm.text === v) mm.text = keep;
+        edPatch(id, seq, keep);
+        if (R.id === id) drawThread(seenAll(), false);
+      }
+      toastA((r && r.error) || '고치지 못했어요');
+    }
+    S.gver = ''; poll();
+  }
+  function askJob(){
+    if (Date.now() - t0 > 60000) { if (!over) { over = true; toastA('결과를 아직 못 받았어요. 대화를 다시 열어 보세요'); } return; }
+    setTimeout(function(){
+      ask({ action:'s_job', auth: me, cid: c }).then(function(j){
+        if (j && j.ok && j.state === 'done') { done(j.result); return; }
+        if (j && j.ok && j.state === 'none') { send(); return; }   // 서버에 안 닿았다 = 같은 번호로 다시(같은 글로 두 번 고쳐도 같은 결과)
+        askJob();
+      }, askJob);
+    }, 4000);
+  }
+  function send(){ ask({ action:'s_edit', auth: me, id: id, seq: seq, text: v, cid: c }).then(function(r){ if (!r || r.code === 'run') { askJob(); return; } done(r); }, askJob); }
+  send();
+}
+$('rEdX').addEventListener('click', function(){ editStop(); ta.focus(); });
 /* 내가 바꾼 칸 지키기(10-18 유성 「이름 수정하기 해서 이름을 수정했을 때 그 즉시 수정되지 않고 조금 딜레이」)
    실측: 이름을 저장한 직후 다른 대화 변화(읽음, 새 글, 박동)로 새 목록이 오면 서버엔 아직 옛 이름이라 새 이름 → 1.6초 옛 이름 → 6.6초 새 이름으로 깜빡였다.
    → 내가 바꾼 이름·고정은 서버 목록이 같은 값을 보여 줄 때까지(답을 받은 뒤, 최대 30초) 내 값으로 둔다. 서버가 거절하면 바로 지우고 다시 받는다(옛 값으로 = 맞음).
@@ -1431,15 +1616,19 @@ function saveLabel(v){
 /* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════
    첨부(10-11)가 있으면 파일 하나씩 먼저, 글은 맨 뒤. 말풍선은 한꺼번에 먼저 보이고, 보내기는 앞 것이 끝나야 다음 것(학부모 화면에서도 같은 순서) */
 function autosize(){ ta.style.height = 'auto'; ta.style.height = Math.min(100, ta.scrollHeight + 3) + 'px'; fTa(); }
-function canSend(){ return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }
+function canSend(){ if (ED) return !!R.id && !!ta.value.trim(); return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }   // 고치는 중 = 글만
 function syncSend(){ sendB.disabled = !canSend(); }
 ta.addEventListener('input', function(){ syncSend(); autosize(); });
 // 폰(손가락 화면)은 엔터 = 줄바꿈, 보내기는 버튼(10-18 한유성 문의 폰 — 카톡과 같게). PC는 그대로 엔터 = 보내기
 var TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches);
-ta.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !TOUCH) { e.preventDefault(); sendB.click(); } });
+ta.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && ED && !e.isComposing) { e.preventDefault(); editStop(); return; }   // 고치기 그만
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !TOUCH) { e.preventDefault(); sendB.click(); }
+});
 var LSEQ = 0;   // 낙관 줄 번호가 같은 1ms에 겹치지 않게(파일 여러 개를 한 번에)
 sendB.addEventListener('click', function(){
   if (!canSend()) return;
+  if (ED) { editSend(); return; }   // 보낸 답장 고치기(10-23)
   var v = ta.value.trim(), files = ATT.slice();
   ta.value = ''; ATT = []; drawAtts(); autosize();   // 칩의 blob 주소는 안 지운다 — 보낸 말풍선이 그대로 쓴다(FC)
   var items = files.map(function(a){ return { text: '', file: a }; });
@@ -1483,7 +1672,7 @@ function sendOne(id, m, F){
       m.pending = false; m.unknown = false;
       if (!r || !r.ok) { m.failed = true; toastA((r && r.error) || '안 보내졌어요'); }
       else {
-        m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.ver = verOf({ lastAt: r.at, rv: (findRow(id) || {}).rv });
+        m.seq = r.seq; m.at = r.at; m.sms = r.sms === 'sent' ? 'sent' : r.sms === 'fail' ? 'fail' : r.sms === 'wait' ? 'wait' : ''; /* wait = 1분 뒤 판정(그때 방을 다시 읽는다) */ if (r.sms === 'live') R.live = true; if (S.cur && S.cur.id === id) S.cur.ver = verOf({ lastAt: r.at, rv: (findRow(id) || {}).rv, ev: (findRow(id) || {}).ev });
         if (F) { if (r.file) m.file = r.file; FC[id + ':' + r.seq] = { url: F.url, t: F.type, n: m.file.n }; }   // 서버 줄로 바뀌어도 다시 안 받는다
       }
       if (R.id === id) drawThread(seenAll(), true);
@@ -1651,17 +1840,24 @@ function closeView(){ var v = $('rView'); if (!v.classList.contains('on')) retur
 $('rView').addEventListener('click', function(e){ if (e.target === this || e.target.classList.contains('vb') || e.target.closest('.vx')) closeView(); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('rView').classList.contains('on')) { e.preventDefault(); closeView(); } });
 
-/* ══════════ 자주 쓰는 답변(⑤ 10-23 첫 판 — 정본 = 생각공작소 prototype/26_문의채팅_자주쓰는답변_첫화면질문_사전계획_프리뷰.html ⑤ 탭, 서버 = 26 자주답변.js, 글 = tools/문의답변/정본.js) ══════════
+/* ══════════ 자주 쓰는 답변(⑤ 10-23 첫 판 + 같은 날 저녁 유성 피드백 — 정본 = 생각공작소 prototype/26_문의채팅_자주쓰는답변_첫화면질문_사전계획_프리뷰.html ⑤ 탭, 서버 = 26 자주답변.js, 글 = tools/문의답변/정본.js) ══════════
    · 클립 옆 말풍선 단추 → 목록. 26이 faq:1을 주는 판일 때만 단추(구판에 s_faq를 부르면 「알 수 없는 요청」).
-   · 순서 = 학부모 글(우리 마지막 답 앞뒤로 가장 가까운 학부모 줄들) × 낱말 사전. 띄어쓰기 빼고 맞춤, 둘 이상 맞으면 1.5배, 서비스 이름이 나오면 그 서비스 갈래가 위로·다른 서비스 갈래는 아래로.
-     정본만 사전이 있고, 맞은 정본 → 안 맞은 정본(원래 순서) → 저장한 답(새로 저장한 것 먼저). AI 호출 0(유성 10-15 2차 「사전계획」).
-   · 넣기 = 입력 칸이 비어 있고 그 대화에 우리 답장이 아직 없으면(거둔 답장은 안 셈, 앞 줄이 더 있으면 있는 셈) 앞에 「네 안녕하세요! 」 — 답이 「안녕하세요」나 「네, 」로 시작하면 안 붙임. 쓰던 글이 있으면 그 아래에(kbFill).
-   · 저장 = 목록 맨 아래 「지금 쓴 글 저장하기」 / 우리 말풍선 오른쪽 클릭 「자주 쓰는 답변에 넣기」. ⛔그 대화 이름표, 닉네임, 아이 이름, 선생님 이름, 전화번호가 든 글은 안 넣는다(목록은 모든 대화에 뜬다 — 번호는 26도 한 번 더 거름).
-   · 빼기 = 목록 줄 오른쪽 클릭 「목록에서 빼기」. 넣은 답을 보내면 26에 한 번(그대로 / 고쳐서) — 자주 고쳐 보내는 답 = 안 맞는 답(유성 10-15 「행동으로 찾기」) */
-var FQ = { data: null, at: 0, p: null, open: false, ins: null, sel: -1, rows: [], fresh: '' };   // ins = 마지막으로 넣은 답 {id, room, text} · fresh = 방금 저장한 줄(한 번 반짝) · at = 받은 때(10분 지나면 열 때 뒤에서 새로 — 다른 PC가 저장한 답)
+   · 목록 = 「기본 답변」(정본 — 못 빼고 못 고침, 26도 거절) / 「저장한 답변」(행정이 저장 — 제목, 글 고치기 + 빼기). 두 칸을 갈라 그린다(유성 「기본으로 저장되어있는 건 삭제하지 못하게 하고 … 비교가 되어야함」).
+   · 순서 = 학부모 글(우리 마지막 답 앞뒤로 가장 가까운 학부모 줄들) × 낱말 사전. 띄어쓰기 빼고 맞춤, 둘 이상 맞으면 1.5배, 서비스 이름이 나오면 그 서비스 갈래가 위로, 다른 서비스 갈래는 아래로. AI 호출 0(유성 10-15 2차).
+   · 찾기(유성 「자주 쓰는 답변 우측 상단에 검색 … 그 키워드 분석해서 답변 우선순위로」) = 머리 오른쪽 칸. 친 글을 띄어쓰기로 나눠 낱말마다 제목 5, 글 2, 사전 낱말(그 낱말을 품거나 낱말이 품으면) 사전 점수 → 여럿 맞으면 1.5배,
+     서비스 이름을 쳤으면 그 서비스 갈래 +3, 다른 갈래 −3. 0점 = 안 보임. 같은 점수 = 원래 순서
+   · 넣기 = 입력 칸을 비우고 넣는다(유성 「인풋 창에 있는 텍스트들을 없애고 넣어져야해. 실수할 수 있음」 — kbFill이 insertText라 Ctrl+Z로 쓰던 글이 돌아온다).
+     그 대화에 우리 답장이 아직 없으면(거둔 답장은 안 셈, 앞 줄이 더 있으면 있는 셈) 앞에 「네 안녕하세요! 」 — 답이 「안녕하세요」나 「네, 」 「네~」로 시작하면 안 붙임.
+   · 저장 = 목록 맨 아래 「새 답변 만들기」(쓰던 글이 있으면 그 글로 채워 열림) / 우리 말풍선 오른쪽 클릭 「자주 쓰는 답변에 넣기」 → 같은 만들기 칸(제목 + 내용, 제목 = 첫 문장으로 미리 채움).
+     ⛔그 대화 이름표, 닉네임, 아이 이름, 선생님 이름, 전화번호가 든 글은 안 넣는다(목록은 모든 대화에 뜬다 — 번호는 26도 한 번 더 거름).
+   · 저장한 답 = 줄에 마우스를 올리면 고치기, 빼기 단추(오른쪽 클릭 메뉴도 같음). 빼기는 제목을 넣은 확인 창을 한 번(유성 「그 답변의 제목을 언급하면서 뺄지 묻는 모달」 — §4.4, 빼기 = danger).
+     저장, 고치기, 빼기는 낙관(바로 목록에) — 26이 거절하면 되돌리고 토스트. 넣은 답을 보내면 26에 한 번(그대로 / 고쳐서) — 자주 고쳐 보내는 답 = 안 맞는 답(유성 10-15 「행동으로 찾기」) */
+var FQ = { data: null, at: 0, p: null, open: false, ins: null, sel: -1, rows: [], fresh: '', q: '', ed: null };   // ins = 마지막으로 넣은 답 {id, room, text} · fresh = 방금 저장한 줄(한 번 반짝) · q = 찾기 글 · ed = 만들기, 고치기 칸 {id(고치기면), t, a, from}
 var I_FAQADD = '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>';
 var I_FAQDEL = '<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
-var FQ_GREET = '네 안녕하세요! ', FQ_PHONE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/;
+var I_FAQED = '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+var FQ_GREET = '네 안녕하세요! ', FQ_PHONE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/, FQ_GREET_RE = /^(네[,\s]*)?안녕하세요[!.,~\s]*/, FQ_TMAX = 30;
+var fqFade = null, fqEdFade = null;
 function fqLoad(force){
   if (FQ.p && !force) return FQ.p;
   var p = FQ.p = askRead({ action:'s_faq', auth: me }).then(function(r){ if (!r || !r.ok) throw new Error((r && r.error) || 'faq'); FQ.data = r; FQ.at = Date.now(); return r; });
@@ -1686,43 +1882,114 @@ function fqScore(row, txt, hit, any){
   if (sc > 0 && typeof row.svc === 'string') sc += row.svc ? (hit[row.svc] ? 3 : any ? -3 : -0.5) : (any ? -2 : 0.5);
   return sc;
 }
-function fqOrder(){   // → 목록 줄 [{id, t(제목), p(첫 줄), a(넣을 글), mine}]
+function fqTitleOf(a){ var one = String(a || '').replace(/\s+/g, ' ').trim(), cut = one.search(/[.?!](\s|$)/); return Array.from(cut > 0 && cut < 30 ? one.slice(0, cut + 1) : one.slice(0, 24)).slice(0, FQ_TMAX).join(''); }   // 제목 없는 저장 답(10-23 첫 판) = 첫 문장
+function fqBaseRow(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, kw: b.kw, svc: b.svc, i: i }; }
+function fqMineRow(m, i){ var one = m.a.replace(/\s+/g, ' ').trim(), t = m.t || fqTitleOf(m.a); return { id: m.id, t: t, tt: m.t || '', p: m.t ? one : (one.slice(t.length).trim() || one), a: m.a, mine: 1, i: 1000 + i }; }
+function fqOrder(){   // 찾기 칸이 비었을 때 = 그 대화 학부모 글 순서 → [{id, t(제목), p(첫 줄), a(넣을 글), mine}]
   var d = FQ.data; if (!d) return [];
   var txt = fqAsked(), hit = {}, any = 0;
   Object.keys(d.svc || {}).forEach(function(c){ var kw = d.svc[c]; for (var k in kw) if (txt && txt.indexOf(fqNorm(k)) >= 0) { hit[c] = 1; any = 1; break; } });
-  var base = (d.base || []).map(function(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, sc: fqScore(b, txt, hit, any), i: i }; });
+  var base = (d.base || []).map(function(b, i){ var x = fqBaseRow(b, i); x.sc = fqScore(b, txt, hit, any); return x; });
   var on = base.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
   var off = base.filter(function(x){ return !(x.sc > 0); });
-  var mine = (d.mine || []).map(function(m){ var one = m.a.replace(/\s+/g, ' ').trim(), cut = one.search(/[.?!](\s|$)/); var t = cut > 0 && cut < 30 ? one.slice(0, cut + 1) : one.slice(0, 24); return { id: m.id, t: t, p: one.slice(t.length).trim() || one, a: m.a, mine: 1 }; });
-  return on.concat(off, mine);
+  return on.concat(off, (d.mine || []).map(fqMineRow));
+}
+function fqHit(tk, n){ return !!n && (tk.indexOf(n) >= 0 || (tk.length >= 2 && n.indexOf(tk) >= 0)); }   // 친 낱말이 사전 낱말을 품거나(「본인부담금은」 ⊃ 「본인부담」) 사전 낱말이 친 낱말을 품음(「부담」)
+function fqFind(q){   // 찾기 = 친 낱말 분석 → 점수 높은 순(위 머리말). 0점은 뺀다
+  var d = FQ.data; if (!d) return [];
+  var toks = String(q).split(/\s+/).map(fqNorm).filter(Boolean);
+  if (!toks.length) return fqOrder();
+  var svcHit = {}, anySvc = 0;
+  Object.keys(d.svc || {}).forEach(function(c){ var kw = d.svc[c]; toks.forEach(function(tk){ for (var k in kw) if (fqHit(tk, fqNorm(k))) { svcHit[c] = 1; anySvc = 1; } }); });
+  var all = (d.base || []).map(fqBaseRow).concat((d.mine || []).map(fqMineRow));
+  all.forEach(function(x){
+    var t = fqNorm(x.t), a = fqNorm(x.a), sc = 0, n = 0;
+    toks.forEach(function(tk){
+      var s = (t.indexOf(tk) >= 0 ? 5 : 0) + (a.indexOf(tk) >= 0 ? 2 : 0);
+      if (x.kw) for (var k in x.kw) if (Object.prototype.hasOwnProperty.call(x.kw, k) && fqHit(tk, fqNorm(k))) s += +x.kw[k] || 0;
+      if (s > 0) n++;
+      sc += s;
+    });
+    if (n >= 2) sc *= 1.5;
+    if (sc > 0 && anySvc && typeof x.svc === 'string') sc += x.svc ? (svcHit[x.svc] ? 3 : -3) : -1;
+    x.sc = sc;
+  });
+  return all.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
+}
+function fqHl(s, toks){   // 제목에서 친 낱말(가장 긴 것) 하나를 초록 굵게
+  var at = -1, len = 0;
+  toks.forEach(function(tk){ var j = s.indexOf(tk); if (j >= 0 && tk.length > len) { at = j; len = tk.length; } });
+  return at < 0 ? esc(s) : esc(s.slice(0, at)) + '<mark>' + esc(s.slice(at, at + len)) + '</mark>' + esc(s.slice(at + len));
+}
+function fqShell(){   // 목록 틀(머리 + 찾기 칸 + 스크롤 칸 + 새 답변 만들기) = 한 번만 — 다시 그릴 땐 줄만(찾기 칸 글자, 포커스 그대로)
+  var L = $('rFql');
+  if (L.dataset.v === 'list') return;
+  L.dataset.v = 'list';
+  L.innerHTML = '<div class="fh"><span class="tt">자주 쓰는 답변</span><input class="fq" id="fqQ" placeholder="찾기" aria-label="자주 쓰는 답변 찾기" autocomplete="off" spellcheck="false"></div>' +
+    '<div class="sw" id="fqSw"><div class="fs" id="fqS" role="listbox"></div></div>' +
+    '<button type="button" class="fa" data-f="new"><svg class="li" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>새 답변 만들기</button>';
+  $('fqQ').value = FQ.q;
+  fqFade = fadeWatch($('fqS'), $('fqSw'));
 }
 function fqDraw(){
-  var L = $('rFql'), d = FQ.data, canAdd = !!ta.value.trim();
-  var foot = '<button type="button" class="fa" data-f="add"' + (canAdd ? '' : ' disabled') + '>' + '<svg class="li" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>지금 쓴 글 저장하기</button>';
-  if (!d) { L.innerHTML = '<div class="fh">자주 쓰는 답변</div><div class="fe">' + (FQ.p ? '불러오는 중<span class="ldd"><i></i><i></i><i></i></span>' : '목록을 아직 못 불러왔어요. 다시 눌러 주세요') + '</div>'; return; }
-  FQ.rows = fqOrder();
-  L.innerHTML = '<div class="fh">자주 쓰는 답변</div><div class="fs">' + FQ.rows.map(function(x, i){
-    return '<button type="button" class="fi' + (i === FQ.sel ? ' sel' : '') + (x.id === FQ.fresh ? ' new' : '') + '" data-i="' + i + '"><b>' + esc(x.t) + '</b><span>' + esc(x.p) + '</span></button>';
-  }).join('') + '</div>' + foot;
-  if (FQ.fresh) { var nw = L.querySelector('.fi.new'); if (nw) nw.scrollIntoView({ block: 'nearest' }); FQ.fresh = ''; }
+  if (FQ.ed) { fqDrawEd(); return; }
+  fqShell();
+  var box = $('fqS'), d = FQ.data;
+  if (!d) { FQ.rows = []; box.innerHTML = '<div class="fe">' + (FQ.p ? '불러오는 중<span class="ldd"><i></i><i></i><i></i></span>' : '목록을 아직 못 불러왔어요. 다시 눌러 주세요') + '</div>'; return; }
+  var q = FQ.q.trim(), list = q ? fqFind(q) : fqOrder(), toks = q.split(/\s+/).filter(Boolean);
+  var base = list.filter(function(x){ return !x.mine; }), mine = list.filter(function(x){ return x.mine; });
+  FQ.rows = base.concat(mine);
+  if (FQ.sel >= FQ.rows.length) FQ.sel = FQ.rows.length - 1;
+  var n = 0;
+  var row = function(x){
+    var k = n++, sel = k === FQ.sel ? ' sel' : '';
+    return '<div class="fw' + (x.mine ? ' mine' : '') + sel + '" data-i="' + k + '"><button type="button" class="fi' + sel + (x.id === FQ.fresh ? ' new' : '') + '" data-i="' + k + '" role="option"><b>' + fqHl(x.t, toks) + '</b><span>' + esc(x.p) + '</span></button>' +
+      (x.mine ? '<span class="fx"><button type="button" data-f="ed" data-i="' + k + '" title="고치기" aria-label="고치기">' + I_FAQED + '</button><button type="button" class="del" data-f="del" data-i="' + k + '" title="빼기" aria-label="빼기">' + I_FAQDEL + '</button></span>' : '') + '</div>';
+  };
+  var html = !FQ.rows.length ? '<div class="fe">맞는 답변이 없어요</div>'
+    : (base.length ? '<div class="fg">기본 답변</div>' + base.map(row).join('') : '') + (mine.length ? '<div class="fg">저장한 답변</div>' + mine.map(row).join('') : '');
+  box.innerHTML = html;
+  if (FQ.fresh) { var nw = box.querySelector('.fi.new'); if (nw) nw.scrollIntoView({ block: 'nearest' }); FQ.fresh = ''; }
+  if (fqFade) fqFade();
 }
+function fqDrawEd(){   // 만들기, 고치기 칸 — 같은 자리에서(목록 대신). 왼쪽 닫기, 오른쪽 저장(§4.4 버튼 순서)
+  var L = $('rFql'), e = FQ.ed;
+  L.dataset.v = 'ed';
+  L.innerHTML = '<div class="fh"><span class="tt">' + (e.id ? '저장한 답변 고치기' : '새 답변 만들기') + '</span></div>' +
+    '<div class="fed"><label class="lb" for="fqT">제목</label><input id="fqT" maxlength="' + FQ_TMAX + '" placeholder="예: 형제 수업" autocomplete="off" spellcheck="false">' +
+    '<label class="lb" for="fqA">내용</label><div class="ftw" id="fqAw"><textarea id="fqA" spellcheck="false"></textarea></div>' +
+    '<div class="fbt"><button type="button" class="no" data-f="cancel">닫기</button><button type="button" class="go" data-f="save">저장</button></div></div>';
+  $('fqT').value = e.t || ''; $('fqA').value = e.a || '';
+  fqEdFade = fadeWatch($('fqA'), $('fqAw'));
+  fqEdSync();
+  setTimeout(function(){ if (FQ.ed !== e) return; var f = $('fqT'); f.focus(); f.select(); fqEdFade(); }, 0);
+}
+function fqEdSync(){ var g = $('rFql').querySelector('[data-f="save"]'); if (g && $('fqA')) g.disabled = !$('fqA').value.trim(); }
 function fqOpen(){
   if (!R.id || !document.body.classList.contains('faqon')) return;
   closeCm(); FQ.open = true; FQ.sel = -1; $('rFql').classList.add('on'); $('rFaq').classList.add('on'); $('rFaq').setAttribute('aria-expanded', 'true');
   fqDraw();
-  if (!FQ.data || Date.now() - FQ.at > 600000) fqLoad(!!FQ.data).then(function(){ if (FQ.open) fqDraw(); }, function(){ if (FQ.open) fqDraw(); });
+  if (!FQ.ed) setTimeout(function(){ var q = $('fqQ'); if (FQ.open && !FQ.ed && q) q.focus(); }, 0);   // 열면 찾기 칸에 — 바로 치면 찾는다
+  if (!FQ.data || Date.now() - FQ.at > 600000) fqLoad(!!FQ.data).then(function(){ if (FQ.open && !FQ.ed) fqDraw(); }, function(){ if (FQ.open && !FQ.ed) fqDraw(); });
 }
-function fqClose(){ if (!FQ.open) return; FQ.open = false; $('rFql').classList.remove('on'); $('rFaq').classList.remove('on'); $('rFaq').setAttribute('aria-expanded', 'false'); }
+function fqClose(){
+  if (!FQ.open) return;
+  FQ.open = false; FQ.ed = null; FQ.q = ''; $('rFql').dataset.v = '';   // 다음에 열면 빈 찾기 칸으로
+  $('rFql').classList.remove('on'); $('rFaq').classList.remove('on'); $('rFaq').setAttribute('aria-expanded', 'false');
+}
+function fqMineSaid(){ return R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; }); }
+function fqGreet(a){ return !fqMineSaid() && !/^(안녕하세요|네[,~!\s])/.test(a) ? FQ_GREET : ''; }
 function fqPut(x){
-  var mineSaid = R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; });
-  var greet = !ta.value.trim() && !mineSaid && !/^(안녕하세요|네,)/.test(x.a);
+  var g = fqGreet(x.a);
   fqClose();
-  kbFill((greet ? FQ_GREET : '') + x.a);
+  kbFill(g + x.a);
   FQ.ins = { id: x.id, room: R.id, text: ta.value.trim() };
 }
 function fqSent(id, v){
   var x = FQ.ins; FQ.ins = null; fqClose();   // 목록을 연 채 엔터로 보냈으면 닫기
   if (!x || x.room !== id || !v) return;
+  if (x.id === 'confirm') kbCue(id);   // 13번(배정) 답을 보냄 = 띠에 「○○○ 선생님이 보호자분께 바로 연락드리도록」(유성 10-23 「행정인력에게 그 제공인력에게 연락드려야한다고 알리는 정보」)
+  if (!x.id) return;
   ask({ action:'s_faquse', auth: me, id: x.id, ed: v.trim() === x.text ? 0 : 1 }).then(function(){}, function(){});   // 세기만 — 실패해도 답장엔 영향 0
 }
 function fqCanSave(m){ return !!m && document.body.classList.contains('faqon') && m.who !== 'v' && !m.rc && !m.pending && !m.failed && !m.unknown && !!(m.text || '').trim(); }
@@ -1733,52 +2000,110 @@ function fqPii(t){   // 이 대화에서 나온 이름, 번호가 든 글인가 
   ((KB.card && KB.card.kids) || []).forEach(function(k){ if (k.n) names.push(k.n); if (k.t) names.push(k.t); });
   return names.some(function(n){ n = String(n).trim(); return n.length >= 2 && t.indexOf(n) >= 0; });
 }
-function fqSave(text){
-  var t = String(text || '').trim(); if (!t) return;
-  if (fqPii(t)) { toastA('이름이나 전화번호가 들어 있어서 넣지 않았어요'); return; }
-  ask({ action:'s_faqadd', auth: me, text: t }).then(function(r){
-    if (!r || !r.ok) { toastA((r && r.error) || '못 넣었어요'); return; }
-    FQ.data = r; FQ.at = Date.now(); FQ.p = Promise.resolve(r); FQ.fresh = r.added || '';
-    toastA(r.again ? '이미 자주 쓰는 답변에 있어요' : '자주 쓰는 답변에 넣었어요');
-    if (FQ.open) fqDraw();
-  }, function(){ toastA('연결이 안 돼요'); });
+// 만들기 칸 열기 — from = 'list'(목록 맨 아래 단추, 쓰던 글로 채움) | 'bubble'(말풍선 오른쪽 클릭 — 닫으면 목록도 닫힘)
+function fqNew(text, from){
+  if (!document.body.classList.contains('faqon')) return;
+  var a = String(text || '').replace(/\r\n?/g, '\n').trim().replace(FQ_GREET_RE, '').trim();
+  FQ.ed = { id: '', t: a ? fqTitleOf(a) : '', a: a, from: from || 'list' };
+  if (!FQ.open) fqOpen(); else fqDraw();
+}
+function fqEdit(x){ if (!x || !x.mine) return; FQ.ed = { id: x.id, t: x.tt || x.t, a: x.a, from: 'list' }; if (!FQ.open) fqOpen(); else fqDraw(); }
+function fqEdCancel(){ var e = FQ.ed; FQ.ed = null; if (e && e.from === 'bubble') { fqClose(); ta.focus(); return; } fqDraw(); var q = $('fqQ'); if (q) q.focus(); }
+function fqSetData(r){ FQ.data = r; FQ.at = Date.now(); FQ.p = Promise.resolve(r); }
+function fqEdSave(){
+  var e = FQ.ed; if (!e || !$('fqA')) return;
+  var a = $('fqA').value.replace(/\r\n?/g, '\n').trim().replace(FQ_GREET_RE, '').trim(), t = Array.from($('fqT').value.replace(/\s+/g, ' ').trim()).slice(0, FQ_TMAX).join('').trim();
+  if (!a) return;
+  if (!t) t = fqTitleOf(a);
+  if (fqPii(a) || fqPii(t)) { toastA('이름이나 전화번호가 들어 있어서 저장하지 않았어요'); return; }
+  var keep = FQ.data, tmp = e.id || ('n' + Date.now());
+  if (keep) {   // 낙관 — 바로 목록에(고치기 = 그 줄, 만들기 = 저장한 답변 맨 위)
+    var mine = (keep.mine || []).slice();
+    if (e.id) mine = mine.map(function(m){ return m.id === e.id ? { id: m.id, t: t, a: a, by: m.by, at: m.at } : m; });
+    else if (!mine.some(function(m){ return m.a === a; })) mine.unshift({ id: tmp, t: t, a: a });
+    FQ.data = Object.assign({}, keep, { mine: mine });
+  }
+  FQ.fresh = tmp; FQ.ed = null; FQ.q = ''; $('rFql').dataset.v = '';
+  if (FQ.open) { fqDraw(); var q = $('fqQ'); if (q) q.focus(); }
+  ask(e.id ? { action:'s_faqedit', auth: me, id: e.id, t: t, text: a } : { action:'s_faqadd', auth: me, t: t, text: a }).then(function(r){
+    if (!r || !r.ok) { if (keep) FQ.data = keep; if (FQ.open && !FQ.ed) fqDraw(); toastA((r && r.error) || '저장하지 못했어요'); return; }
+    fqSetData(r);
+    if (r.again) toastA('이미 자주 쓰는 답변에 있어요');
+    if (FQ.open && !FQ.ed) fqDraw();
+  }, function(){ if (keep) FQ.data = keep; if (FQ.open && !FQ.ed) fqDraw(); toastA('연결이 안 돼요'); });
 }
 function fqDel(id){
   if (!id || !FQ.data) return;
   var keep = FQ.data;
-  FQ.data = { ok: true, ver: keep.ver, svc: keep.svc, base: keep.base.filter(function(b){ return b.id !== id; }), mine: keep.mine.filter(function(m){ return m.id !== id; }) };   // 낙관 — 바로 빠짐
-  if (FQ.open) fqDraw();
+  FQ.data = Object.assign({}, keep, { mine: (keep.mine || []).filter(function(m){ return m.id !== id; }) });   // 낙관 — 바로 빠짐(기본 답변은 빼는 단추가 없다)
+  if (FQ.open && !FQ.ed) fqDraw();
   ask({ action:'s_faqdel', auth: me, id: id }).then(function(r){
-    if (!r || !r.ok) { FQ.data = keep; if (FQ.open) fqDraw(); toastA((r && r.error) || '못 뺐어요'); return; }
-    FQ.data = r; FQ.at = Date.now(); FQ.p = Promise.resolve(r); if (FQ.open) fqDraw();
-  }, function(){ FQ.data = keep; if (FQ.open) fqDraw(); toastA('연결이 안 돼요'); });
+    if (!r || !r.ok) { FQ.data = keep; if (FQ.open && !FQ.ed) fqDraw(); toastA((r && r.error) || '빼지 못했어요'); return; }
+    fqSetData(r); if (FQ.open && !FQ.ed) fqDraw();
+  }, function(){ FQ.data = keep; if (FQ.open && !FQ.ed) fqDraw(); toastA('연결이 안 돼요'); });
 }
-$('rFaq').addEventListener('click', function(){ if (FQ.open) fqClose(); else fqOpen(); });
+// 빼기 확인 창(§4.4 가운데 다이얼로그 — 왼쪽 닫기, 오른쪽 빼기 = danger. 글은 왼쪽 정렬)
+var FQDEL = '';
+function fqAskDel(x){
+  if (!x || !x.mine) return;
+  FQDEL = x.id;
+  $('fqDlgT').textContent = "'" + x.t + "' 답변을 뺄까요?";
+  $('fqDim').classList.add('on'); $('fqDlg').classList.add('on');
+  setTimeout(function(){ $('fqDlgNo').focus(); }, 0);
+}
+function fqDlgClose(){ FQDEL = ''; $('fqDim').classList.remove('on'); $('fqDlg').classList.remove('on'); }
+$('fqDlgNo').addEventListener('click', fqDlgClose);
+$('fqDim').addEventListener('click', fqDlgClose);
+$('fqDlgGo').addEventListener('click', function(){ var id = FQDEL; fqDlgClose(); fqDel(id); var q = $('fqQ'); if (q && FQ.open) q.focus(); });
+$('rFaq').addEventListener('click', function(){ if (FQ.open) fqClose(); else { FQ.ed = null; fqOpen(); } });
 $('rFql').addEventListener('click', function(e){
-  var a = e.target.closest('[data-f="add"]'); if (a) { if (!a.disabled) { var v = ta.value; fqSave(v); } return; }
+  var f = e.target.closest('[data-f]');
+  if (f) {
+    var k = f.dataset.f;
+    if (k === 'new') { fqNew(ta.value, 'list'); return; }
+    if (k === 'cancel') { fqEdCancel(); return; }
+    if (k === 'save') { if (!f.disabled) fqEdSave(); return; }
+    var y = FQ.rows[+f.dataset.i];
+    if (k === 'ed') { fqEdit(y); return; }
+    if (k === 'del') { fqAskDel(y); return; }
+  }
   var b = e.target.closest('.fi'); if (!b) return;
   var x = FQ.rows[+b.dataset.i]; if (x) fqPut(x);
 });
+$('rFql').addEventListener('input', function(e){
+  if (e.target.id === 'fqQ') { FQ.q = e.target.value; FQ.sel = FQ.q.trim() ? 0 : -1; fqDraw(); $('fqS').scrollTop = 0; }
+  else if (e.target.id === 'fqA' || e.target.id === 'fqT') { fqEdSync(); if (fqEdFade) fqEdFade(); }
+});
 $('rFql').addEventListener('contextmenu', function(e){
+  if (e.target.closest('input,textarea')) return;   // 찾기 칸, 만들기 칸 = 기본 메뉴(붙여넣기)
   e.preventDefault();
-  var b = e.target.closest('.fi'), x = b ? FQ.rows[+b.dataset.i] : null; if (!x) { closeCm(); return; }
+  var b = e.target.closest('.fw'), x = b ? FQ.rows[+b.dataset.i] : null; if (!x) { closeCm(); return; }
+  if (!x.mine) { closeCm(); toastA('기본 답변은 고치거나 뺄 수 없어요'); return; }
   cmFor = ''; cmSeq = 0; cmFq = x.id;
   var cm = $('cm');
-  cm.innerHTML = '<button type="button" role="menuitem" data-a="faqdel">' + I_FAQDEL + '목록에서 빼기</button>';
+  cm.innerHTML = '<button type="button" role="menuitem" data-a="faqed">' + I_FAQED + '고치기</button><button type="button" role="menuitem" data-a="faqdel">' + I_FAQDEL + '빼기</button>';
   cm.classList.add('on');
   var ar = $('app').getBoundingClientRect(), px = e.clientX - ar.left, py = e.clientY - ar.top;
   if (!e.clientX && !e.clientY) { var br = b.getBoundingClientRect(); px = br.left - ar.left + 40; py = br.bottom - ar.top - 8; }
   cm.style.left = Math.max(8, Math.min(px, ar.width - cm.offsetWidth - 8)) + 'px';
   cm.style.top = Math.max(8, Math.min(py, ar.height - cm.offsetHeight - 8)) + 'px';
 });
-document.addEventListener('pointerdown', function(e){ if (FQ.open && !e.target.closest('#rFql') && !e.target.closest('#rFaq') && !e.target.closest('#cm')) fqClose(); }, true);
+function fqRowById(id){ for (var i = 0; i < FQ.rows.length; i++) if (FQ.rows[i].id === id) return FQ.rows[i]; return null; }
+document.addEventListener('pointerdown', function(e){ if (FQ.open && !e.target.closest('#rFql') && !e.target.closest('#rFaq') && !e.target.closest('#cm') && !e.target.closest('#fqDlg') && !e.target.closest('#fqDim')) fqClose(); }, true);
 document.addEventListener('keydown', function(e){
+  if ($('fqDlg').classList.contains('on')) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fqDlgClose(); } return; }
   if (!FQ.open || $('cm').classList.contains('on')) return;
-  if (e.key === 'Escape') { e.preventDefault(); fqClose(); ta.focus(); return; }
+  if (FQ.ed) {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fqEdCancel(); return; }
+    if (e.key === 'Enter' && e.target.id === 'fqT') { e.preventDefault(); e.stopPropagation(); var A = $('fqA'); A.focus(); A.setSelectionRange(A.value.length, A.value.length); return; }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); fqEdSave(); }
+    return;
+  }
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (FQ.q) { FQ.q = ''; $('fqQ').value = ''; FQ.sel = -1; fqDraw(); return; } fqClose(); ta.focus(); return; }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); var n = FQ.rows.length; if (!n) return; FQ.sel = e.key === 'ArrowDown' ? (FQ.sel + 1) % n : (FQ.sel <= 0 ? n - 1 : FQ.sel - 1); fqDraw(); var sl = $('rFql').querySelector('.fi.sel'); if (sl) sl.scrollIntoView({ block: 'nearest' }); return; }
-  if (e.key === 'Enter' && FQ.sel >= 0 && FQ.rows[FQ.sel]) { e.preventDefault(); e.stopPropagation(); fqPut(FQ.rows[FQ.sel]); }
+  if (e.key === 'Enter' && !e.isComposing && FQ.sel >= 0 && FQ.rows[FQ.sel]) { e.preventDefault(); e.stopPropagation(); fqPut(FQ.rows[FQ.sel]); }
 }, true);
-ta.addEventListener('input', function(){ if (FQ.open) { var a = $('rFql').querySelector('[data-f="add"]'); if (a) a.disabled = !ta.value.trim(); } });
 function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2200); }
 
 /* ══════════ 시작 ══════════ */
