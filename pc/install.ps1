@@ -89,13 +89,14 @@ if (-not $built) {
 
 # 4) 바로가기 2개 — **컴파일이 성공한 뒤에만**(실패한 채 자동실행을 걸면 매 부팅마다 조용히 실패한다)
 $sh = New-Object -ComObject WScript.Shell
-function MakeLnk($path) {
+function MakeLnk($path, $arg) {
   # ⚠️있으면 **지우고 새로 만든다**: `CreateShortcut`은 기존 파일을 열어 고치는 방식이라, 예전에 박아 둔
   #   아이콘 경로가 그대로 살아남는다. 2026-08-06에 상태별 아이콘을 박는 시도를 했다가 실패했는데,
   #   그때 값이 남으면 **출근 안 한 아침에도 체크**가 보인다. (`IconLocation=''`는 ArgumentException이라 못 쓴다.)
   if (Test-Path $path) { Remove-Item $path -Force }
   $s = $sh.CreateShortcut($path)
   $s.TargetPath = $exe
+  if ($arg) { $s.Arguments = $arg }
   $s.WorkingDirectory = $dest
   $s.Description = '생각공작소'
   $s.Save()   # 아이콘은 안 건드린다 = exe에 박힌 그림(_off, 로딩 호)을 따라간다
@@ -104,10 +105,12 @@ function MakeLnk($path) {
 #   이미 깔린 PC는 4판 exe가 켜질 때 스스로 이름을 바꾼다(Names.Fix) — 여기는 새로 까는 PC와 다시 까는 PC 몫.
 function DropOld($dir) { $o = Join-Path $dir '생각공작소 근태.lnk'; if (Test-Path $o) { Remove-Item $o -Force } }
 # ① 시작프로그램 — PC를 켜면 자동으로
+#   `--startup` = 이미 떠 있으면 아무것도 안 한다(5판 10-24). 인자 없이 두면 지킴이가 먼저 켠 부팅에서
+#   이 바로가기가 「고정 아이콘 클릭」으로 읽혀 앱 창(비밀번호 화면)이 혼자 떴다. 깔린 PC는 5판 exe가 스스로 붙인다(AutoRun.Fix).
 $startup = [Environment]::GetFolderPath('Startup')
 $lnk = Join-Path $startup '생각공작소.lnk'
 DropOld $startup
-MakeLnk $lnk
+MakeLnk $lnk '--startup'
 Say '  - PC를 켤 때 자동으로 뜨도록 했습니다'
 
 # ② 시작 메뉴 — **작업 표시줄에 고정하기 위한 발판**(2026-08-05)
@@ -118,7 +121,7 @@ Say '  - PC를 켤 때 자동으로 뜨도록 했습니다'
 $programs = [Environment]::GetFolderPath('Programs')
 $menuLnk = Join-Path $programs '생각공작소.lnk'
 DropOld $programs
-MakeLnk $menuLnk
+MakeLnk $menuLnk ''   # 인자 없음 = 누르면 근태 앱이 열린다(작업 표시줄 고정은 이것의 사본)
 Say '  - 시작 메뉴에 넣었습니다'
 
 # 4.5) 지킴이 — 5분마다 `--watch`로 부른다(D11①: 꺼져 있으면 다시 켜고, 떠 있으면 아무것도 안 한다)

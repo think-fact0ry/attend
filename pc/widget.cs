@@ -47,7 +47,7 @@ static class Cfg {
     // ── 판 번호·자동 업데이트(2026-10-09, 문의 알리미 1-c — 유성 「업데이트해도 재설치 안 하게」) ──
     //   ⚠️이 파일을 고치면 **SHELL_VER를 올리고** `node tools/위젯배포/publish.js`로 올린다(안 올리면 스크립트가 거부).
     //   각 PC가 6시간마다 attend/pc/ver.txt를 보고, 서명이 맞는 더 높은 판이면 받아서 **그 PC에서 만들고** 쉬는 틈에 바꿔 끼운다.
-    public const int SHELL_VER = 4;   // 4 = 문의 알림(소리·두 번 흔들림·미리보기)·앱 열기(닫지 않음)·이름 「생각공작소」 10-10 / 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
+    public const int SHELL_VER = 5;   // 5 = 자동 실행 바로가기 --startup(부팅 때 앱 창이 혼자 뜨던 것) 10-24 / 4 = 문의 알림(소리·두 번 흔들림·미리보기)·앱 열기(닫지 않음)·이름 「생각공작소」 10-10 / 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
     public const string PC_URL = "https://think-fact0ry.github.io/attend/pc/";
     // 서명 확인용 **공개** 열쇠(RSA 3072). 비밀 열쇠는 레포 밖(유성 노트북 %USERPROFILE%\.saenggak\pc-sign.pem) —
     //   깃허브 계정만 털려서는 가짜 판을 못 만든다. 열쇠를 바꾸면 이 줄이 바뀌므로 전 PC 재설치 1회.
@@ -491,6 +491,43 @@ static class Names {
     }
 }
 
+// ── 자동 실행 바로가기 = `--startup`(5판 10-24, 유성 「재부팅 때 큰 창으로 비밀번호 … 위젯만 떠 있었으면」) ──
+//   부팅 때 지킴이(5분 작업)와 시작프로그램 바로가기가 경주한다. 지킴이가 이기면 늦게 도는 바로가기가 두 번째 실행이 되어
+//   고정 아이콘 클릭처럼 앱 창을 열었다. 바로가기에 `--startup`을 달면 Main이 조용히 물러난다.
+//   이미 깔린 PC는 재설치 없이 이 판이 켜질 때 고친다(Names.Fix와 같은 자리, 멱등).
+//   ⚠️시작 메뉴 바로가기는 안 건드린다 — 사람이 누르는 길이고, 작업 표시줄 고정도 그 사본이라 눌렀을 때 앱이 열려야 한다(26차-5).
+static class AutoRun {
+    public const string ARG = "--startup";
+    public static void Fix() {
+        try {
+            string lnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), Names.NEW_LNK);
+            if (FixAt(lnk, Application.ExecutablePath)) AppWin.EdgeLog("자동 실행 바로가기에 " + ARG + " 붙임");
+        } catch (Exception ex) { AppWin.EdgeLog("자동 실행 바로가기 고치기 실패 " + ex.Message); }
+    }
+    // 고쳤으면 true. 없는 파일·우리 exe가 아닌 바로가기·이미 붙은 것은 그대로 둔다
+    public static bool FixAt(string lnk, string exe) {
+        if (!File.Exists(lnk)) return false;
+        object sh = null, s = null;
+        try {
+            Type t = Type.GetTypeFromProgID("WScript.Shell");
+            sh = Activator.CreateInstance(t);
+            s = t.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, sh, new object[] { lnk });
+            string target = Get(s, "TargetPath");
+            if (target == "" || !string.Equals(Path.GetFullPath(target), Path.GetFullPath(exe), StringComparison.OrdinalIgnoreCase)) return false;
+            if (Get(s, "Arguments") == ARG) return false;
+            s.GetType().InvokeMember("Arguments", System.Reflection.BindingFlags.SetProperty, null, s, new object[] { ARG });
+            s.GetType().InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, s, null);
+            return true;
+        } finally {
+            if (s != null) Marshal.FinalReleaseComObject(s);
+            if (sh != null) Marshal.FinalReleaseComObject(sh);
+        }
+    }
+    public static string Get(object s, string prop) {
+        return (s.GetType().InvokeMember(prop, System.Reflection.BindingFlags.GetProperty, null, s, null) as string) ?? "";
+    }
+}
+
 // ── 새 문의 소리(4판 10-10, 유성 픽 「B 띵동」) ─────────────────
 //   파일이 아니라 **코드로 만든다**: 3판 업데이트는 exe·아이콘·DLL만 바꿔 끼워(`Upd.DestOf`) 새 소리 파일을 못 실어 나른다.
 //   식 = prototype/19_문의알리미_1c마무리_계획_프리뷰.html 「들어 보기」와 같다(사인 + 2배음 0.12, 어택 4ms, 지수 감쇠, 정점 0.5로 맞춤).
@@ -605,6 +642,23 @@ static class Logic {
         } catch (Exception) { }
     }
     static bool Near(double a, double b) { return Math.Abs(a - b) < 1e-6; }
+    // 자동 실행 검사용 — 설치기 MakeLnk처럼 인자 없는 바로가기를 만들고, 인자를 다시 읽는다
+    static void MakeLnk(string path, string target) {
+        Type t = Type.GetTypeFromProgID("WScript.Shell");
+        object sh = Activator.CreateInstance(t);
+        object s = t.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, sh, new object[] { path });
+        s.GetType().InvokeMember("TargetPath", System.Reflection.BindingFlags.SetProperty, null, s, new object[] { target });
+        s.GetType().InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, s, null);
+        Marshal.FinalReleaseComObject(s); Marshal.FinalReleaseComObject(sh);
+    }
+    static string LnkArgs(string path) {
+        Type t = Type.GetTypeFromProgID("WScript.Shell");
+        object sh = Activator.CreateInstance(t);
+        object s = t.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, sh, new object[] { path });
+        string a = AutoRun.Get(s, "Arguments");
+        Marshal.FinalReleaseComObject(s); Marshal.FinalReleaseComObject(sh);
+        return a;
+    }
     public static int Run() {
         Ok("흔들림 0%·42%·58%·100% = 0", Near(Alert.ShakeAt(0), 0) && Near(Alert.ShakeAt(.42), 0) && Near(Alert.ShakeAt(.58), 0) && Near(Alert.ShakeAt(1), 0));
         Ok("흔들림 8%·66% = -5px, 17%·74% = +5px", Near(Alert.ShakeAt(.08), -5) && Near(Alert.ShakeAt(.66), -5) && Near(Alert.ShakeAt(.17), 5) && Near(Alert.ShakeAt(.74), 5));
@@ -642,6 +696,18 @@ static class Logic {
         Ok("소리: 두 번째 음은 0.16초에 시작(그 전엔 첫 음만 감쇠 중)", Math.Abs((int)sm[(int)(0.155 * Chime.SR)]) < 16384 * 0.4);
         Ok("소리: 끝은 거의 조용(딸깍 없음)", Math.Abs((int)sm[sm.Length - 1]) < 400);
         Ok("JSON 문자열: 줄바꿈·따옴표·역슬래시·제어 문자", J.Q("a\"b\\c\nd\re\tf" + (char)1) == "\"a\\\"b\\\\c\\nd\\re\\tf\\u0001\"");
+        // 5판 자동 실행 바로가기 — 임시 폴더에 진짜 .lnk를 만들어 실제 WScript.Shell로 고쳐 본다(실제 시작프로그램 폴더는 안 건드림)
+        string d = Path.Combine(Path.GetTempPath(), "autorun-" + Guid.NewGuid().ToString("N"));
+        try {
+            Directory.CreateDirectory(d);
+            string me = Application.ExecutablePath, mine = Path.Combine(d, "mine.lnk"), other = Path.Combine(d, "other.lnk");
+            MakeLnk(mine, me); MakeLnk(other, Path.Combine(d, "other.exe"));
+            Ok("자동 실행: 우리 exe 바로가기에 --startup을 붙인다", AutoRun.FixAt(mine, me) && LnkArgs(mine) == AutoRun.ARG);
+            Ok("자동 실행: 이미 붙었으면 다시 안 쓴다", !AutoRun.FixAt(mine, me) && LnkArgs(mine) == AutoRun.ARG);
+            Ok("자동 실행: 남의 프로그램 바로가기는 안 건드린다", !AutoRun.FixAt(other, me) && LnkArgs(other) == "");
+            Ok("자동 실행: 바로가기가 없으면 조용히 끝", !AutoRun.FixAt(Path.Combine(d, "none.lnk"), me));
+        } catch (Exception ex) { Ok("자동 실행: 검사 중 예외 " + ex.GetType().Name + " " + ex.Message, false); }
+        finally { try { Directory.Delete(d, true); } catch (Exception) { } }
         return fails == 0 ? 0 : 1;
     }
 }
@@ -781,6 +847,7 @@ class Pill : Form {
             tick.Start();
             Log("── 시작 (부팅 후 " + Boot.UpSec + "초 · 판 " + Cfg.SHELL_VER + (Cfg.Test ? " · 시험판" : "") + ")");
             if (!Cfg.Test) Names.Fix();   // 옛 바로가기 이름 「생각공작소 근태」 → 「생각공작소」(재설치 없이, 4판)
+            if (!Cfg.Test) AutoRun.Fix();   // 자동 실행 바로가기에 --startup(재설치 없이, 5판) — 이름을 고친 뒤라야 새 이름을 찾는다
             // 자동 업데이트 확인: 켠 뒤 3분(부팅 직후 네트워크·CPU를 피함), 그 뒤 6시간마다. 시험판은 안 한다(자기 폴더를 바꿔 끼우면 안 됨)
             if (!Cfg.Test) {
                 updTimer = new System.Windows.Forms.Timer();
@@ -1877,10 +1944,15 @@ static class Program {
         }
         // 지킴이(작업 스케줄러 5분, D11①)가 부른 것 — 살아 있으면 **아무것도 안 한다**(알약을 부르거나 앱을 열지 않는다)
         bool watch = Array.IndexOf(args, "--watch") >= 0;
+        // 5판(10-24): 시작프로그램 바로가기가 부른 것도 살아 있으면 아무것도 안 한다.
+        //   부팅 때 지킴이가 먼저 켜 두면, 윈도우가 1~6분 늦게 돌리는 자동 실행이 「두 번째 실행 = 고정 아이콘 클릭」으로 읽혀
+        //   근태 앱 창(자정 잠금 뒤라 비밀번호 화면)을 혼자 열었다(유성 노트북 edge.log 최근 부팅 7번 중 지킴이가 먼저 켠 6번 전부, 바로가기가 먼저인 1번은 안 열림).
+        bool startup = Array.IndexOf(args, AutoRun.ARG) >= 0;
         // 단일 인스턴스 — 두 번 실행하면 알약이 두 개 뜬다
         bool fresh;
         using (var mtx = new Mutex(true, "Global\\생각공작소_근태위젯" + (Cfg.Test ? "_시험" : ""), out fresh)) {
             if (!fresh && watch) return 0;
+            if (!fresh && startup) { AppWin.EdgeLog("자동 실행 — 이미 떠 있어 그대로 둠"); return 0; }   // 부팅마다 한 번이라 남긴다(지킴이는 5분마다라 안 남김)
             if (!fresh) {
                 // 이미 돌고 있다 → **먼저 뜬 알약을 부르고** 조용히 물러난다.
                 //   구판은 그냥 return이라 작업표시줄 고정 아이콘을 눌러도 아무 반응이 없었다(2026-08-05).
@@ -1894,6 +1966,7 @@ static class Program {
                 return 0;
             }
             if (watch) AppWin.EdgeLog("지킴이가 다시 켬(꺼져 있었음)");
+            if (startup) AppWin.EdgeLog("자동 실행으로 켬");
             // 처리 못 한 예외 = 기록하고 다시 켠다(구판은 .NET 오류 창이 떠 사람이 눌러야 했다). 새 판이면 옛 판으로 되돌린다
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += delegate (object s, ThreadExceptionEventArgs e) { OnCrash(e.Exception); };
