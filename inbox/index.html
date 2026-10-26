@@ -370,6 +370,7 @@ body.faqon.fileon .ta{padding-right:74px}
 .kb-st.assigned{color:var(--green700)}.kb-st.assigned i{background:#fff;box-shadow:inset 0 0 0 2px var(--green600)}
 .kb-st.using{color:var(--green700)}.kb-st.using i{background:var(--green600)}
 .kb-st.none{color:var(--g600)}.kb-st.none i{background:var(--g400)}
+.kb-st.ended{color:var(--g600)}.kb-st.ended i{background:#fff;box-shadow:inset 0 0 0 2px var(--g400)}
 .kb-row .kb-who{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--g700)}
 .kb-row .kb-who b{color:var(--g900);font-weight:700}
 .kb-chev{width:18px;height:18px;color:var(--g400);flex:none;transition:transform .3s cubic-bezier(.4,0,.2,1)}
@@ -1034,7 +1035,7 @@ function setPst(){
    번호가 없거나 맞는 신청이 없으면 찾기 칸(제공인력 지도 doSearch 규칙 — 숫자만 2자리부터 = 번호 안, 아니면 이름 안) → 고르면 s_kidpin(이 대화에 붙음, 다른 PC도 같이).
    찾기 목록(s_kdir)은 칸을 처음 누를 때 한 번 받아 이 창 메모리에만(10분 지나면 다시). 번호는 끝 네 자리만 보인다 */
 var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, sel: -1, list: [], cue: {} };   // cue = 선생님 연락 줄을 띄울 방(10-23, 이 창 메모리만)
-var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음' };
+var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음', ended: '종결' };   // ended = 26 종결 스위치(INQ_KID_ENDED_DAYS)를 켰을 때만 온다
 var KB_MAP = 'https://think-fact0ry.github.io/saenggak/provider-map.html';
 var KB_CNT = ['', '', '둘', '셋'];
 // 답 넣기 — 글은 26 s_faq의 kb(정본 tools/문의답변/정본.js kb 표시 답: assigned = 13번, none = 신청 안내). 받은함에 글을 따로 두지 않는다(10-23 저녁 — 옛 사본이 6번 둘째 문단까지 넣어
@@ -1055,12 +1056,15 @@ function kbAns(st){
   if (FQ.data && FQ.data.kb) put(); else { var id = R.id; fqLoad().then(function(){ if (R.id === id) put(); }, function(){ toastA('답 글을 아직 못 받았어요'); }); }
 }
 // 선생님 연락 줄 — 배정 아이의 선생님 이름(현아쌤 글 §8-7: 이름이 있으면 「○○○ 선생님」, 모르면 「해당 제공인력」)
-function kbCue(id){ KB.cue[id] = 1; if (R.id === id) kbDraw(); }
+function kbCue(id, kind){ var c = KB.cue[id] = KB.cue[id] || {}; c[kind || 'teach'] = 1; if (R.id === id) kbDraw(); }   // kind = teach(13번 배정 답) · boss(⑮-6 화가 난 보호자 답, 10-26)
 function kbCueHtml(){
-  if (!KB.cue[R.id]) return '';
+  var cu = KB.cue[R.id]; if (!cu) return '';
+  var out = '';
+  if (cu.boss) out += '<div class="kb-cue"><i></i><span>센터 때문에 그만두려는 보호자예요. <b>한유성</b>님께 이 대화를 바로 전해 주세요.</span><button type="button" data-a="cueok" data-k="boss">전했어요</button></div>';   // 대응 매뉴얼 「민원 발생 시 필수 절차」(유성 10-26 ⑮-6 — 답 글에서 뺀 대표 연락 줄)
+  if (!cu.teach) return out;
   var names = [];
   ((KB.card && KB.card.kids) || []).forEach(function(k){ if (k.st === 'assigned' && k.t) { var n = k.t + ' 선생님'; if (names.indexOf(n) < 0) names.push(n); } });
-  return '<div class="kb-cue"><i></i><span><b>' + esc(names.length ? names.join(', ') : '해당 제공인력') + '</b>이 보호자분께 바로 연락드리도록 전해 주세요.</span><button type="button" data-a="cueok">전했어요</button></div>';
+  return out + '<div class="kb-cue"><i></i><span><b>' + esc(names.length ? names.join(', ') : '해당 제공인력') + '</b>이 보호자분께 바로 연락드리도록 전해 주세요.</span><button type="button" data-a="cueok" data-k="teach">전했어요</button></div>';
 }
 function kbDay(a){ var yy = String(new Date().getFullYear()).slice(2) + '년 '; a = String(a || ''); return a.indexOf(yy) === 0 ? a.slice(yy.length) : a; }   // 올해 신청이면 「9월 12일」
 var KB_IC = '<svg class="kb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
@@ -1190,7 +1194,7 @@ $('kbw').addEventListener('click', function(e){
   if (a === 'tog') { KB.open = !KB.open; b.closest('.kb').classList.toggle('open', KB.open); return; }
   if (a === 'unpin') { kbPin(''); return; }
   if (a === 'ans') { kbAns(k ? k.st : 'none'); return; }
-  if (a === 'cueok') { delete KB.cue[R.id]; kbDraw(); return; }
+  if (a === 'cueok') { var cu = KB.cue[R.id]; if (cu) { delete cu[b.getAttribute('data-k') || 'teach']; if (!Object.keys(cu).length) delete KB.cue[R.id]; } kbDraw(); return; }
   if (a === 'map' && k) { window.open(KB_MAP + '#find=' + encodeURIComponent(k.k.split('|')[0] + '|' + k.n), '_blank'); }   // 새 창 = PC 프로그램이 기본 브라우저로(관리자 지도가 그 아이를 찾아 둠)
 });
 document.addEventListener('click', function(e){ if (!e.target.closest('.kb-find')) document.querySelectorAll('.kb-rw.show').forEach(function(u){ u.classList.remove('show'); }); });
@@ -1628,6 +1632,7 @@ ta.addEventListener('keydown', function(e){
 var LSEQ = 0;   // 낙관 줄 번호가 같은 1ms에 겹치지 않게(파일 여러 개를 한 번에)
 sendB.addEventListener('click', function(){
   if (!canSend()) return;
+  if (FQ_HOLE.test(ta.value)) { toastA('채울 칸이 남았어요'); fqMarkHole(); return; }   // 〔칸〕(10-26 끝난 뒤 갈래) — 회색 칸이 학부모에게 그대로 가지 않게
   if (ED) { editSend(); return; }   // 보낸 답장 고치기(10-23)
   var v = ta.value.trim(), files = ATT.slice();
   ta.value = ''; ATT = []; drawAtts(); autosize();   // 칩의 blob 주소는 안 지운다 — 보낸 말풍선이 그대로 쓴다(FC)
@@ -1856,11 +1861,12 @@ var FQ = { data: null, at: 0, p: null, open: false, ins: null, sel: -1, rows: []
 var I_FAQADD = '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>';
 var I_FAQDEL = '<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>';
 var I_FAQED = '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+var FQ_FV = 2;   // 이 받은함 판(10-26) = 인사 줄 고르기, 〔칸〕 채우기, 못 채우면 보내기 멈춤을 안다 → 26 _sFaq_가 정본 fv 2 줄을 준다(옛 받은함 = fv 1 줄만)
 var FQ_GREET = '네 안녕하세요! ', FQ_PHONE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/, FQ_GREET_RE = /^(네[,\s]*)?안녕하세요[!.,~\s]*/, FQ_TMAX = 30;
 var fqFade = null, fqEdFade = null;
 function fqLoad(force){
   if (FQ.p && !force) return FQ.p;
-  var p = FQ.p = askRead({ action:'s_faq', auth: me }).then(function(r){ if (!r || !r.ok) throw new Error((r && r.error) || 'faq'); FQ.data = r; FQ.at = Date.now(); return r; });
+  var p = FQ.p = askRead({ action:'s_faq', auth: me, fv: FQ_FV }).then(function(r){ if (!r || !r.ok) throw new Error((r && r.error) || 'faq'); FQ.data = r; FQ.at = Date.now(); return r; });
   p.catch(function(){ if (FQ.p === p) FQ.p = null; });   // 못 받았으면 다음에 다시
   return p;
 }
@@ -1883,13 +1889,13 @@ function fqScore(row, txt, hit, any){
   return sc;
 }
 function fqTitleOf(a){ var one = String(a || '').replace(/\s+/g, ' ').trim(), cut = one.search(/[.?!](\s|$)/); return Array.from(cut > 0 && cut < 30 ? one.slice(0, cut + 1) : one.slice(0, 24)).slice(0, FQ_TMAX).join(''); }   // 제목 없는 저장 답(10-23 첫 판) = 첫 문장
-function fqBaseRow(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, kw: b.kw, svc: b.svc, i: i }; }
+function fqBaseRow(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, kw: b.kw, svc: b.svc, g: b.g, fit: b.fit, i: i }; }
 function fqMineRow(m, i){ var one = m.a.replace(/\s+/g, ' ').trim(), t = m.t || fqTitleOf(m.a); return { id: m.id, t: t, tt: m.t || '', p: m.t ? one : (one.slice(t.length).trim() || one), a: m.a, mine: 1, i: 1000 + i }; }
 function fqOrder(){   // 찾기 칸이 비었을 때 = 그 대화 학부모 글 순서 → [{id, t(제목), p(첫 줄), a(넣을 글), mine}]
   var d = FQ.data; if (!d) return [];
   var txt = fqAsked(), hit = {}, any = 0;
   Object.keys(d.svc || {}).forEach(function(c){ var kw = d.svc[c]; for (var k in kw) if (txt && txt.indexOf(fqNorm(k)) >= 0) { hit[c] = 1; any = 1; break; } });
-  var base = (d.base || []).map(function(b, i){ var x = fqBaseRow(b, i); x.sc = fqScore(b, txt, hit, any); return x; });
+  var base = (d.base || []).map(function(b, i){ var x = fqBaseRow(b, i); x.sc = fqScore(b, txt, hit, any); if (x.sc > 0 && b.fit) x.sc += fqFit(b); return x; });
   var on = base.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
   var off = base.filter(function(x){ return !(x.sc > 0); });
   return on.concat(off, (d.mine || []).map(fqMineRow));
@@ -1912,6 +1918,7 @@ function fqFind(q){   // 찾기 = 친 낱말 분석 → 점수 높은 순(위 �
     });
     if (n >= 2) sc *= 1.5;
     if (sc > 0 && anySvc && typeof x.svc === 'string') sc += x.svc ? (svcHit[x.svc] ? 3 : -3) : -1;
+    if (sc > 0 && x.fit) sc += fqFit(x);   // 띠 아이에 맞는 갈래를 위로(10-26, 찾기 순서와 같은 규칙)
     x.sc = sc;
   });
   return all.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
@@ -1980,15 +1987,81 @@ function fqClose(){
 function fqMineSaid(){ return R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; }); }
 function fqGreet(a){ return !fqMineSaid() && !/^(안녕하세요|네[,~!\s])/.test(a) ? FQ_GREET : ''; }
 function fqPut(x){
-  var g = fqGreet(x.a);
+  var t = x.g ? fqCompose(x) : fqGreet(x.a) + x.a;   // g = 10-26 끝난 뒤 갈래(인사 줄 종류, 〔칸〕) — 그 밖 답은 옛 그대로
   fqClose();
-  kbFill(g + x.a);
+  kbFill(t);
+  fqMarkHole();
   FQ.ins = { id: x.id, room: R.id, text: ta.value.trim() };
 }
+/* ══════════ 끝난 뒤 갈래(10-26 — 정본 tools/문의답변/정본.js fv 2, 원칙 docs/1 §2.1 「채팅 답의 줄과 인사」) ══════════
+   인사 줄 = 그 대화 우리 첫 답에만(이어지는 답은 본문부터). 1달(첫 결제 30일) 넘게 다닌 집 G1 「그동안 믿고 맡겨」, 안 된 집 G1n 「저희와 함께해」, 결제 전 GP(감사 없이).
+   :)로 끝나는 인사면 본문 「 :)」는 마침표(한 채팅에 :) 하나). 〔칸〕 = 띠 아이 카드(26 s_room kid — f 첫 결제일, l 마지막 결제일, m 그 선생님과 이어진 달, e 끝나는 달, gu 구)로 채움,
+   못 채운 칸은 그대로 두고 보내기를 막는다(sendB). 아이 = 그 답 서비스(fit.s, svc)에 맞는 띠 아이가 하나일 때만(형제가 같은 서비스면 칸은 비워 둠 = 손으로). */
+var FQ_SV = { '오감': 'og', '아청심': 'ac', '정신토탈': 'mh', '성인심리': 'ad' };   // 띠 뱃지 글자(26 INQ_FAM_TABS) → 정본 서비스 코드
+var FQ_SVN = { og: ['오감쑥쑥 서비스', '오감 서비스'], ac: ['아동청소년 심리지원 서비스', '아청심 서비스'], mh: ['정신건강 토탈케어 서비스', '정신토탈 서비스'], ad: ['성인심리상담 서비스', '성인심리 서비스'] };   // [처음, 그 대화에서 이미 쓴 뒤] — 유성 10-26 「아청심 서비스로 줄일 것」
+function fqKids(){ return (KB.card && KB.card.kids) || []; }
+function fqCodes(x){ var s = x.fit && x.fit.s != null ? x.fit.s : x.svc; return !s ? [] : Array.isArray(s) ? s : [s]; }
+function fqKidOf(x){   // 칸을 채울 아이 = 그 답 서비스에 맞는 띠 아이가 하나일 때. 서비스 없는 답 = 띠 아이가 하나일 때
+  var ks = fqKids(), cs = fqCodes(x);
+  var hit = cs.length ? ks.filter(function(k){ return cs.indexOf(FQ_SV[k.s]) >= 0; }) : ks;
+  return hit.length === 1 ? hit[0] : null;
+}
+function fqFit(x){   // 학부모 글로 맞은 갈래에 더할 점수 — 맞는 아이 +4, 서비스는 맞는데 연차·달 수가 다름 −2, 띠에 그 서비스 아이가 없음 −4
+  var f = x.fit, ks = fqKids();
+  if (f.kid === 0) return ks.length ? -4 : 4;
+  if (!ks.length) return 0;
+  var cs = fqCodes(x), k = fqKidOf(x);
+  if (!k) return cs.length && !ks.some(function(z){ return cs.indexOf(FQ_SV[z.s]) >= 0; }) ? -4 : 0;
+  var y = +k.y || 1, m = +k.m || 0;
+  if ((f.ymin && y < f.ymin) || (f.ymax && y > f.ymax) || (f.mmin && m < f.mmin) || (f.mmax && m > f.mmax) || (f.ac != null && (k.ac ? 1 : 0) !== f.ac)) return -2;
+  return 4;
+}
+function fqYmd(s){ var m = String(s || '').match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/); return m ? [+m[1], +m[2], m[3] ? +m[3] : 0] : null; }
+function fqMd(y, m, d){ return (y !== new Date().getFullYear() ? y + '년 ' : '') + m + '월 ' + d + '일'; }
+function fqFill(x, said){   // 〔칸〕 → 값(모르면 그대로). said = 그 대화에서 우리가 이미 쓴 글(서비스 이름 줄이기)
+  var k = fqKidOf(x), cs = fqCodes(x), names = [];
+  fqKids().forEach(function(z){ if (z.n && names.indexOf(z.n) < 0) names.push(z.n); });
+  var code = k ? FQ_SV[k.s] : (cs.length === 1 ? cs[0] : ''), v = {};
+  if (names.length) v['아이 이름'] = names.join(', ');
+  if (k) {
+    v['이름'] = k.n;
+    if (k.t) v['선생님'] = k.t;
+    if (+k.m) v['개월'] = k.m + '개월';
+    var gu = String(k.gu || '').trim().split(/\s+/).pop(); if (gu) v['구'] = gu;
+    var e = fqYmd(k.e);
+    if (e) { v['종료일'] = e[0] + '년 ' + e[1] + '월 ' + new Date(Date.UTC(e[0], e[1], 0)).getUTCDate() + '일'; var r = new Date(Date.UTC(e[0], e[1] - 1 + 13, 1)); v['다시 신청 달'] = r.getUTCFullYear() + '년 ' + (r.getUTCMonth() + 1) + '월'; }   // 다시 신청 = 끝난 뒤 12개월이 지난 다음 달(표준매뉴얼 L7845 재신청 = 이용 기간만큼 지난 뒤)
+    var l = fqYmd(k.l);
+    if (l && l[2]) { v['마지막 수업일'] = fqMd(l[0], l[1], l[2]); var last = new Date(Date.UTC(l[0], l[1] + 2, 0)).getUTCDate(), z = new Date(Date.UTC(l[0], l[1] + 1, Math.min(l[2], last)));   /* last = 두 달 뒤 그 달 말일(l[1]은 1부터라 +2, 0일) — 12/31 → 2/28 */ v['마무리 날짜'] = fqMd(z.getUTCFullYear(), z.getUTCMonth() + 1, z.getUTCDate()); }   // 두 달 넘게 결제 없음 = 해지 가능(표준매뉴얼 L11300)
+  }
+  var used = function(c){ return fqNorm(said).indexOf(fqNorm(FQ_SVN[c][0])) >= 0; };
+  if (code && FQ_SVN[code]) v['서비스'] = FQ_SVN[code][used(code) ? 1 : 0];
+  var t = String(x.a).replace(/〔([^〕]+)〕/g, function(all, n){ return v[n] != null ? v[n] : all; });
+  Object.keys(FQ_SVN).forEach(function(c){ if (used(c)) t = t.split(FQ_SVN[c][0]).join(FQ_SVN[c][1]); });   // 이미 쓴 서비스 이름 = 짧게(한 채팅에 이름 다 쓰기 한 번)
+  return { t: t, v: v, k: k };
+}
+function fqHello(x){   // 인사 줄 종류 → 글(26 s_faq greet = 정본 GREET)
+  var G = (FQ.data && FQ.data.greet) || {}, g = x.g, k = fqKidOf(x) || fqKids()[0];
+  if (g === 'G1' || g === 'GA') {
+    var f = k && fqYmd(k.f), adult = g === 'GA';
+    if (k && !f) g = adult ? 'GAP' : 'GP';   // 결제 전 = 감사 없이(유성 10-26 「이용 날짜가 적은 아동들에게는 절대 x」의 끝)
+    else if (f && Date.now() - Date.UTC(f[0], f[1] - 1, f[2]) < 30 * 86400000) g = adult ? 'GAn' : 'G1n';   // 1달이 안 된 집
+  }
+  return G[g] || G[x.g] || FQ_GREET.trim();
+}
+function fqCompose(x){
+  var said = R.msgs.filter(function(m){ return m.who !== 'v' && !m.rc && !m.failed; }).map(function(m){ return m.text || ''; }).join(' ');
+  var body = fqFill(x, said).t;
+  if (fqMineSaid()) return body;   // 이어지는 답 = 본문부터
+  var h = fqFill({ a: fqHello(x), fit: x.fit, svc: x.svc }, said).t;
+  return /:\)$/.test(h) ? h + '\n\n' + body.replace(/ :\)/g, '.') : h + ' ' + body;
+}
+var FQ_HOLE = /〔[^〕]*〕/;
+function fqMarkHole(){ var m = FQ_HOLE.exec(ta.value); if (m) { ta.focus(); ta.setSelectionRange(m.index, m.index + m[0].length); } }   // 남은 칸을 골라 둠 = 바로 쳐서 바꿈
 function fqSent(id, v){
   var x = FQ.ins; FQ.ins = null; fqClose();   // 목록을 연 채 엔터로 보냈으면 닫기
   if (!x || x.room !== id || !v) return;
-  if (x.id === 'confirm') kbCue(id);   // 13번(배정) 답을 보냄 = 띠에 「○○○ 선생님이 보호자분께 바로 연락드리도록」(유성 10-23 「행정인력에게 그 제공인력에게 연락드려야한다고 알리는 정보」)
+  if (x.id === 'confirm') kbCue(id, 'teach');
+  if (x.id === 'leave_angry' && !VIEWER) kbCue(id, 'boss');   // ⑮-6 화가 난 보호자 답 = 대표에게 바로(대응 매뉴얼 민원 절차, 10-26)   // 13번(배정) 답을 보냄 = 띠에 「○○○ 선생님이 보호자분께 바로 연락드리도록」(유성 10-23 「행정인력에게 그 제공인력에게 연락드려야한다고 알리는 정보」)
   if (!x.id) return;
   ask({ action:'s_faquse', auth: me, id: x.id, ed: v.trim() === x.text ? 0 : 1 }).then(function(){}, function(){});   // 세기만 — 실패해도 답장엔 영향 0
 }
