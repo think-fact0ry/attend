@@ -2031,7 +2031,7 @@ function fqFill(x, said){   // 〔칸〕 → 값(모르면 그대로). said = �
     var e = fqYmd(k.e);
     if (e) { v['종료일'] = e[0] + '년 ' + e[1] + '월 ' + new Date(Date.UTC(e[0], e[1], 0)).getUTCDate() + '일'; var r = new Date(Date.UTC(e[0], e[1] - 1 + 13, 1)); v['다시 신청 달'] = r.getUTCFullYear() + '년 ' + (r.getUTCMonth() + 1) + '월'; }   // 다시 신청 = 끝난 뒤 12개월이 지난 다음 달(표준매뉴얼 L7845 재신청 = 이용 기간만큼 지난 뒤)
     var l = fqYmd(k.l);
-    if (l && l[2]) { v['마지막 수업일'] = fqMd(l[0], l[1], l[2]); var last = new Date(Date.UTC(l[0], l[1] + 2, 0)).getUTCDate(), z = new Date(Date.UTC(l[0], l[1] + 1, Math.min(l[2], last)));   /* last = 두 달 뒤 그 달 말일(l[1]은 1부터라 +2, 0일) — 12/31 → 2/28 */ v['마무리 날짜'] = fqMd(z.getUTCFullYear(), z.getUTCMonth() + 1, z.getUTCDate()); }   // 두 달 넘게 결제 없음 = 해지 가능(표준매뉴얼 L11300)
+    if (l && l[2]) { v['마지막 수업일'] = fqMd(l[0], l[1], l[2]); var last = new Date(Date.UTC(l[0], l[1] + 2, 0)).getUTCDate(), z = new Date(Date.UTC(l[0], l[1] + 1, Math.min(l[2], last)));   /* last = 두 달 뒤 그 달 말일(l[1]은 1부터라 +2, 0일) — 12/31 → 2/28 */ var now = new Date(), t14 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 14); if (z.getTime() < t14) z = new Date(t14);   /* 늦게 보내도 오늘 + 14일보다 앞으로 안 당김 = 이용계약서 제2조 ④ 2 「제공기관 해약 통지 14일 전」(10-27) */ v['마무리 날짜'] = fqMd(z.getUTCFullYear(), z.getUTCMonth() + 1, z.getUTCDate()); }   // 두 달 넘게 결제 없음 = 해지 가능(표준매뉴얼 L11300)
   }
   var used = function(c){ return fqNorm(said).indexOf(fqNorm(FQ_SVN[c][0])) >= 0; };
   if (code && FQ_SVN[code]) v['서비스'] = FQ_SVN[code][used(code) ? 1 : 0];
