@@ -1035,7 +1035,7 @@ function setPst(){
    번호가 없거나 맞는 신청이 없으면 찾기 칸(제공인력 지도 doSearch 규칙 — 숫자만 2자리부터 = 번호 안, 아니면 이름 안) → 고르면 s_kidpin(이 대화에 붙음, 다른 PC도 같이).
    찾기 목록(s_kdir)은 칸을 처음 누를 때 한 번 받아 이 창 메모리에만(10분 지나면 다시). 번호는 끝 네 자리만 보인다 */
 var KB = { card: null, sig: '', open: false, dir: null, dirAt: 0, dirP: null, sel: -1, list: [], cue: {} };   // cue = 선생님 연락 줄을 띄울 방(10-23, 이 창 메모리만)
-var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음', ended: '종결' };   // ended = 26 종결 스위치(INQ_KID_ENDED_DAYS)를 켰을 때만 온다
+var KB_ST = { wait: '대기 중', assigned: '배정됨', using: '이용 중', none: '신청 없음', ended: '종결' };   // ended = 26 INQ_KID_ENDED_DAYS 안(10-27 켬 = 끝나는 달 뒤 13개월) — kbStw가 뒤에 (계약종료)·(중도포기)
 var KB_MAP = 'https://think-fact0ry.github.io/saenggak/provider-map.html';
 var KB_CNT = ['', '', '둘', '셋'];
 // 답 넣기 — 글은 26 s_faq의 kb(정본 tools/문의답변/정본.js kb 표시 답: assigned = 13번, none = 신청 안내). 받은함에 글을 따로 두지 않는다(10-23 저녁 — 옛 사본이 6번 둘째 문단까지 넣어
@@ -1068,7 +1068,7 @@ function kbCueHtml(){
 }
 function kbDay(a){ var yy = String(new Date().getFullYear()).slice(2) + '년 '; a = String(a || ''); return a.indexOf(yy) === 0 ? a.slice(yy.length) : a; }   // 올해 신청이면 「9월 12일」
 var KB_IC = '<svg class="kb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
-function kbStw(st, big){ return '<span class="kb-st ' + st + (big ? ' big' : '') + '"><i></i>' + KB_ST[st] + '</span>'; }
+function kbStw(st, big, x){ return '<span class="kb-st ' + st + (big ? ' big' : '') + '"><i></i>' + KB_ST[st] + (st === 'ended' && x ? ' (' + esc(x) + ')' : '') + '</span>'; }   // x = 26 서류철 H 「계약종료」·「중도포기」(종결 아이만, 10-27 유성 「권장대로」)
 function kbTail(k){ return k.st === 'wait' ? (k.d ? ' (' + esc(k.d) + ')' : '') : ' - ' + esc(k.t ? k.t + ' 선생님' : k.d); }
 function kbFind(inrow){ return '<div class="kb-find' + (inrow ? ' inrow' : '') + '"><input class="kb-in" placeholder="아이 이름, 전화번호" aria-label="아이 이름, 전화번호" autocomplete="off" spellcheck="false"><div class="kb-rw"><ul class="kb-res" role="listbox"></ul></div></div>'; }   // kb-rw = 흐림 띠를 얹는 자리(ul은 스크롤 칸)
 function kbFoot(k, i){
@@ -1078,7 +1078,7 @@ function kbFoot(k, i){
 function kbKid(k, i, many){
   var row = function(t, v){ return v ? '<dt>' + t + '</dt><dd>' + esc(v) + '</dd>' : ''; };
   var dl = '<dl class="kb-dl">' + row('생년', k.b) + row('신청', k.a) + (k.st === 'wait' ? '' : row('동네', k.d)) + row('희망', k.h) + '</dl>';
-  return '<div class="kb-kid">' + (many ? '<div class="kh">' + kbStw(k.st) + '<span><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span></div>' : '') + dl + kbFoot(k, i) + '</div>';
+  return '<div class="kb-kid">' + (many ? '<div class="kh">' + kbStw(k.st, false, k.x) + '<span><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span></div>' : '') + dl + kbFoot(k, i) + '</div>';
 }
 function kbSet(card){
   var sig = card ? JSON.stringify(card) : '';
@@ -1105,7 +1105,7 @@ function kbDraw(){
       more = pinNote + ks.map(function(k, i){ return kbKid(k, i, true); }).join('');
     } else {
       var k = ks[0];
-      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw(k.st) + '<span class="kb-who"><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span>' + KB_IC + '</button>';
+      row = '<button type="button" class="kb-row" data-a="tog">' + kbStw(k.st, false, k.x) + '<span class="kb-who"><b>' + esc(k.n) + '</b> ' + esc(k.s) + kbTail(k) + '</span>' + KB_IC + '</button>';
       more = pinNote + kbKid(k, 0, false);
     }
     html = '<div class="kb' + (KB.open ? ' open' : '') + '">' + row + cue + '<div class="kb-more"><div>' + more + '</div></div></div>';
