@@ -715,7 +715,7 @@ function rowHtml(r){
     ? '<span class="renw' + (r.label ? ' has' : '') + '"><input class="ren" maxlength="' + LABEL_MAX + '" value="' + esc(r.label || '') + '" placeholder="이름 (' + LABEL_MAX + '자까지)" aria-label="이름 붙이기">' +
       (r.label ? '<button class="rv" type="button" title="원래 이름으로" aria-label="원래 이름으로">' + UNDO_SVG + '</button>' : '') + '</span>'
     : nameHtml(r) + tag;
-  return '<div class="it' + (isLate(r) ? ' late' : '') + (isDone(r) ? ' dim' : '') + (S.point && S.point.id === r.id && Date.now() < S.point.until ? ' press' : '') + '" data-id="' + esc(r.id) + '"' + (S.flying === r.id ? ' style="opacity:0"' : '') + '><div class="src ' + (isCard(r) ? esc(r.ch) : 'hp') + '">' + (isCard(r) ? (SRC_SVG[r.ch] || '') : HOME_SVG) + '</div>' +
+  return '<div class="it' + (isLate(r) ? ' late' : '') + (isDone(r) ? ' dim' : '') + '" data-id="' + esc(r.id) + '"' + (S.flying === r.id ? ' style="opacity:0"' : '') + '><div class="src ' + (isCard(r) ? esc(r.ch) : 'hp') + '">' + (isCard(r) ? (SRC_SVG[r.ch] || '') : HOME_SVG) + '</div>' +
     '<div class="body"><div class="l1">' + l1 + '</div><div class="l2">' + esc(r.preview) + '</div></div>' +
     '<div class="rt">' + right + '</div></div>';
 }
@@ -841,7 +841,7 @@ function poll(){
 function dead(msg){ S.dead = msg; S.wait = []; S.mine = []; render(); }
 /* ══════════ 미리보기 누름 → 그 방(10-12 ① 유성 「카톡 알림을 누르면 그 채팅방이 열려요」) ══════════
    · 홈페이지 대화 = 그 방을 연다. 대기면 줄을 누른 것과 같게 맡는다(한유성은 늘 열기만 — 계획 통보 1).
-   · 카드(톡톡·카카오) = 그 칸으로 가서 그 줄을 짚는다(파트너센터는 안 연다 — 대조 프리뷰 「한 번 누르면 채팅 페이지」).
+   · 카드(톡톡·카카오)도 같은 길 = 받은함 안 그 대화방(10-29 — 줄 누름이 카드 방이 된 것과 같게. 옛 판은 그 칸에서 줄만 짚었다). 파트너센터는 안 연다(방의 「복사하고 톡톡 열기」가 연다).
    · 목록이 아직 서버에서 안 왔으면(알약이 남긴 옛 목록뿐) 첫 서버 목록까지 기다린다(20초). 그래도 없으면 받은함 목록만(지워졌거나 30개 밖). */
 var GO = { id: '', at: 0 };
 function goTo(id){
@@ -851,16 +851,6 @@ function goTo(id){
   GO.id = '';
   if (!row) return;
   var tab = S.wait.indexOf(row) >= 0 ? 'wait' : 'mine';
-  if (isCard(row)) {
-    if (S.cur) { closeRoom(); }
-    // 짚은 표시는 목록 그리기에 실어 둔다(rowHtml) — 화면이 보이는 순간 받은함이 서버에 묻고 목록을 다시 그려서, 줄에 붙인 class는 바로 지워졌다(시험이 잡음)
-    S.point = { id: id, until: Date.now() + 900 };
-    if (S.tab !== tab) showTab(tab); else render();
-    var it = document.querySelector('#list .it[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
-    if (it) it.scrollIntoView({ block: 'nearest' });
-    setTimeout(function(){ S.point = null; render(); }, 950);
-    return;
-  }
   if (S.cur && S.cur.id === id) return;   // 이미 열어 둔 방
   if (S.cur) closeRoom();
   if (S.tab !== tab) showTab(tab);
