@@ -383,6 +383,15 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 
 /* ── 관리자 ── */
 .abody{padding:20px 24px calc(24px + env(safe-area-inset-bottom));flex:1;overflow-x:auto}
+/* 관리자 「구성원 (행정직)」 표만 가로 스크롤바를 그린다(유성 10-29 「오른쪽 열들이 보이지 않음 … 여기 페이지만 예외로 스크롤 ui 오른쪽으로 넘길 수 있도록」).
+   앱 전역은 스크롤바를 안 그린다(위 07-22 규칙, docs/1 넘치는 목록 절 「스크롤 UI는 절대 넣지마」) — 여기만 일회 예외.
+   실측(10-29 데모, 진짜 크롬): 노트북 앱 창 CSS 368(125%)에서 표 633px 중 284px만 보여 연차 잔여와 버튼 3개가 통째로 숨었고(460에서도 버튼 3개),
+   막대 높이 0이라 마우스로 넘길 길이 없었다. 앱 폭(--maxw 460) 안에선 이 표가 늘 넘쳐 막대가 생겼다 사라지며 폭이 흔들리는 일(07-22 이유)은 없다. */
+.admscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.admscroll::-webkit-scrollbar{display:block;height:8px}
+.admscroll::-webkit-scrollbar-track{background:var(--g100);border-radius:99px}
+.admscroll::-webkit-scrollbar-thumb{background:var(--g400);border-radius:99px}
+.admscroll::-webkit-scrollbar-thumb:hover{background:var(--g500)}
 /* 07-23 유성: 관리자=회색 배경+흰 카드(§4.7 — 카드 안 행=헤어라인(table.at 기존), 섹션 사이=여백·선 없음) */
 .asec{background:#fff;border-radius:var(--r-md);box-shadow:0 2px 10px rgba(0,0,0,.07);padding:16px 18px;margin-bottom:16px}
 .asec h4{font-size:var(--fs-body);font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -1097,7 +1106,7 @@ var INQ_GAS_APP = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA
 function inqDevGet() { try { var d = JSON.parse(localStorage.getItem('att_inqdev') || 'null'); if (d && d.id && d.token) return d; } catch (e) { } return null; }
 // 폰에서 등록 화면을 보일 때 = 한유성 계정인데 아직 보기 서명이 없음(열쇠 전, 또는 열쇠가 다른 폰으로 넘어감)
 function inqRegWanted() {
-  if (IS_HOST || !store.token || localStorage.getItem('att_locked') || !state.db || !state.db.exempt) return false;
+  if (IS_HOST || !store.token || localStorage.getItem('att_locked') || !state.db || !state.db.inqViewer) return false;
   var id = inqIdApp(); return !(id && id.role === 'viewer');
 }
 // 문의 신원 = **계정** 하나(10-10 유성 「기준은 계정」) — 19가 로그인·알약 조회 때 그 계정 것을 준다(등록 PC에서만).
@@ -1115,10 +1124,11 @@ function inqAdopt(r) {
 function inqAllowed() {
   if (!store.token || localStorage.getItem('att_locked')) return false;
   var id = inqIdApp(); if (!id) return false;
-  if (!IS_HOST) { if (id.role !== 'viewer') return false; if (!state.db) return null; return !!state.db.exempt; }   // 폰 = 한유성 보기 서명만(10-18)
+  if (!IS_HOST) { if (id.role !== 'viewer') return false; if (!state.db) return null; return !!state.db.inqViewer; }   // 폰 = 한유성 보기 서명만(10-18)
   // 서명이 지금 계정 것인지 — 공용 PC에서 다른 사람이 로그인했는데 앞사람 서명이 남은 틈(알약이 곧 바꿔 쓰지만 그 사이에도 남의 문의가 안 보이게)
-  if (id.role === 'viewer') { if (!state.db) return null; return !!state.db.exempt; }   // 보기 서명은 한유성(근태 면제) 계정일 때만
+  if (id.role === 'viewer') { if (!state.db) return null; return !!state.db.inqViewer; }   // 보기 서명은 한유성 계정일 때만(10-29 — 면제인 홍길동 화면에 한유성 서명이 남은 틈도 막음)
   if (id.role !== 'staff' || (id.emp && id.emp !== store.emp)) return false;
+  if (state.db && state.db.exempt) return true;   // 근태 면제 행정(시험 계정 홍길동, 10-29) = 출근 없이 — 알약 showInq 끝 칸(inqFree)과 같은 판정
   if (!state.status) return null;
   return !!state.status.open;
 }
@@ -1384,7 +1394,8 @@ function adoptSync(r) {
     //   되감아 유령 시트를 띄우던 사고(26차-15) 차단. 끝에 붙이는 건 optimisticEvents와 같은 자리다.
     events: (r.events || []).concat(inflightEvents()), settings: r.settings, today: r.today, nowHms: r.nowHms,
     name: r.name, deviceOk: r.deviceOk, pinSet: r.pinSet, anyPinSet: r.anyPinSet, devices: r.devices || [], atLocal: Date.now(),
-    exempt: !!r.exempt // 근태 면제(서버 `_isAdminMember_` = 한유성, 10-09) — 미기록일 시트를 안 띄운다
+    exempt: !!r.exempt, // 근태 면제(서버 `_isExemptMember_` = 한유성·시험 계정 홍길동, 10-09·10-29) — 미기록일 시트를 안 띄운다
+    inqViewer: 'inqViewer' in r ? !!r.inqViewer : !!r.exempt // 문의 보기 계정 = 한유성만(10-29 — 면제 ≠ 관리자, 서버 _isAdminMember_). 보기 서명·문의 폰 화면은 이걸로. 칸 없는 옛 서버 = 옛 판정(면제 = 한유성뿐)
   };
   var c = compose();
   state.status = c;
@@ -3180,7 +3191,7 @@ function renderAdmin(r) {
     html += '</table>';
   } else html += '<div class="anote">기다리는 신청이 없어요.</div>';
   html += '</div>';
-  html += '<div class="asec"><h4>구성원 (행정직)</h4><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="at"><tr><th>이름</th><th>소정근로</th><th class="num">이번 주</th><th class="num">이번 달</th><th class="num">연차 잔여</th><th></th></tr>';
+  html += '<div class="asec"><h4>구성원 (행정직)</h4><div class="admscroll"><table class="at"><tr><th>이름</th><th>소정근로</th><th class="num">이번 주</th><th class="num">이번 달</th><th class="num">연차 잔여</th><th></th></tr>';
   r.members.forEach(function (mm) {
     var sched = summarizeSched(mm.schedule);
     html += '<tr><td>' + mm.name + '<span class="sub2">' + mm.anchor + ' 입사</span></td><td><span class="sub2" style="font-size:var(--fs-sm);color:var(--g700)">' + sched + '</span></td>' +
@@ -3195,6 +3206,13 @@ function renderAdmin(r) {
       ? '<div class="anote" style="margin-top:12px">비활성 구성원 <span class="cavt" style="margin-left:0;color:var(--g400)">목록에서 빠짐 · 근태 기록은 남아요</span></div>' +
         '<table class="at">' + r.inactiveMembers.map(function (im) {
           return '<tr><td style="color:var(--g500)">' + im.name + '</td><td class="num"><button class="abtn gray" data-react="' + im.emp + '">다시 활성화</button></td></tr>';
+        }).join('') + '</table>'
+      : '') +
+    // 시험 계정(19 _testMembers_ — 근태 면제인데 관리자 아님, 10-29 홍길동): 위 표에 없어서 비밀번호·비활성을 여기서. 버튼 처리기는 위 표와 같은 data-pin·data-deact
+    ((r.testMembers || []).length
+      ? '<div class="anote" style="margin-top:12px">시험 계정 <span class="cavt" style="margin-left:0;color:var(--g400)">근태 면제, 문의는 행정 화면으로 봐요</span></div>' +
+        '<table class="at">' + r.testMembers.map(function (tm) {
+          return '<tr><td>' + tm.name + '</td><td class="num"><button class="abtn gray" data-pin="' + tm.emp + '" data-nm="' + tm.name + '">' + (tm.pinSet ? '비밀번호 리셋' : '비밀번호 정하기') + '</button> <button class="abtn gray" data-deact="' + tm.emp + '" data-nm="' + tm.name + '">비활성</button></td></tr>';
         }).join('') + '</table>'
       : '') + '</div>';
 

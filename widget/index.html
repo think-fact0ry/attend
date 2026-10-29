@@ -232,7 +232,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v126';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v127';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -839,15 +839,15 @@ function inqAsk(body){
 }
 function inqPoll(){
   clearTimeout(inq.t);
-  var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open);
-  inq.t = setTimeout(inqPoll, (duty || appOpen || inqDuty()) ? INQ_FAST : INQ_SLOW);   // 한유성 로그인 중도 10초(알림이 늦지 않게). 박동 on은 행정 출근(duty)만
+  var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open && !inqFree());
+  inq.t = setTimeout(inqPoll, (duty || appOpen || inqDuty()) ? INQ_FAST : INQ_SLOW);   // 한유성 로그인 중도 10초(알림이 늦지 않게). 박동 on은 행정 출근(duty)만 — 면제 행정(홍길동)은 출근해도 안 보냄
   var role = id ? id.role : '';
   if (role !== inq.role) { if (role) diag('문의 서명 ' + role + ' → 목록 처음부터'); inq.role = role; inq.gver = ''; inq.seen = null; render(); }
   if (!id) { if (inq.n) { inq.n = 0; inq.rows = null; render(); } return; }
   if (inq.busy && performance.now() - inq.at < REQ_TIMEOUT_MS * 2) return;   // 시한이 못 걸려도 영구히 막히지 않게(위 loop와 같은 결)
   inq.busy = true; inq.at = performance.now();
   var body = { action:'s_poll', auth: id, gver: inq.gver };
-  if (id.role === 'staff') body.on = duty;
+  if (id.role === 'staff' && !inqFree()) body.on = duty;   // 면제 행정 = on 칸 자체를 안 실음(26 심장 탭에 줄도 안 생김)
   inqAsk(body).then(function(r){
     inq.busy = false;
     if (!r || !r.ok) {
@@ -948,7 +948,11 @@ var inqPeek = null, INQ_PEEK_MS = 8000;
 //   멈추는 때 = 트레이 「로그아웃」·자정(호스트가 빈 auth → 위 auth 처리가 서명을 지움) · 앱 「로그아웃」 버튼(att_bye) · 다른 사람이 로그인(서명이 그 사람 것으로).
 //   유휴 잠금과 앱 로그아웃 버튼은 둘 다 att_locked라 구별이 안 돼서 버튼만 att_bye를 따로 적는다(로그인하면 지움 — 앱 두 길·알약 startActSession).
 function inqBye(){ try { return localStorage.getItem('att_bye') === '1'; } catch (e) { return false; } }
-function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()))); }
+// 근태 면제 행정(시험 계정 홍길동 — 유성 10-29 「행정인력 시점에서 위젯을 보고 싶음 … 관리자처럼 출근하지 않아도」) = 행정 서명인데 출근이 없다(19 tick exempt).
+//   → 문의 칸·알림은 한유성처럼 로그인 중이면, 박동 on은 안 보냄(학부모 창이 「채팅 시간」이 되면 안 된다 — 출근한 사람이 아니다).
+//   한유성은 role viewer라 여기 안 걸린다(snap.exempt는 둘 다 true).
+function inqFree(){ var id = inqId(); return !!(id && id.role === 'staff' && snap && snap.exempt === true); }
+function inqDuty(){ var id = inqId(); return !!(id && ((id.role === 'staff' && snap && snap.open) || (id.role === 'viewer' && auth && !inqBye()) || (inqFree() && auth && !inqBye()))); }
 // 마지막으로 소리를 낸 때 / 흔든 때(각각 10초에 한 번까지 — 카톡식 규칙 6). 따로 세는 이유 = 2분 다시 알림은 소리 없이 흔들기만 해서,
 //   하나로 세면 그 직후 진짜 새 글의 소리까지 먹는다(10-12 리뷰)
 var inqRingS = 0, inqRingK = 0;
@@ -1033,7 +1037,7 @@ function render(){
   if (v.gauge !== lastGauge) { lastGauge = v.gauge; $('fill').style.width = v.gauge + '%'; }
   // 문의 칸 = 행정은 출근 중에만(유성 10-10 「퇴근하면 업무는 끝」 — 퇴근 뒤엔 숫자도 지움. 출근 전도 같게 = Claude 기본값),
   //   한유성 보기는 로그인 중일 때(알림과 같은 판정 — 앱 「로그아웃」 버튼 뒤엔 숫자도 지움, 10-12). 출근 중이면 0이어도 칸이 있다(지난 대화를 다시 볼 길).
-  var showInq = (inq.role === 'viewer' && !!auth && !inqBye()) || (inq.role === 'staff' && !!(snap && snap.open));
+  var showInq = (inq.role === 'viewer' && !!auth && !inqBye()) || (inq.role === 'staff' && !!(snap && snap.open)) || (inqFree() && !!auth && !inqBye());   // 끝 칸 = 면제 행정(홍길동, 10-29) — 출근 없이 한유성과 같은 판정
   b.classList.toggle('inq', showInq);
   b.classList.toggle('inqn', showInq && inq.n > 0);
   if (inq.n !== lastInqN) { lastInqN = inq.n; $('inqN').textContent = inq.n > 99 ? '99+' : String(inq.n); }
