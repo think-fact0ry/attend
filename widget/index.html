@@ -232,7 +232,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v125';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v126';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -978,7 +978,7 @@ function inqAlert(rows, fresh){
   var now = Date.now();
   // 답장했거나(마지막 말이 우리) 목록에서 빠진 대화는 2분 대기에서 뺀다
   var by = {}; rows.forEach(function(x){ by[x.id] = x; });
-  Object.keys(inqLate).forEach(function(k){ var x = by[k]; if (!x || x.lastWho !== 'v' || x.lastAt !== inqLate[k].at) delete inqLate[k]; });
+  Object.keys(inqLate).forEach(function(k){ var x = by[k]; if (!x || x.lastWho !== 'v' || x.lastAt !== inqLate[k].at || (x.dn && x.dn.on)) delete inqLate[k]; });   // 상담 완료한 방도(10-28 — 전화로 끝낸 방은 2분 다시 알림 0)
   if (!fresh.length) return;
   fresh.forEach(function(f){ if (!f.row.ch) inqLate[f.row.id] = { at: f.row.lastAt, due: now + INQ_LATE_MS, row: f.row }; });   // 카드는 2분 재알림 없음
   // 여러 줄이 한 번에 오면 알림은 한 번 — 새 대화가 있으면 그것(목록이 최근순이라 첫 것이 가장 최근)

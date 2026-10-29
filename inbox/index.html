@@ -124,6 +124,14 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .it.late .el{color:var(--warn-weak-fg);font-weight:600}
 /* 안 읽은 수(10-12 유성 「카톡처럼 … 빨간색 원안에 흰색 텍스트로 … 몇분전 아래에」 — 옛 빨간 점 .u를 바꿈) = 세그 숫자(.seg .n.red)와 같은 동그라미 */
 .it .ub{font-size:11.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;color:#fff;background:var(--red);display:inline-flex;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
+/* 상담 완료(10-28 유성 — 검토 = prototype/26_문의채팅_상담완료_사전검토_프리뷰.html): 숫자 자리 = 원 없이 초록 체크(5안 중 B — 빨간 숫자보다 조용하게, 진하기 10 대 100),
+   완료한 줄 = 회색 동그라미 + 이름 보통 굵기 + 글자 g600(대안 D — 줄 진하기 47, 글자 대비 4.62 / 아이콘 4.19). 위 글자 = 마지막 대화 시각(답장 전, 2분 넘음, 답장함 대신) */
+.it .ub.ok{background:none;padding:0;width:18px}
+.it .ub.ok svg{width:15px;height:15px;fill:none;stroke:var(--green600);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.it.dim .src{background:var(--g100);color:var(--g600)}
+.it.dim .src.nv svg path,.it.dim .src.kk svg path{fill:var(--g600)}
+.it.dim .l1 .nm{font-weight:400;color:var(--g600)}
+.it.dim .l2{color:var(--g600)}
 /* 이름 붙이기 = 그 줄 이름 자리에서 바로 적기(Enter 저장, Esc 취소, 밖을 누르면 저장). 이름이 있으면 칸 오른쪽에 되돌리기 ↩(유성 10-11) */
 .renw{position:relative;display:block;width:100%;min-width:0}
 .it .ren{font:inherit;font-size:14.5px;font-weight:600;border:1.5px solid var(--green600);background:#fff;border-radius:8px;padding:0 6px;width:100%;outline:none;color:var(--g900);user-select:text}
@@ -171,6 +179,8 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day{align-self:stretch;display:flex;align-items:center;gap:10px;font-size:var(--fs-caption);font-weight:600;color:var(--g700);margin:24px 0 16px;white-space:nowrap}
 .day::before,.day::after{content:"";flex:1;height:1px;background:var(--g200)}
 .day svg{width:13px;height:13px;flex:none;color:var(--g600);margin-right:-5px}
+/* 상담 완료 한 줄(10-28) = 날짜 줄과 같은 선, 달력 대신 초록 체크 + 「한유성님이 상담 완료로 표시했어요」(시각 없음 — 유성 10-28 「', 오후 2:10' 없앨 것」) */
+.day.dn svg{width:14px;height:14px;color:var(--green600);fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .thread > .day:first-child{margin-top:0}
 .older{align-self:center;border:0;background:var(--g100);color:var(--g700);font-size:12.5px;font-weight:600;border-radius:99px;padding:5px 12px;margin-bottom:8px;cursor:pointer}
 /* 말풍선 간격: 같은 사람이 이어 보내면 4px, 말하는 사람이 바뀌면 16px(§4.18) */
@@ -506,6 +516,8 @@ var PINF_SVG = '<svg viewBox="0 0 24 24"><path d="M8 2.5h8v2.2l-1.4 1.1v5.1l3.4 
 var I_PIN = '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3z"/><path d="M12 12v8"/></svg>';
 var I_NAME = '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 var I_BACK = '<svg viewBox="0 0 24 24"><path d="M5 6.5h9.5a4.75 4.75 0 0 1 0 9.5H6"/><path d="M9.5 12.5 6 16l3.5 3.5"/></svg>';
+var I_DONE = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9.7"/></svg>';   // 메뉴 「상담 완료」(10-28)
+var DONE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';   // 줄 체크·대화방 한 줄(10-28)
 var UNDO_SVG = I_BACK;   // 되돌리기 ↩ = 같은 꼬인 화살표(유성 10-11 「왼쪽에서 시작해서 오른쪽 아래로 꼬인 다음 왼쪽을 가리키는」)
 var LABEL_MAX = 12;      // 26 INQ_LABEL_MAX와 같게(서버가 마지막 문 — 글자 단위로 자른다)
 
@@ -643,13 +655,15 @@ var fList = fadeWatch($('list'), $('lsw')), fThread = fadeWatch($('thread'), $('
 // slow = 20초 넘게 못 받음 → 뼈대를 비우고 「아직 못 불러왔어요」(§5.4, 뒤에서는 계속 다시 묻는다). names = 맡은 사람 이름표(한유성만 받음)
 var SLOW_MS = 20000;
 // pins = 26이 고정과 이름을 받는 판(s_poll pins:1, @10~) — 구판이면 오른쪽 클릭 메뉴를 안 띄운다. editing = 이름을 적고 있는 줄 id
-var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, editing: '', flying: '', seen: {}, skew: 0, hold: {} };
+var S = { tab: 'wait', wait: [], mine: [], live: {}, gver: '', cur: null, busy: false, pollAt: 0, dead: '', loaded: false, slow: false, t0: 0, names: {}, pins: false, doneOk: false, editing: '', flying: '', seen: {}, skew: 0, hold: {} };
 // seen = 이 창에서 읽은 줄 {id: 그때 마지막 시각} — 서버 목록이 읽음보다 늦게 와도 숫자가 다시 안 뜬다(새 글이 오면 시각이 바뀌어 다시 셈). skew = 서버 시각 − 이 PC 시각(10-12)
 function rowsOfTab(){ return S.tab === 'wait' ? S.wait : S.mine; }   // 한유성도 같은 두 칸 — mine = 누가 맡았든 맡은 대화
 function ownerName(emp){ return S.names[emp] || '행정'; }   // 이름을 아직 모르면(구판 26·19) 「행정」
 // 톡톡·카카오 카드(r.ch = 'nv'|'kk', 26 2단계) = 답은 파트너센터에서 해서 우리가 답했는지 모른다 → 「답장 전」·「2분 넘음」에 안 든다(5차). 안 읽은 수는 카드도 같이(10-12 — 봤는지는 안다)
 function isCard(r){ return !!(r && r.ch); }
-function isLate(r){ return !isCard(r) && r.lastWho === 'v' && nowS() - new Date(r.lastAt).getTime() >= LATE_MS; }
+// 상담 완료 중 = 26이 준 dn.on(완료한 뒤 학부모 새 글 없음). 완료한 방은 「2분 넘음」도 맨 위 붙음도 아니다(10-28 — 전화로 끝낸 방이 영영 맨 위에 남던 것)
+function isDone(r){ return !!(r && r.dn && r.dn.on); }
+function isLate(r){ return !isCard(r) && !isDone(r) && r.lastWho === 'v' && nowS() - new Date(r.lastAt).getTime() >= LATE_MS; }
 // 순서 = 마지막 메시지 순(서버) · 「2분 넘음」 맨 위 → 고정 → 나머지(서버도 고정을 먼저 보내지만, 방금 누른 고정이 서버 답 전에 바로 올라가게 여기서도)
 function ordered(L){ return L.map(function(r, i){ return { r: r, i: i }; }).sort(function(a, b){ return ((isLate(b.r) ? 1 : 0) - (isLate(a.r) ? 1 : 0)) || ((b.r.pin ? 1 : 0) - (a.r.pin ? 1 : 0)) || (a.i - b.i); }).map(function(x){ return x.r; }); }
 function baseOf(r){ return isCard(r) ? (r.base || '') : '홈페이지'; }
@@ -671,14 +685,15 @@ function rowHtml(r){
   if (S.live[r.id]) tag += '<span class="tag live">보는 중</span>';
   // 오른쪽 칸 = 위 글자(시각 / 「답장 전」 / 「2분 넘음」 / 「답장함」) + 아래 안 읽은 수(카톡처럼, 10-12 — 0이면 없음). 카드도 같은 자리
   var right, ub = unreadOf(r) > 0 ? '<span class="ub">' + (unreadOf(r) > 99 ? '99+' : unreadOf(r)) + '</span>' : '';
-  if (isCard(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + ub;   // 카드 = 마지막 알림 시각 + 안 읽은 수(답했는지는 몰라도 봤는지는 안다)
+  if (isDone(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + (ub || '<span class="ub ok" title="상담 완료">' + DONE_SVG + '</span>');   // 상담 완료(10-28) = 마지막 대화 시각 + 체크
+  else if (isCard(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + ub;   // 카드 = 마지막 알림 시각 + 안 읽은 수(답했는지는 몰라도 봤는지는 안다)
   else if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '2분 넘음' : (S.tab === 'mine' ? '답장 전' : esc(ago(r.lastAt)))) + '</span>' + ub;
   else right = '<span class="el">답장함</span>' + ub;
   var l1 = S.editing === r.id
     ? '<span class="renw' + (r.label ? ' has' : '') + '"><input class="ren" maxlength="' + LABEL_MAX + '" value="' + esc(r.label || '') + '" placeholder="이름 (' + LABEL_MAX + '자까지)" aria-label="이름 붙이기">' +
       (r.label ? '<button class="rv" type="button" title="원래 이름으로" aria-label="원래 이름으로">' + UNDO_SVG + '</button>' : '') + '</span>'
     : nameHtml(r) + tag;
-  return '<div class="it' + (isLate(r) ? ' late' : '') + (S.point && S.point.id === r.id && Date.now() < S.point.until ? ' press' : '') + '" data-id="' + esc(r.id) + '"' + (S.flying === r.id ? ' style="opacity:0"' : '') + '><div class="src ' + (isCard(r) ? esc(r.ch) : 'hp') + '">' + (isCard(r) ? (SRC_SVG[r.ch] || '') : HOME_SVG) + '</div>' +
+  return '<div class="it' + (isLate(r) ? ' late' : '') + (isDone(r) ? ' dim' : '') + (S.point && S.point.id === r.id && Date.now() < S.point.until ? ' press' : '') + '" data-id="' + esc(r.id) + '"' + (S.flying === r.id ? ' style="opacity:0"' : '') + '><div class="src ' + (isCard(r) ? esc(r.ch) : 'hp') + '">' + (isCard(r) ? (SRC_SVG[r.ch] || '') : HOME_SVG) + '</div>' +
     '<div class="body"><div class="l1">' + l1 + '</div><div class="l2">' + esc(r.preview) + '</div></div>' +
     '<div class="rt">' + right + '</div></div>';
 }
@@ -734,6 +749,7 @@ function take(r){   // 서버 목록 → 화면 상태
   S.gver = r.gver || S.gver;
   if (r.live) S.live = r.live;
   if (r.pins) S.pins = true;   // 「바뀐 것 없음」 답에도 실려 온다
+  if (r.done) S.doneOk = true;  // 상담 완료를 아는 26(@26~, 10-28) — 이걸 본 뒤에만 메뉴에 「상담 완료」
   if (r.same) return false;
   if (r.names) S.names = r.names;
   if (r.wait || r.mine) { S.wait = r.wait || []; S.mine = r.mine || []; }
@@ -792,6 +808,7 @@ function poll(){
     if (S.cur) {
       var now = findRow(S.cur.id);
       setPst();
+      if (now && R.id === S.cur.id && R.loaded && dnSig(now) !== dnSig(prevCur)) drawThread(seenAll(), false);   // 상담 완료 한 줄(10-28)
       if (now && (!prevCur || verOf(now) !== verOf(prevCur)) && verOf(now) !== S.cur.ver) loadRoom(S.cur.id, true);
       // 문자 판정이 아직인 우리 줄(wait)이 있으면 목록이 바뀔 때(26이 판정 순간 gver를 올림) 그 방도 다시 읽는다 — 마지막 시각은 안 바뀌어서
       //   위 조건만으론 「안 읽음」이 「문자로 보냈어요」·「읽음」으로 안 바뀌었다(claude-71 10-10: 답장 순간 판정 → 1분 뒤 판정)
@@ -838,6 +855,7 @@ function findRow(id){ var L = S.wait.concat(S.mine); for (var i = 0; i < L.lengt
    · 구판 26(@6까지)은 「알 수 없는 요청」 → 이 창에선 다시 안 묻는다(예전처럼 열 때 받음) */
 var RCACHE = {}, tails = { busy: false, off: false, tried: {} };
 // 대화 판 = 마지막 시각 + 거둔 줄 수(10-12 — 가운데 줄을 거두면 시각은 그대로라 거둔 수로도 가른다) + 고친 답장 표(10-23). 받아 둔 대화·열린 방을 다시 읽을지 이걸로 본다
+function dnSig(r){ return r && r.dn ? r.dn.seq + '|' + r.dn.nm + '|' + r.dn.on : ''; }   // 상담 완료 한 줄을 다시 그릴지(10-28)
 function verOf(r){ return r ? (r.lastAt || '') + (r.rv ? '#' + r.rv : '') + (r.ev ? '~' + r.ev : '') : ''; }   // ev = 고친 답장 표(10-23 — 가운데 줄을 고쳐도 시각은 그대로)
 function prefetch(){
   if (!me || tails.busy || tails.off) return;
@@ -896,13 +914,13 @@ function openExt(r){
 }
 // 빨려 들기(§4.18, 디자인 5차 flyTo 그대로) — 누른 모양 .17초 → 복제본이 가는 쪽 세그 탭으로 작아지며 들어감 → 다 들어간 뒤 옮기고 탭을 바꾼다.
 //   to = 'mine'(대기 카드 가져오기) | 'wait'(내 대화에서 돌려놓기). 남은 자리 접힘·새 목록 내려옴은 같이 넣지 않는다(유성 5차)
-function flyTo(it, id, to){
+function flyTo(it, id, to, after){
   it.classList.add('press');
-  setTimeout(function(){ flyGo(it, id, to); }, 170);
+  setTimeout(function(){ flyGo(it, id, to, after); }, 170);
 }
-function flyGo(it, id, to){
+function flyGo(it, id, to, after){   // after = 다 날아간 뒤 할 일(없으면 맡기·돌려놓기 — 상담 완료가 넘김, 10-28)
   // 나는 동안 5초 조회가 목록을 다시 그려도 그 줄은 빈자리로 남긴다(S.flying — 안 그러면 날아가는 중에 원래 자리에 다시 나타남)
-  var done = function(){ setTimeout(function(){ S.flying = ''; if (to === 'mine') claim(id); else release(id); }, 180); };
+  var done = function(){ setTimeout(function(){ S.flying = ''; if (after) after(); else if (to === 'mine') claim(id); else release(id); }, 180); };
   var app = $('app'), segB = $('seg').querySelector('[data-t="' + to + '"]');
   if (!it.isConnected || !it.animate || !segB) { it.classList.remove('press'); done(); return; }   // 그새 목록이 다시 그려졌다 = 모션 없이 옮기기만
   S.flying = id;
@@ -1321,10 +1339,13 @@ function drawThread(had, keepBottom){
   var atBottom = T.scrollTop + T.clientHeight >= T.scrollHeight - 30;
   var html = R.more ? '<button class="older" id="older">이전 대화 보기</button>' : '';
   var lastDay = '', prevWho = '';
+  var dnr = (findRow(R.id) || {}).dn, dnSeq = dnr ? +dnr.seq : 0, dnPut = !dnr;   // 상담 완료 한 줄(10-28) — seq -1 = 방금 누른 낙관 = 맨 끝
   R.msgs.forEach(function(m, i){
     var who = authorOf(m);
     var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + DAY_CAL + '<span>' + dayLabel(m.at) + '</span></div>'; lastDay = d; prevWho = ''; }
-    var cont = prevWho === who, next = R.msgs[i + 1], lastOfRun = !next || authorOf(next) !== who || ymd(next.at) !== d;
+    var cont = prevWho === who, next = R.msgs[i + 1];
+    var dnHere = !dnPut && (dnSeq < 0 ? !next : (+m.seq <= dnSeq && (!next || +next.seq > dnSeq)));
+    var lastOfRun = !next || authorOf(next) !== who || ymd(next.at) !== d || dnHere;
     var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
     if (who === 'v') {
       html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">홈페이지 방문자</div>') +
@@ -1335,6 +1356,7 @@ function drawThread(had, keepBottom){
         '<div class="mcol">' + name + (m.rc ? '<div class="bub rc">거둔 답장이에요</div>' : bodyHtml(m)) + '</div></div>';
     }
     prevWho = who;
+    if (dnHere) { html += '<div class="day dn">' + DONE_SVG + '<span>' + esc(dnr.nm || '행정') + '님이 상담 완료로 표시했어요</span></div>'; dnPut = true; prevWho = ''; }   // 날짜 줄처럼 다음 말풍선은 이름부터
   });
   T.innerHTML = html;
   fillAtts();
@@ -1379,7 +1401,8 @@ $('list').addEventListener('contextmenu', function(e){
   var m = $('cm');
   m.innerHTML = '<button type="button" role="menuitem" data-a="pin">' + I_PIN + (r.pin ? '고정 풀기' : '맨 위에 고정') + '</button>' +
     '<button type="button" role="menuitem" data-a="name">' + I_NAME + (r.label ? '이름 바꾸기' : '이름 붙이기') + '</button>' +
-    (canBack ? '<button type="button" role="menuitem" data-a="back">' + I_BACK + '대기로 돌려놓기</button>' : '');
+    (canBack ? '<button type="button" role="menuitem" data-a="back">' + I_BACK + '대기로 돌려놓기</button>' : '') +
+    (S.doneOk && (VIEWER || !r.owner || r.owner === me.emp) ? '<button type="button" role="menuitem" data-a="done">' + I_DONE + (isDone(r) ? '상담 완료 풀기' : '상담 완료') + '</button>' : '');   // 상담 완료(10-28 Q1 a) — 행정은 대기 줄과 내 대화만(남이 맡은 방 = 서버도 taken)
   m.classList.add('on');
   var ar = $('app').getBoundingClientRect(), x = e.clientX - ar.left, y = e.clientY - ar.top;
   if (!e.clientX && !e.clientY) { var ir = it.getBoundingClientRect(); x = ir.left - ar.left + 40; y = ir.bottom - ar.top - 8; }   // 키보드로 연 메뉴 = 줄 아래
@@ -1397,6 +1420,7 @@ $('cm').addEventListener('click', function(e){
   if (!r) return;
   if (a === 'pin') setPin(r, !r.pin);
   else if (a === 'name') { S.editing = r.id; render(); }
+  else if (a === 'done') setDone(r, !isDone(r));
   else if (a === 'back') {
     var it = $('list').querySelector('.it[data-id="' + CSS.escape(id) + '"]');
     if (it) flyTo(it, id, 'wait'); else release(id);
@@ -1560,13 +1584,16 @@ function holdApply(){
       var h = o[k];
       if (now - h.at > HOLD_MS) { delete o[k]; return; }
       if (!r) return;
-      var cur = k === 'pin' ? (+r.pin ? 1 : 0) : k === 'own' ? (r.owner || '') : (r[k] || '');
+      if (k === 'done' && h.v && h.done && r.dn && !r.dn.on) { delete o[k]; return; }   // 서버가 완료를 받은 뒤 학부모가 또 보냄(dn 있고 on 0) = 옛 목록이 아니라 새 사실 — 체크를 붙잡지 않는다(10-28)
+      var cur = k === 'pin' ? (+r.pin ? 1 : 0) : k === 'own' ? (r.owner || '') : k === 'done' ? (isDone(r) ? 1 : 0) : (r[k] || '');
       if (cur === h.v) { if (h.done) delete o[k]; return; }   // 서버가 따라왔다
       if (k === 'own') {   // 칸 옮기기 = claim·release의 낙관과 같게(맡거나 돌려놓으면 고정은 풀린다, 옮긴 칸 맨 위)
         S.wait = S.wait.filter(function(x){ return x !== r; }); S.mine = S.mine.filter(function(x){ return x !== r; });
         r.owner = h.v; r.pin = 0; r.pinName = ''; (h.v ? S.mine : S.wait).unshift(r);
       }
-      else if (k === 'pin') { r.pin = h.v; if (!r.owner) r.pinName = h.v ? h.name : ''; } else r[k] = h.v;
+      else if (k === 'pin') { r.pin = h.v; if (!r.owner) r.pinName = h.v ? h.name : ''; }
+      else if (k === 'done') { if (h.v) { r.dn = h.name; r.unread = 0; } else r.dn = null; }   // h.name = 낙관 완료 칸(아래 setDone)
+      else r[k] = h.v;
     });
     if (!Object.keys(o).length) delete S.hold[id];
   });
@@ -1582,6 +1609,32 @@ function setPin(r, on){
     if (res && res.ok) { holdDone(r.id, 'pin', hd); return; }
     holdDrop(r.id, 'pin', hd); toastA((res && res.error) || '고정하지 못했어요'); S.gver = ''; poll();
   }).catch(function(){ holdDrop(r.id, 'pin', hd); toastA('연결이 안 돼요'); S.gver = ''; poll(); });
+}
+// 상담 완료(10-28 유성 「그 채팅을 마우스 오른쪽 클릭한 뒤 상담 완료하기 … 초록색 원에 흰색 체크 … 또 한번 문의채팅이 오면 그 v는 사라지고 숫자」 → 검토 Q1 a·Q2 a·Q3 b(→ D)·Q4 a, 체크 B)
+//   = 표시만(대화·순서·학부모 「읽음」 그대로). 바로 체크·숫자 0·2분 넘음 풀림(낙관), 서버가 거절하면 토스트 + 목록 다시 받기.
+//   행정이 대기 줄을 완료하면 맡기와 같은 빨려 들기 뒤 내 대화로(26 s_done이 맡기까지 — s_claim은 안 부름), 탭은 안 바꿈(볼 일이 끝난 방)
+function setDone(r, on){
+  var id = r.id, claimIt = on && !VIEWER && !r.owner;
+  var dn = on ? { at: new Date(nowS()).toISOString(), nm: VIEWER ? '한유성' : ((me && me.name) || '행정'), seq: r.dn && r.dn.on ? r.dn.seq : -1, on: 1 } : null;   // seq -1 = 서버 줄 번호가 올 때까지 대화방 맨 끝
+  var go = function(){
+    var cur = findRow(id) || r;
+    cur.dn = dn; if (on) cur.unread = 0;
+    var hd = holdSet(id, 'done', on ? 1 : 0, dn), ho = null;
+    if (claimIt) {
+      S.wait = S.wait.filter(function(x){ return x !== cur; });
+      if (S.mine.indexOf(cur) < 0) { cur.owner = me.emp; cur.pin = 0; cur.pinName = ''; S.mine.unshift(cur); }   // 맡으면 대기 고정은 풀린다(26 규칙)
+      holdDrop(id, 'pin'); ho = holdSet(id, 'own', me.emp);
+    }
+    renderFlip(); if (R.id === id && R.loaded) drawThread(seenAll(), false);
+    toastA(on ? '상담 완료로 표시했어요' : '상담 완료를 풀었어요');
+    ask({ action:'s_done', auth: me, id: id, on: on, cid: cid() }).then(function(res){
+      if (res && res.ok) { holdDone(id, 'done', hd); if (ho) holdDone(id, 'own', ho); return; }
+      holdDrop(id, 'done', hd); if (ho) holdDrop(id, 'own', ho);
+      toastA((res && res.error) || (on ? '상담 완료로 표시하지 못했어요' : '상담 완료를 풀지 못했어요')); S.gver = ''; poll();
+    }).catch(function(){ holdDrop(id, 'done', hd); if (ho) holdDrop(id, 'own', ho); toastA('연결이 안 돼요'); S.gver = ''; poll(); });
+  };
+  var it = claimIt && $('list').querySelector('.it[data-id="' + CSS.escape(id) + '"]');
+  if (it) flyTo(it, id, 'mine', go); else go();
 }
 // 이름 칸 — 그린 뒤 붙인다. Enter 저장(한글 조합 중 Enter는 무시), Esc 취소, 밖을 누르면 저장, ↩ = 원래 이름으로
 function bindRen(){
