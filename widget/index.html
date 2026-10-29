@@ -232,7 +232,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v128';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v129';                       // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -376,7 +376,7 @@ if (window.chrome && window.chrome.webview) {
     // 호스트가 "나 언제 떴는지"를 넘겨준다 → 서버에 올려 관리자 화면에서 보이게 한다(2026-08-05).
     if (m.type === 'boot')    { bootRep = { up: m.up, at: m.at, v: m.v }; sendBoot(); }   // v = exe 판(1-c 10-09, 관리자 화면에서 PC별 판 확인)
     // 앱 창이 열리고 닫힐 때마다 호스트가 보내준다 → 버튼 글자를 실제 동작에 맞춘다(26차-11).
-    if (m.type === 'appwin')  { var was = appOpen; appOpen = !!m.open; if (was !== appOpen) { diag('앱창 ' + (appOpen ? '열림 → 버튼=닫기' : '닫힘 → 버튼=열기')); render(); } }
+    if (m.type === 'appwin')  { var was = appOpen; appOpen = !!m.open; if (was !== appOpen) { diag('앱창 ' + (appOpen ? '열림 → 버튼=닫기' : '닫힘 → 버튼=열기')); render(); if (appOpen) inqSpeedUp(); } }
     // exe 4판부터: 알약이 뜰 때마다 「할 줄 아는 것」을 알려 준다 → 이걸 받은 뒤에만 notify·show-app을 쓴다(아래 문의 알림).
     if (m.type === 'caps')    { caps = (m.v >= 4) ? m : null; }
     // 미리보기 창을 누름 = 호스트가 이미 앱을 앞으로 띄웠다 → 갈 곳(받은함)만 남긴다(show-app을 또 보내지 않는다).
@@ -392,6 +392,7 @@ if (window.chrome && window.chrome.webview) {
 window.addEventListener('storage', function(e){
   if (e && e.key === 'att_bump') fetchTick();
   if (e && e.key === 'att_inq') inqPoll();   // 앱 로그인이 이 계정 서명을 막 써 줬을 때(10-10) — 다음 주기를 안 기다린다
+  if (e && e.key === 'att_inqk') inqKick();  // 받은함이 읽기, 맡기, 답장, 완료를 서버에 남겼을 때(10-29) — 받은함 숫자와 안 어긋나게
   // 로그인은 여기서 안 듣는다 — 앱의 `_hostAuth_`가 호스트에 밀고 호스트가 `auth`로 되돌려준다(경로 하나로 유지).
 });
 
@@ -622,7 +623,7 @@ function fetchTick(){
       }
       diag('조회 ok · 출근 ' + (r.open ? '있음(' + r.open + ')' : '없음') + ' · 근무일 ' + (r.work ? 'Y' : 'N'));
       snap = r; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
-      inqSave(r.inq);
+      inqSave(r.inq); inqSpeedUp();   // 면제 표시·출근이 방금 왔으면 걸어 둔 60초를 버린다(10-29)
       if (bootRep) sendBoot();   // 네트워크가 살아난 걸 방금 확인했다 — 못 보낸 시작 보고를 지금 보낸다
       render();
       if (pendingTick) { pendingTick = false; fetchTick(); return; }   // 겹쳐서 미뤄둔 조회를 지금 돌린다
@@ -761,7 +762,7 @@ function punch(kind){
       //   못 받았으면(구 서버·조립 실패) 예전처럼 한 번 더 묻는다 — 안전한 실패.
       if (r.tick && r.tick.ok) {
         snap = r.tick; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
-        inqSave(r.tick.inq);
+        inqSave(r.tick.inq); inqSpeedUp();   // 방금 출근 = 10초 주기로(10-29, 위 fetchTick과 같은 자리)
         render(); schedule(true);
       } else fetchTick();
     })
@@ -810,7 +811,7 @@ function punchFailed(prev, msg){
      → exe 4판이 `notify`를 받아 한다(아래 inqAlert). 'inq'는 로그 한 줄로 남긴다. */
 var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
 var INQ_FAST = 10000, INQ_SLOW = 60000;   // 출근 중 10초(D5) · 그 밖(퇴근 뒤·보기 전용) 60초 — 밤새 10초씩 GAS를 깨우지 않는다
-var inq = { n: 0, role: '', busy: false, at: 0, gver: '', rows: null, seen: null, t: null };
+var inq = { n: 0, role: '', busy: false, at: 0, gver: '', rows: null, seen: null, t: null, fast: false, again: false };   // fast = 지금 걸린 주기가 10초인가, again = 묻는 중에 받은함 신호가 옴
 function inqId(){
   try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
   return null;
@@ -837,10 +838,23 @@ function inqAsk(body){
   var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, REQ_TIMEOUT_MS);
   return fetch(INQ_GAS, opt).then(function(r){ clearTimeout(timer); return r.json(); }, function(e){ clearTimeout(timer); throw e; });
 }
+// 행정 출근 중 = 박동 on과 빠른 주기의 기준. 면제 행정(홍길동)은 출근해도 아니다(on을 안 보냄)
+function inqOnDuty(id){ return !!(id && id.role === 'staff' && snap && snap.open && !inqFree()); }
+// 빠른 주기(10초) = 출근 중, 앱 창 열림, 로그인 중 알림 대상(한유성, 면제 행정). 한유성 로그인 중도 10초(알림이 늦지 않게)
+function inqFastNow(id){ return inqOnDuty(id) || appOpen || inqDuty(); }
+// 느린 주기(60초)를 걸어 둔 뒤 빠른 주기가 맞아지면 그 60초를 버리고 바로 묻는다(tick 응답, 앱 창 열림).
+//   10-29 실측(홍길동 edge.log + att_inqc): 로그인 때 서명(att_inq)이 tick보다 먼저 와서 면제 표시(snap.exempt) 없이 60초로 잡힘 →
+//   18:42:32 서버 읽음, 맡기를 18:43:22에야 받음 = 50초 동안 알약 2, 받은함 1(유성 「대기 오른쪽에 1만 … 위젯에는 2」). 앱 창이 열려도 걸린 60초는 그대로였다
+function inqSpeedUp(){ var id = inqId(); if (inq.t && !inq.fast && id && inqFastNow(id)) inqPoll(); }
+// 받은함이 서버 숫자를 바꾸면(읽기, 맡기, 답장, 완료, 돌려놓기) att_inqk를 쓴다 → 다음 주기를 안 기다리고 묻는다.
+//   묻는 중이면 끝난 뒤 한 번 더(그 조회는 서버가 바뀌기 전 목록일 수 있다)
+function inqKick(){ if (inq.busy && performance.now() - inq.at < REQ_TIMEOUT_MS * 2) inq.again = true; else inqPoll(); }
+function inqAgain(){ if (inq.again) { inq.again = false; setTimeout(inqPoll, 0); } }
 function inqPoll(){
   clearTimeout(inq.t);
-  var id = inqId(), duty = !!(id && id.role === 'staff' && snap && snap.open && !inqFree());
-  inq.t = setTimeout(inqPoll, (duty || appOpen || inqDuty()) ? INQ_FAST : INQ_SLOW);   // 한유성 로그인 중도 10초(알림이 늦지 않게). 박동 on은 행정 출근(duty)만 — 면제 행정(홍길동)은 출근해도 안 보냄
+  var id = inqId(), duty = inqOnDuty(id);
+  inq.fast = inqFastNow(id);
+  inq.t = setTimeout(inqPoll, inq.fast ? INQ_FAST : INQ_SLOW);
   var role = id ? id.role : '';
   if (role !== inq.role) { if (role) diag('문의 서명 ' + role + ' → 목록 처음부터'); inq.role = role; inq.gver = ''; inq.seen = null; render(); }
   if (!id) { if (inq.n) { inq.n = 0; inq.rows = null; render(); } return; }
@@ -849,7 +863,7 @@ function inqPoll(){
   var body = { action:'s_poll', auth: id, gver: inq.gver };
   if (id.role === 'staff' && !inqFree()) body.on = duty;   // 면제 행정 = on 칸 자체를 안 실음(26 심장 탭에 줄도 안 생김)
   inqAsk(body).then(function(r){
-    inq.busy = false;
+    inq.busy = false; inqAgain();
     if (!r || !r.ok) {
       diag('문의 조회 실패 ' + ((r && (r.code || r.error)) || '빈 응답'));
       if (r && r.code === 'auth') { inqDrop('att_inq'); render(); }
@@ -863,7 +877,7 @@ function inqPoll(){
       inqCount(id);
     } else inqCacheTouch(id, r.gver);
     inqLateCheck();   // 방금 받은 목록 기준으로만 본다(그 사이 답장했는데 「2분」이 울리지 않게)
-  }).catch(function(){ inq.busy = false; });
+  }).catch(function(){ inq.busy = false; inqAgain(); });
 }
 // 「바뀐 것 없음」이어도 남긴 목록의 시각(t)을 새로 쓴다 = t는 **마지막으로 확인한** 때(10-10 유성 「문의채팅 들어가면 순간 아무것도 없어 … 없다고 나와」).
 //   전엔 바뀔 때만 써서, 문의가 10분 조용하면 받은함이 맞는 목록을 「10분 넘음」으로 버리고 빈 목록 = 「없어요」를 띄웠다.

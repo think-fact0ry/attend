@@ -582,9 +582,16 @@ function ask(body, ms){
   var t = setTimeout(function(){ if (ctl) ctl.abort(); }, ms || REQ_TIMEOUT_MS);
   return fetch(INQ_GAS, opt).then(function(r){ return r.text(); }).then(function(s){
     clearTimeout(t);
-    try { return JSON.parse(s); } catch (e) { var err = new Error('BAD_REPLY'); err.bad = true; throw err; }
+    var out; try { out = JSON.parse(s); } catch (e) { var err = new Error('BAD_REPLY'); err.bad = true; throw err; }
+    kickPill(body, out);
+    return out;
   }, function(e){ clearTimeout(t); throw e; });
 }
+// 서버 숫자를 바꾸는 요청이 성공하면 알약에 바로 다시 물으라고 알린다(att_inqk → 알약 storage 이벤트, exe 두 창 = 한 프로필).
+//   10-29 유성 「대기 오른쪽에 1만 있는 거 확인했는데 위젯에는 2」 — 받은함은 누르는 순간 숫자를 지우고 알약은 다음 주기(10초, 60초)를 기다렸다.
+//   s_job = 답장, 거두기 결과 묻기. 이전 대화 더 받기(before)와 목록 조회(s_poll)는 숫자를 안 바꿔 안 알린다
+var KICK_ACTS = { s_room: 1, s_seen: 1, s_claim: 1, s_release: 1, s_done: 1, s_reply: 1, s_recall: 1, s_job: 1 };
+function kickPill(body, r){ if (r && r.ok && KICK_ACTS[body.action] && !body.before) { try { localStorage.setItem('att_inqk', String(Date.now())); } catch (e) { } } }
 // 읽기 전용 — 4초 안에 안 오면 같은 요청을 하나 더(먼저 온 쪽). 둘 다 실패해야 실패
 function askRead(body){
   return new Promise(function(res, rej){
