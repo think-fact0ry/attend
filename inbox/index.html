@@ -163,12 +163,18 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rh .nm{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;min-width:0}
 .rh .nm .use{display:none;font-size:11px;font-weight:600;color:var(--green700);box-shadow:inset 0 0 0 1px var(--green200);border-radius:6px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .rh .nm .use.on{display:inline-block}
+.rh .nm .tag{display:none;font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}   /* 카드 방 = 목록 줄 뱃지와 같은 칩(서해구, 카카오 — .it .l1 .tag 실값) */
+.rh .nm .tag.on{display:inline-block}
 .rh .st{font-size:var(--fs-caption);color:var(--g600);display:flex;align-items:center;gap:5px}
 .rh .st i{width:7px;height:7px;border-radius:50%;background:var(--green600);flex:none}
 .rh .st.off i{background:var(--g400)}
 .cchip{border:1px solid var(--g200);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--g700);box-shadow:0 1px 3px rgba(25,31,40,.08);cursor:pointer;transition:transform .08s;white-space:nowrap}
 .cchip:active{transform:scale(.96)}
 .rh .rel{margin-left:auto}
+.rh .ext{margin-left:auto;display:none}   /* 카드 방 머리 = 「톡톡 열기」(그 센터 파트너센터 — 언제든 다시 열기) */
+.room.ext .rh .ext{display:inline-block}
+.room.ext .rh .ext ~ .rel{margin-left:0}
+.room.ext .rh .own.on ~ .ext{margin-left:0}
 /* 맡은 사람 이름표(한유성 화면만, 10-10 유성 「그 채팅을 들어가면 우상단에 뱃지를 달아줘 행정인력 이름으로」) — 행정 화면 「대기로 돌려놓기」 칩 자리.
    누르는 것이 아니라서 칩의 테두리·그림자 없이 회색 꼬리표 — 글자·색·둥글기는 칩(.cchip) 그대로, 칩 테두리 1px만큼 안쪽 여백을 더해 겉 크기도 같다. 대기 대화엔 없음 */
 .rh .own{margin-left:auto;font-size:var(--fs-caption);font-weight:700;color:var(--g700);background:var(--g100);border-radius:99px;padding:4px 11px;white-space:nowrap;display:none}
@@ -218,6 +224,15 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .send:disabled{background:var(--p-disabled);cursor:default}
 .send:not(:disabled):active{transform:scale(.92);background:var(--green800)}
 .send svg{width:20px;height:20px}
+/* 카드 방(톡톡, 카카오 — 10-29 유성 「둘다 복사로 먼저」, 「그 카드 대화가 열리고」) = 보내기 자리에 글자 단추 「복사하고 톡톡 열기」(크기, 색 = 보내기와 같음), 클립 없음(붙일 곳이 없다) */
+.copy{display:none;height:38px;border-radius:19px;border:0;background:var(--green700);color:#fff;font:inherit;font-size:13.5px;font-weight:700;padding:0 14px;align-items:center;justify-content:center;cursor:pointer;flex:none;white-space:nowrap;transition:transform .1s,background .2s}
+.copy:disabled{background:var(--p-disabled);cursor:default}
+.copy:not(:disabled):active{transform:scale(.95);background:var(--green800)}
+.room.ext .copy{display:flex}
+.room.ext .send,.room.ext .taw .clip{display:none}
+body.fileon .room.ext .ta{padding-right:12px}
+body.faqon .room.ext .ta{padding-right:40px}
+body.faqon.fileon .room.ext .taw .faqb{right:3px}
 body.viewer .rh .rel{display:none}
 /* 한유성(관리자 보기) = 답장은 행정처럼, 다만 열기만 해선 읽음이 안 남는다(유성 10-10 「보기 전용이 아니야. 읽음이 찍히지 않게 하는 거지」) — 그 한 줄만 */
 .vnote{font-size:var(--fs-caption);color:var(--g600);text-align:center;padding:6px 12px 2px;display:none;flex:none}
@@ -486,12 +501,12 @@ body.faqon.fileon .ta{padding-right:74px}
 
   <div class="room" id="room">
     <div class="rh"><button class="x" id="rBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-      <div style="min-width:0"><div class="nm"><span id="rNm">홈페이지 문의</span><span class="use" id="rUse"></span></div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
-      <span class="own" id="rOwn"></span><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
+      <div style="min-width:0"><div class="nm"><span id="rNm">홈페이지 문의</span><span class="tag" id="rTag"></span><span class="use" id="rUse"></span></div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
+      <span class="own" id="rOwn"></span><button class="cchip ext" id="rExt">톡톡 열기</button><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
     <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
-    <div class="comp"><div class="edbar" id="rEd"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><b>답장 고치기</b><span id="rEdT"></span><button type="button" id="rEdX">취소</button></div><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="faqb" id="rFaq" title="자주 쓰는 답변" aria-label="자주 쓰는 답변" aria-expanded="false"><svg class="li" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></button><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div><div class="fql" id="rFql" role="dialog" aria-label="자주 쓰는 답변"></div></div>
+    <div class="comp"><div class="edbar" id="rEd"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><b>답장 고치기</b><span id="rEdT"></span><button type="button" id="rEdX">취소</button></div><div class="wa" id="rWa"></div><div class="atts" id="rAtts"></div><div class="line"><div class="taw"><textarea class="ta" id="rTa" rows="1" placeholder="답장 적기"></textarea><button class="faqb" id="rFaq" title="자주 쓰는 답변" aria-label="자주 쓰는 답변" aria-expanded="false"><svg class="li" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></button><button class="clip" id="rClip" title="파일 넣기 (PDF, PNG, JPG)" aria-label="파일 넣기"><svg class="li" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button></div><button class="send" id="rSend" disabled aria-label="보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button><button class="copy" id="rCopy" disabled>복사하고 톡톡 열기</button></div><div class="fql" id="rFql" role="dialog" aria-label="자주 쓰는 답변"></div></div>
     <input type="file" id="rFile" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
     <div class="drop">여기에 놓아 주세요</div>
     <div class="view" id="rView" role="dialog" aria-label="첨부 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
@@ -860,7 +875,7 @@ function verOf(r){ return r ? (r.lastAt || '') + (r.rv ? '#' + r.rv : '') + (r.e
 function prefetch(){
   if (!me || tails.busy || tails.off) return;
   var want = {}, ids = S.wait.concat(S.mine).filter(function(r){
-    if (isCard(r)) return false;   // 카드는 대화방이 없다(누르면 파트너센터)
+    // 카드도 받는다(10-29 — 카드도 누르면 받은함 안 대화방. 옛 판은 「카드는 대화방이 없다」로 뺐다)
     var c = RCACHE[r.id]; if (c && c.ver === verOf(r)) return false;
     if (tails.tried[r.id] === verOf(r)) return false;   // 받으려 했는데 없던 방(지워짐) — 같은 판이면 또 안 묻는다
     want[r.id] = verOf(r); return true;
@@ -888,14 +903,9 @@ $('list').addEventListener('click', function(e){
   if (e.target.closest('.renw')) return;   // 이름 적는 칸 안
   var it = e.target.closest('.it'); if (!it || !it.dataset.id) return;   // 뼈대 줄은 번호가 없다
   if ($('cm').classList.contains('on')) { closeCm(); return; }   // 메뉴가 떠 있을 땐 첫 누름 = 메뉴 닫기만
-  var id = it.dataset.id, inWait = !VIEWER && S.tab === 'wait', row = findRow(id);
-  if (isCard(row)) {
-    openExt(row);
-    seenLocal(row, it, true);   // 카드 누름 = 읽음(10-12 — 「그러면 저 3은 어떻게 없애려고」)
-    if (inWait) flyTo(it, id, 'mine');
-    else { it.classList.add('press'); setTimeout(function(){ it.classList.remove('press'); }, 170); }
-    return;
-  }
+  var id = it.dataset.id, inWait = !VIEWER && S.tab === 'wait';
+  // 카드(톡톡, 카카오)도 홈페이지 대화와 같은 길 = 받은함 안에 그 대화(10-29 유성 「그 카드 대화가 열리고」 — 옛 판은 누르면 파트너센터 창만 열고 빨려 들기).
+  //   파트너센터 창은 그 방 「복사하고 톡톡 열기」나 머리 「톡톡 열기」로(누를 때마다 열면 크롬 탭이 쌓인다), 읽음 = 방 열기(s_room)가 찍는다
   if (!RCACHE[id]) fetchRoom(id);   // 받아 둔 게 없으면 요청은 지금 출발 — 누른 모양 .17초를 기다리지 않는다(10-10, 실측 2.12초의 앞 0.17)
   it.classList.add('press');
   setTimeout(function(){
@@ -905,12 +915,14 @@ $('list').addEventListener('click', function(e){
   }, 170);
 });
 // 카드 열기 = 서버가 준 파트너센터 주소(https)만. 프로그램(exe) 안에선 새 창 요청을 기본 브라우저로 넘긴다(http/https만 — widget.cs NewWindowRequested)
-function openExt(r){
+function openExt(r, quiet){   // quiet = 토스트는 부른 쪽이(복사 — 「복사했어요 …」 하나만). → 열었으면 true
   var u = String(r.open || '');
-  if (!/^https:\/\/[^\s]+$/.test(u)) { toastA('여는 주소가 없어요'); return; }
+  if (!/^https:\/\/[^\s]+$/.test(u)) { toastA('여는 주소가 없어요'); return false; }
   var a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer';
   document.body.appendChild(a); a.click(); a.remove();
-  toastA((r.ch === 'kk' ? '카카오' : (r.base ? r.base + ' 톡톡' : '톡톡')) + ' 채팅을 열었어요');
+  EXT_OPEN[r.id] = 1;
+  if (!quiet) toastA((r.ch === 'kk' ? '카카오' : (r.base ? r.base + ' 톡톡' : '톡톡')) + ' 채팅을 열었어요');
+  return true;
 }
 // 빨려 들기(§4.18, 디자인 5차 flyTo 그대로) — 누른 모양 .17초 → 복제본이 가는 쪽 세그 탭으로 작아지며 들어감 → 다 들어간 뒤 옮기고 탭을 바꾼다.
 //   to = 'mine'(대기 카드 가져오기) | 'wait'(내 대화에서 돌려놓기). 남은 자리 접힘·새 목록 내려옴은 같이 넣지 않는다(유성 5차)
@@ -952,13 +964,14 @@ function claim(id){
 /* ══════════ 대화방 ══════════ */
 var T = $('thread'), ta = $('rTa'), sendB = $('rSend');
 // loaded = 이 방 말풍선을 한 번이라도 그렸나(받아 둔 것이든 서버 것이든) — 아니면 대화 칸은 뼈대
-var R = { id: '', msgs: [], more: false, hasPhone: false, live: false, owner: '', loaded: false };
+var R = { id: '', msgs: [], more: false, hasPhone: false, live: false, owner: '', loaded: false, ext: '', copied: '' };
 var PRE = {};   // 누르는 순간 출발한 방 열기 요청(id → {p, at})
 function fetchRoom(id){ PRE[id] = { p: askRead({ action:'s_room', auth: me, id: id }), at: Date.now() }; }
 // 쓰던 답장·첨부 칩을 방마다 기억(10-12 — 미리보기로 다른 방을 열면 쓰던 글이 날아갔다). 이 창 메모리만, 보내면 비워진다
 var DRAFT = {};
 function keepDraft(){
   if (!R.id) return;
+  if (R.ext && R.copied && ta.value.trim() === R.copied) { delete DRAFT[R.id]; return; }   // 카드 방에서 복사한 글 그대로 = 붙여 넣은 글이라 안 남김(다시 열면 빈 칸)
   if (ta.value.trim() || ATT.length) DRAFT[R.id] = { t: ta.value, a: ATT.slice() }; else delete DRAFT[R.id];
 }
 function openRoom(id){
@@ -966,7 +979,10 @@ function openRoom(id){
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
   seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 자기 숫자만, 10-12)
   S.cur = { id: id, ver: c && c.ver === verOf(row) ? c.ver : '' };
-  R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c };
+  // ext = 카드 방(nv 톡톡 / kk 카카오, 10-29) — 답은 그 센터 파트너센터에 붙여 넣는다(아래 「카드 방 = 복사」)
+  R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c, ext: isCard(row) ? row.ch : '', copied: '' };
+  $('room').classList.toggle('ext', !!R.ext);
+  ta.placeholder = taPh0();
   var dr = DRAFT[id]; delete DRAFT[id];
   ta.value = dr ? dr.t : ''; ATT = dr ? dr.a : []; drawAtts(); autosize(); syncSend(); closeView();   // 칩의 blob 주소는 그대로(그 방에 돌아와 보낼 수 있게)
   setPst();
@@ -1033,7 +1049,9 @@ function loadOlder(){
 function setPst(){
   if (!R.id) return;
   var row = findRow(R.id);
-  $('rNm').textContent = row && row.label ? row.label : '홈페이지 문의';   // 이름을 붙였으면 그 이름(10-11)
+  $('rNm').textContent = row && row.label ? row.label : R.ext ? ((row && row.nick) || extName() + ' 문의') : '홈페이지 문의';   // 이름을 붙였으면 그 이름(10-11), 카드 방 = 닉네임(목록 줄과 같게)
+  var tg = $('rTag'), tb = R.ext && row ? (row.base || '') : '';   // 카드 방 = 목록 줄 뱃지(서해구, 카카오)
+  tg.textContent = tb; tg.classList.toggle('on', !!tb);
   var use = $('rUse'), u = row && row.use ? '이용 중. ' + row.use : '';   // 이용 중 가정(10-12 ⑥) — 목록 줄과 같은 글자
   use.textContent = u; use.classList.toggle('on', !!u);
   // 주인: 목록이 주인을 말하면 그대로, 목록이 「주인 있음 → 없음」으로 바뀌면(돌려놓기) 비운다 — 목록이 늦어 빈칸인 동안은 방 열기가 준 주인을 유지
@@ -1041,9 +1059,10 @@ function setPst(){
   var own = $('rOwn'), showOwn = VIEWER && !!R.owner;   // 한유성 화면 = 맡은 사람 이름표(대기 대화엔 없음)
   own.textContent = showOwn ? ownerName(R.owner) : ''; own.classList.toggle('on', showOwn);
   R.live = !!S.live[R.id] || (R.live && !row);
-  var off = !R.live;
+  var off = !R.live || !!R.ext;
   $('rSt').classList.toggle('off', off);
-  $('rStT').textContent = !off ? '문의자가 채팅창을 보고 있어요' : (R.hasPhone ? '나갔어요, 답장은 문자로 가요' : '나갔어요, 번호를 안 남겼어요');
+  $('rStT').textContent = R.ext ? '답은 ' + extName() + '에서 보내요' : !off ? '문의자가 채팅창을 보고 있어요' : (R.hasPhone ? '나갔어요, 답장은 문자로 가요' : '나갔어요, 번호를 안 남겼어요');
+  $('rExt').textContent = extName() + ' 열기';
   // 돌려놓기 = 내가 맡은 방에서만(다른 사람 방은 서버도 거절 — taken)
   $('rel').style.display = (!VIEWER && R.owner === me.emp) ? '' : 'none';
 }
@@ -1228,7 +1247,7 @@ function waKid(){ var ks = (KB.card && KB.card.kids) || []; for (var i = 0; i < 
 function waLastV(){ var n = 0; R.msgs.forEach(function(m){ if (m.who === 'v' && !m.rc && m.seq < 1e9) n = Math.max(n, m.seq); }); return n; }
 function waReset(){ WA = { id: '', k: '', card: null, lastV: 0, open: false, filled: false, sent: false, sentLine: '', addOk: false, req: WA.req + 1, ph: '' }; waPh(''); waDraw(); }
 function waPh(t){   // 흐린 초안 = 입력 칸 placeholder. 비어 있는 입력 칸이면 초안 글 높이만큼 키운다(최대 100px, 넘치면 칸 페이드)
-  ta.placeholder = t || '답장 적기';
+  ta.placeholder = t || taPh0();
   if (!t || ta.value) { autosize(); return; }
   ta.value = t; ta.style.height = 'auto'; var h = Math.min(100, ta.scrollHeight + 3); ta.value = ''; ta.style.height = h + 'px'; fTa();
 }
@@ -1305,6 +1324,7 @@ ta.addEventListener('mousedown', function(e){ if (WA.card && WA.card.ans && !WA.
 /* 행정 답장의 아래 글자: 문자로 갔으면 그 말, 실패면 실패, 아니면 학부모가 그 뒤에 말했거나 지금 보고 있으면 읽음 */
 function meLabel(m, i){
   if (m.rc) return m.sms === 'sent' ? '<span class="bad">문자로는 이미 갔어요</span>' : '';   // 거둔 답장(10-12) — 문자가 이미 나간 것만 알린다(거둔 줄 알고 넘어가지 않게)
+  if (R.ext) return '';   // 카드 방 = 파트너센터에서 보낸 우리 답(톡톡 웹훅) — 학부모가 읽었는지는 모른다(10-29)
   if (m.pending) return '<span>보내는 중</span>';
   if (m.unknown) return '<span>결과를 아직 못 받았어요</span>';   // 중립 — 실패라고 단정하지 않는다(서버가 실패라고 한 것만 빨강)
   if (m.failed) return '<span class="bad">안 보내졌어요</span>';
@@ -1345,6 +1365,7 @@ function drawThread(had, keepBottom){
   var html = R.more ? '<button class="older" id="older">이전 대화 보기</button>' : '';
   var lastDay = '', prevWho = '';
   var dnr = (findRow(R.id) || {}).dn, dnSeq = dnr ? +dnr.seq : 0, dnPut = !dnr;   // 상담 완료 한 줄(10-28) — seq -1 = 방금 누른 낙관 = 맨 끝
+  var vrow = findRow(R.id) || {}, vName = R.ext ? (vrow.label || vrow.nick || extName() + ' 문의자') : '홈페이지 방문자';   // 카드 방 = 목록 줄 이름(10-29)
   R.msgs.forEach(function(m, i){
     var who = authorOf(m);
     var d = ymd(m.at); if (d !== lastDay) { html += '<div class="day">' + DAY_CAL + '<span>' + dayLabel(m.at) + '</span></div>'; lastDay = d; prevWho = ''; }
@@ -1353,7 +1374,7 @@ function drawThread(had, keepBottom){
     var lastOfRun = !next || authorOf(next) !== who || ymd(next.at) !== d || dnHere;
     var nw = had && !had[m.seq] && !m.pending ? ' new' : '';
     if (who === 'v') {
-      html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">홈페이지 방문자</div>') +
+      html += '<div class="row them' + (cont ? ' cont' : '') + nw + '"><div>' + (cont ? '' : '<div class="who">' + esc(vName) + '</div>') +
         bodyHtml(m) + '</div>' + (lastOfRun ? '<div class="meta2"><span>' + hm(m.at) + '</span></div>' : '') + '</div>';
     } else {
       var name = (!cont && who !== MY_WHO) ? '<div class="who">' + authorName(who) + '</div>' : '';
@@ -1678,14 +1699,14 @@ function saveLabel(v){
 /* ══════════ 답장 — 낙관: 말풍선 먼저, 결과는 그 아래 글자로 ══════════
    첨부(10-11)가 있으면 파일 하나씩 먼저, 글은 맨 뒤. 말풍선은 한꺼번에 먼저 보이고, 보내기는 앞 것이 끝나야 다음 것(학부모 화면에서도 같은 순서) */
 function autosize(){ ta.style.height = 'auto'; ta.style.height = Math.min(100, ta.scrollHeight + 3) + 'px'; fTa(); }
-function canSend(){ if (ED) return !!R.id && !!ta.value.trim(); return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }   // 고치는 중 = 글만
-function syncSend(){ sendB.disabled = !canSend(); }
+function canSend(){ if (R.ext) return false; if (ED) return !!R.id && !!ta.value.trim(); return !!R.id && (!!ta.value.trim() || ATT.length > 0) && !ATT.some(function(a){ return !a.ready; }); }   // 고치는 중 = 글만
+function syncSend(){ sendB.disabled = !canSend(); syncCopy(); }
 ta.addEventListener('input', function(){ syncSend(); autosize(); });
 // 폰(손가락 화면)은 엔터 = 줄바꿈, 보내기는 버튼(10-18 한유성 문의 폰 — 카톡과 같게). PC는 그대로 엔터 = 보내기
 var TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches);
 ta.addEventListener('keydown', function(e){
   if (e.key === 'Escape' && ED && !e.isComposing) { e.preventDefault(); editStop(); return; }   // 고치기 그만
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !TOUCH) { e.preventDefault(); sendB.click(); }
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !TOUCH && !R.ext) { e.preventDefault(); sendB.click(); }   // 카드 방 = 엔터는 줄바꿈(복사는 단추로만 — 치다가 엔터로 파트너센터 창이 열리지 않게)
 });
 var LSEQ = 0;   // 낙관 줄 번호가 같은 1ms에 겹치지 않게(파일 여러 개를 한 번에)
 sendB.addEventListener('click', function(){
@@ -1700,6 +1721,45 @@ sendB.addEventListener('click', function(){
   waSent(R.id);   // 대기 중 답(10-21) — 초안을 넣어 보냈으면 「보냈어요.」
   fqSent(R.id, v);   // 자주 쓰는 답변(10-23) — 넣은 답을 보냈으면 그대로 / 고쳐서 한 번
 });
+/* ══════════ 카드 방 = 복사해서 붙여 넣기(10-29 유성 Q1 a 「둘다 복사로 먼저」 + Q2 a 「그 카드 대화가 열리고」 — prototype/26_문의채팅_카드_자주쓰는답변_검토_프리뷰.html) ══════════
+   톡톡, 카카오는 받은함에서 보낼 길이 없다(카카오 = 상담톡뿐이라 막힘, 톡톡 바로 보내기 = 2단계). 입력 칸 글(자주 쓰는 답변을 넣거나 직접 친 글)을 복사 → 그 센터 파트너센터 창에 붙여 넣는다.
+   단추 = 그 방 처음엔 「복사하고 톡톡 열기」(복사 + 파트너센터 창), 이 창에서 한 번 열었으면 「복사하기」(누를 때마다 열면 크롬 탭이 쌓인다 — 다시 열기 = 머리 「톡톡 열기」).
+   〔칸〕이 남으면 보내기와 같이 막는다. 복사한 글은 칸에 남긴다(붙여 넣기를 놓쳤으면 한 번 더), 그 글 그대로 방을 나가면 안 남긴다(keepDraft) */
+var EXT_OPEN = {}, copyB = $('rCopy');   // EXT_OPEN = 이 창에서 파트너센터 창을 연 카드 방(id → 1)
+function extName(){ return R.ext === 'kk' ? '카카오' : '톡톡'; }
+function taPh0(){ return R.ext ? extName() + '에 붙여 넣을 글' : '답장 적기'; }   // 입력 칸 기본 안내 글 — 방 열기와 대기 중 답 초안 지우기(waPh) 둘 다 이걸로(10-29 시험이 잡음: waPh가 카드 방에 「답장 적기」를 되돌렸다)
+function syncCopy(){
+  if (!R.ext) return;
+  copyB.disabled = !R.id || !ta.value.trim();
+  copyB.textContent = EXT_OPEN[R.id] ? '복사하기' : '복사하고 ' + extName() + ' 열기';
+}
+// 복사 = 누른 그 자리에서 숨은 칸 + copy 명령(창을 열기 전에 — 파트너센터 창이 뜨면 이 창이 포커스를 잃어 클립보드 API가 거절하고,
+//   클립보드 API를 기다린 뒤에 창을 열면 누름으로 안 쳐서 창이 막힐 수 있다). 그게 안 되면 클립보드 API
+function copyNow(v){
+  var t = document.createElement('textarea'); t.value = v; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.left = '-9999px';
+  document.body.appendChild(t); t.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) { } t.remove(); ta.focus(); return ok;
+}
+// 붙여 넣는 글만 맨 주소 앞에 https://(카카오 채널은 think-factory.kr/contact 같은 맨 주소를 링크로 안 만든다 — docs/1 §2.1 「주소는」, 10-15 유성 실측).
+//   입력 칸 글은 그대로(쓴 그대로 보이게, 「그대로 보냄」 셈도 그 글로). 주소 찾기 = 위 URL_RE(메일 주소 안 도메인은 안 건드림)
+function extLinks(t){ return String(t).replace(URL_RE, function(all, pre, u){ return pre + (/^https?:\/\//i.test(u) ? u : 'https://' + u); }); }
+copyB.addEventListener('click', function(){
+  if (!R.ext || !R.id || !ta.value.trim()) return;
+  if (FQ_HOLE.test(ta.value)) { toastA('채울 칸이 남았어요'); fqMarkHole(); return; }   // 〔칸〕째 학부모에게 가지 않게(보내기와 같은 규칙)
+  var id = R.id, v = ta.value.trim(), out = extLinks(v), row = findRow(id), first = !EXT_OPEN[id];
+  var done = function(ok){
+    if (R.id !== id) return;
+    if (!ok) { toastA('복사하지 못했어요. 글을 골라 Ctrl+C로 복사해 주세요'); ta.focus(); ta.select(); return; }
+    R.copied = v;
+    if (first && row) openExt(row, true);
+    toastA('복사했어요. ' + extName() + ' 창에 붙여 넣어 주세요');
+    syncCopy();
+    fqSent(id, v, true);   // 넣은 자주 쓰는 답변이면 「복사함」 한 번(보냈는지는 모른다)
+  };
+  if (copyNow(out)) done(true);
+  else if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out).then(function(){ done(true); }, function(){ done(false); });
+  else done(false);
+});
+$('rExt').addEventListener('click', function(){ var row = findRow(R.id); if (R.ext && row && openExt(row)) syncCopy(); });
 function seenAll(){ var h = {}; R.msgs.forEach(function(x){ h[x.seq] = 1; }); return h; }   // 결과만 바뀐 다시 그리기 = 올라오는 모션 없음
 function msgLabel(m){ return m.text || (m.file ? (m.file.t === 'application/pdf' ? '파일 ' + m.file.n : '사진') : ''); }   // 26 _msgLabel_과 같은 말(목록 줄 글)
 function sameBody(a, b){ return (a.text || '') === (b.text || '') && !!a.file === !!b.file && (!a.file || (a.file.t === b.file.t && +a.file.s === +b.file.s)); }
@@ -1836,7 +1896,7 @@ $('rClip').addEventListener('click', function(){ var f = $('rFile'); f.value = '
 $('rFile').addEventListener('change', function(){ addFiles(this.files); this.value = ''; ta.focus(); });
 // 붙여넣기 = 그림 파일만 가로챈다. 엑셀, 워드에서 글을 복사하면 그림도 같이 실리므로 글이 있으면 글 붙여넣기 그대로
 document.addEventListener('paste', function(e){
-  if (!$('room').classList.contains('on') || !R.id || !document.body.classList.contains('fileon')) return;
+  if (!$('room').classList.contains('on') || !R.id || R.ext || !document.body.classList.contains('fileon')) return;   // 카드 방 = 첨부 없음(붙일 곳이 없다)
   var cd = e.clipboardData; if (!cd || !cd.files || !cd.files.length) return;
   if ((cd.getData('text/plain') || '').trim()) return;
   e.preventDefault(); addFiles(cd.files, true);
@@ -1845,10 +1905,10 @@ document.addEventListener('paste', function(e){
 (function(){
   var room = $('room'), depth = 0;
   function hasFiles(e){ var t = e.dataTransfer && e.dataTransfer.types; return !!t && [].indexOf.call(t, 'Files') >= 0; }
-  room.addEventListener('dragenter', function(e){ if (!hasFiles(e) || !R.id || !document.body.classList.contains('fileon')) return; e.preventDefault(); depth++; room.classList.add('dragging'); });
+  room.addEventListener('dragenter', function(e){ if (!hasFiles(e) || !R.id || R.ext || !document.body.classList.contains('fileon')) return; e.preventDefault(); depth++; room.classList.add('dragging'); });
   room.addEventListener('dragover', function(e){ if (!hasFiles(e) || !R.id) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
   room.addEventListener('dragleave', function(e){ if (!hasFiles(e)) return; if (--depth <= 0) { depth = 0; room.classList.remove('dragging'); } });
-  room.addEventListener('drop', function(e){ if (!hasFiles(e)) return; e.preventDefault(); depth = 0; room.classList.remove('dragging'); if (R.id) addFiles(e.dataTransfer.files); });
+  room.addEventListener('drop', function(e){ if (!hasFiles(e)) return; e.preventDefault(); depth = 0; room.classList.remove('dragging'); if (R.id && !R.ext) addFiles(e.dataTransfer.files); });
   ['dragover', 'drop'].forEach(function(ev){ window.addEventListener(ev, function(e){ if (hasFiles(e)) e.preventDefault(); }); });
 })();
 
@@ -2042,7 +2102,7 @@ function fqClose(){
   FQ.open = false; FQ.ed = null; FQ.q = ''; $('rFql').dataset.v = '';   // 다음에 열면 빈 찾기 칸으로
   $('rFql').classList.remove('on'); $('rFaq').classList.remove('on'); $('rFaq').setAttribute('aria-expanded', 'false');
 }
-function fqMineSaid(){ return R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; }); }
+function fqMineSaid(){ return R.ext === 'kk' || R.more || R.msgs.some(function(m){ return m.who !== 'v' && !m.rc && !m.failed; }); }   // 카카오 카드 방 = 이어지는 답처럼 인사 줄 없이(채널 자동 인사 「안녕하세요! 무엇을 도와드릴까요?」가 먼저 나감 — 10-29 말투 비교 세션이 10-27 실제 대화에서 봄)
 function fqGreet(a){ return !fqMineSaid() && !/^(안녕하세요|네[,~!\s])/.test(a) ? FQ_GREET : ''; }
 function fqPut(x){
   var t = x.g ? fqCompose(x) : fqGreet(x.a) + x.a;   // g = 10-26 끝난 뒤 갈래(인사 줄 종류, 〔칸〕) — 그 밖 답은 옛 그대로
@@ -2115,13 +2175,13 @@ function fqCompose(x){
 }
 var FQ_HOLE = /〔[^〕]*〕/;
 function fqMarkHole(){ var m = FQ_HOLE.exec(ta.value); if (m) { ta.focus(); ta.setSelectionRange(m.index, m.index + m[0].length); } }   // 남은 칸을 골라 둠 = 바로 쳐서 바꿈
-function fqSent(id, v){
+function fqSent(id, v, cp){   // cp = 카드 방에서 복사함(10-29 — 26은 「복사함」 칸에만 센다)
   var x = FQ.ins; FQ.ins = null; fqClose();   // 목록을 연 채 엔터로 보냈으면 닫기
   if (!x || x.room !== id || !v) return;
   if (x.id === 'confirm') kbCue(id, 'teach');
   if (x.id === 'leave_angry' && !VIEWER) kbCue(id, 'boss');   // ⑮-6 화가 난 보호자 답 = 대표에게 바로(대응 매뉴얼 민원 절차, 10-26)   // 13번(배정) 답을 보냄 = 띠에 「○○○ 선생님이 보호자분께 바로 연락드리도록」(유성 10-23 「행정인력에게 그 제공인력에게 연락드려야한다고 알리는 정보」)
   if (!x.id) return;
-  ask({ action:'s_faquse', auth: me, id: x.id, ed: v.trim() === x.text ? 0 : 1 }).then(function(){}, function(){});   // 세기만 — 실패해도 답장엔 영향 0
+  ask({ action:'s_faquse', auth: me, id: x.id, ed: v.trim() === x.text ? 0 : 1, cp: cp ? 1 : 0 }).then(function(){}, function(){});   // 세기만 — 실패해도 답장엔 영향 0
 }
 function fqCanSave(m){ return !!m && document.body.classList.contains('faqon') && m.who !== 'v' && !m.rc && !m.pending && !m.failed && !m.unknown && !!(m.text || '').trim(); }
 function fqPii(t){   // 이 대화에서 나온 이름, 번호가 든 글인가 — 목록은 모든 대화에 뜬다
