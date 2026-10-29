@@ -1315,17 +1315,22 @@ function meLabel(m, i){
   return (later || R.live) ? '<span class="rd">읽음</span>' : '<span>안 읽음</span>';
 }
 /* 글 속 웹 주소만 누를 수 있게(유성 10-10 「현아샘도 누군가가 링크를 보냈을 때 누를 수 있어야해」).
-   글은 전부 이스케이프하고, http/https 주소만 a로 감싼다(다른 글자는 태그가 될 길이 없다). 새 창 = PC 프로그램이 기본 브라우저로 연다(exe NewWindowRequested, http/https만).
+   글은 전부 이스케이프하고, 주소 조각만 a로 감싼다(다른 글자는 태그가 될 길이 없다). 새 창 = PC 프로그램이 기본 브라우저로 연다(exe NewWindowRequested, http/https만).
+   https:// 없는 맨 주소(think-factory.kr/contact, think-fact0ry.github.io/…, www.…)도 링크 — 보이는 글은 그대로, href만 https://를 붙인다
+   (유성 10-29 「https:// 없어도 think-factory.kr로 시작하는 주소는 전부 클릭 가능하게끔 … 깃헙 주소도 마찬가지」).
+   규칙 = kr 문의 창 js/inquiry-pane.js URL_RE와 같은 모양: 주소 글자는 ASCII만(「…/contact에서」는 조사 앞에서 끊김), 메일 주소 안 도메인은 안 건드림, 맨 주소 끝 = .kr .com .net .org .io.
    주소 끝에 붙은 문장 부호(. , ) 등)는 주소에서 뺀다 — 「여기 보세요 https://a.kr/x.」의 마침표까지 주소로 잡지 않게. */
-var URL_RE = /https?:\/\/[^\s<>"'「」『』]+/g;
+var URL_RE = /(^|[^@\w.\-\/])((?:https?:\/\/|www\.)[!#-&*-;=?-~]+|[a-z0-9][a-z0-9\-]*(?:\.[a-z0-9\-]+)*\.(?:kr|com|net|org|io)(?![a-z0-9\-])(?:\/[!#-&*-;=?-~]*)?)/gi;
 function linkHtml(text){
   var t = String(text == null ? '' : text), out = '', at = 0, m;
   URL_RE.lastIndex = 0;
   while ((m = URL_RE.exec(t))) {
-    var u = m[0].replace(/[.,!?;:)\]}>…~]+$/, ''), end = m.index + u.length, ok = false;
-    try { var p = new URL(u); ok = p.protocol === 'http:' || p.protocol === 'https:'; } catch (e) { }
-    out += esc(t.slice(at, m.index));
-    out += ok ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>' : esc(u);
+    var start = m.index + m[1].length;   // m[1] = 주소 앞 글자 한 칸(메일 @ 등을 가르는 몫) — 링크에 안 넣는다
+    var u = m[2].replace(/[.,!?;:)\]}>…~]+$/, ''), end = start + u.length, ok = false;
+    var href = /^https?:\/\//i.test(u) ? u : 'https://' + u;
+    try { var p = new URL(href); ok = p.protocol === 'http:' || p.protocol === 'https:'; } catch (e) { }
+    out += esc(t.slice(at, start));
+    out += ok ? '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>' : esc(u);
     at = end; URL_RE.lastIndex = end;
   }
   return out + esc(t.slice(at));
