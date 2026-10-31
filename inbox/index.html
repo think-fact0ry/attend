@@ -520,7 +520,7 @@ body.faqon.fileon .ta{padding-right:74px}
 /* ══════════ 설정 ══════════ */
 var INQ_GAS = 'https://script.google.com/macros/s/AKfycbwUdo5pLFvgVxu_3EjspA6U6U196Hu-RzKcC0ucVwRPGMBP3oIQT2fKMK_7fvLmeOx9Gg/exec';
 var POLL_MS = 5000;          // 창이 열려 있을 때(보는 중) — 알약(10초)보다 짧게. 창이 가려지면 멈춘다
-var LATE_MS = 2 * 60000;     // 답장 전 2분 = 「2분 넘음」(디자인 4차 확정 3분 → 10-12 유성 「3분 x, 2분으로」 — 알약 INQ_LATE_MS와 같은 값)
+var LATE_MS = 2 * 60000;     // 답장 전 2분 = 주황 「N분 기다림」 시작(10-31 — 옛 글자 「2분 넘음」, 디자인 4차 확정 3분 → 10-12 유성 「3분 x, 2분으로」 — 알약 INQ_LATE_MS와 같은 값)
 var REQ_TIMEOUT_MS = 15000;  // 모든 요청에 시한(알약 07-31 사고: 시한 없는 fetch가 폴링을 영구히 멈췄다)
 var HOME_SVG = '<svg viewBox="0 0 24 24"><path d="M4.5 10.5 12 4.5l7.5 6V19a1 1 0 0 1-1 1h-4v-5.5h-5V20h-4a1 1 0 0 1-1-1z"/></svg>';
 // 톡톡·카카오 카드(2단계) 출처 아이콘 = 디자인 5차 그대로 / 고정·메뉴 아이콘 = 고정과이름 검토 프리뷰 그대로
@@ -656,6 +656,15 @@ function ago(iso){
   if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
   var t = new Date(iso); return (t.getMonth() + 1) + '월 ' + t.getDate() + '일';
 }
+// 「N분 기다림」(10-31 유성 「'2분 넘음' … 답변을 하지 않았을때 1년이 지나도 주황텍스트 2분넘음이 계속 표시 … 시각적으로 좀 헷갈려」 → 「권장대로 go」,
+//   프리뷰 prototype/26_문의채팅_숫자와기다림표시_프리뷰.html) = 학부모 마지막 글 뒤 기다린 시간(서버 시각). 옛 글자 「2분 넘음」은 3분이든 3일이든 같았다.
+//   2분(LATE_MS)부터 주황 — 회색 「1분 전」 다음이 「2분 기다림」(숫자는 이어지고 낱말과 색만 바뀜). 하루부터 「N일」
+function waitText(r){
+  var d = Math.max(0, nowS() - new Date(r.lastAt).getTime());
+  if (d < 3600000) return Math.floor(d / 60000) + '분 기다림';
+  if (d < 86400000) return Math.floor(d / 3600000) + '시간 기다림';
+  return Math.floor(d / 86400000) + '일 기다림';
+}
 function hm(iso){ var t = new Date(iso), h = t.getHours(), m = t.getMinutes(); return (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m; }
 function dayLabel(iso){ var t = new Date(iso); return t.getFullYear() + '년 ' + (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + '일월화수목금토'.charAt(t.getDay()) + '요일'; }
 var DAY_CAL = '<svg class="li" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><line x1="3.5" y1="10" x2="20.5" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';   // 날짜 줄 달력(10-18 B)
@@ -705,11 +714,11 @@ function rowHtml(r){
   if (VIEWER && r.owner) tag += '<span class="tag">' + esc(ownerName(r.owner)) + '</span>';
   if (r.use) tag += '<span class="tag use">이용 중. ' + esc(r.use) + '</span>';   // 유성 a2 「'이용 중. 오감 김하린' 으로 할 것」(형제 = 「외 1」, 26이 만든 글자)
   if (S.live[r.id]) tag += '<span class="tag live">보는 중</span>';
-  // 오른쪽 칸 = 위 글자(시각 / 「답장 전」 / 「2분 넘음」 / 「답장함」) + 아래 안 읽은 수(카톡처럼, 10-12 — 0이면 없음). 카드도 같은 자리
+  // 오른쪽 칸 = 위 글자(시각 / 「답장 전」 / 「N분 기다림」(옛 2분 넘음) / 「답장함」) + 아래 안 읽은 수(카톡처럼, 10-12 — 0이면 없음). 카드도 같은 자리
   var right, ub = unreadOf(r) > 0 ? '<span class="ub">' + (unreadOf(r) > 99 ? '99+' : unreadOf(r)) + '</span>' : '';
   if (isDone(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + (ub || '<span class="ub ok" title="상담 완료">' + DONE_SVG + '</span>');   // 상담 완료(10-28) = 마지막 대화 시각 + 체크
   else if (isCard(r)) right = '<span class="el">' + esc(ago(r.lastAt)) + '</span>' + ub;   // 카드 = 마지막 알림 시각 + 안 읽은 수(답했는지는 몰라도 봤는지는 안다)
-  else if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? '2분 넘음' : (S.tab === 'mine' ? '답장 전' : esc(ago(r.lastAt)))) + '</span>' + ub;
+  else if (r.lastWho === 'v') right = '<span class="el">' + (isLate(r) ? waitText(r) : (S.tab === 'mine' ? '답장 전' : esc(ago(r.lastAt)))) + '</span>' + ub;
   else right = '<span class="el">답장함</span>' + ub;
   var l1 = S.editing === r.id
     ? '<span class="renw' + (r.label ? ' has' : '') + '"><input class="ren" maxlength="' + LABEL_MAX + '" value="' + esc(r.label || '') + '" placeholder="이름 (' + LABEL_MAX + '자까지)" aria-label="이름 붙이기">' +
@@ -2302,7 +2311,7 @@ function toastA(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'
 if (VIEWER) $('seg').querySelector('[data-t="mine"]').firstChild.nodeValue = '맡은 대화';   // 한유성은 맡지 않으니 「내 대화」가 아니다 — 행정 빈 칸 글자 「맡은 대화가 없어요」와 같은 말
 if (!me) dead('이 컴퓨터 알약에서 근태에 한 번 들어가면 문의가 보여요');
 else poll();
-// 「2분 넘음」은 시간이 지나며 바뀐다 — 서버를 안 불러도 30초마다 다시 그린다
+// 「N분 기다림」(옛 「2분 넘음」)은 시간이 지나며 바뀐다 — 서버를 안 불러도 30초마다 다시 그린다
 setInterval(function(){ if (!$('room').classList.contains('on')) render(); }, 30000);
 </script>
 </body>
