@@ -751,9 +751,9 @@ function render(){
   if (S.editing) bindRen();
 }
 // 세그 숫자 = 그 칸 줄 숫자(안 읽은 수)의 합(10-12 유성 「세그필에 3있지 그 3만큼 어디 채팅이 2인지 어디 채팅이 1인지」 — 옛: 대기 = 줄 수, 내 대화 = 답 안 한 수)
-// 한유성 화면의 홈페이지 줄 = 행정과 같은 숫자(10-31 유성 「관리자라면 채팅을 남겼을 시에만 1이 사라졌으면 … 들어가고 나와도 1이 안 사라졌으면」,
-//   26 _unreadOf_) — 열기·닫기로 지우지 않는다. 한유성이 답장하거나 행정이 열면 서버 숫자가 0. 카드 줄은 옛 그대로(누르면 내 숫자 0)
-function keepsCount(r){ return VIEWER && !!r && !isCard(r); }
+// 한유성 화면 숫자 = 행정과 같은 숫자(10-31 유성 「관리자라면 채팅을 남겼을 시에만 1이 사라졌으면 … 들어가고 나와도 1이 안 사라졌으면」 = 홈페이지 줄 v131,
+//   카드 줄 v133 「권장대로」, 26 _unreadOf_) — 열기·닫기로 지우지 않는다. 한유성이 답장하거나(홈페이지) 행정이 열거나, 톡톡 답(echo)·상담 완료면 서버 숫자가 0
+function keepsCount(r){ return VIEWER && !!r; }
 function unreadOf(r){ return r && !keepsCount(r) && S.cur && S.cur.id === r.id && $('room').classList.contains('on') ? 0 : Math.max(0, +(r && r.unread) || 0); }   // 지금 열어 둔 방 = 읽는 중(서버도 방을 다시 읽을 때 찍는다)
 function sumUnread(L){ return L.reduce(function(a, r){ return a + unreadOf(r); }, 0); }
 function counts(){
@@ -794,7 +794,7 @@ function take(r){   // 서버 목록 → 화면 상태
 }
 // 읽음 = 줄 누름(카드)·대화방 열기(10-12 카톡식) — 서버 답을 안 기다리고 숫자부터 지운다. 카드는 대화방이 없어 서버에 s_seen을 따로 알린다(홈페이지 방은 s_room이 찍음)
 function seenLocal(row, it, tell){
-  if (!row || keepsCount(row)) return;   // 한유성 홈페이지 줄 = 봐도 숫자 그대로(위 keepsCount)
+  if (!row || keepsCount(row)) return;   // 한유성 = 봐도 숫자 그대로(위 keepsCount)
   S.seen[row.id] = row.lastAt;
   if (!(+row.unread > 0)) return;
   row.unread = 0; counts();
@@ -986,7 +986,7 @@ function keepDraft(){
 function openRoom(id){
   editStop(); keepDraft();
   var row = findRow(id) || { id: id, lastAt: '' }, c = RCACHE[id];
-  seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 자기 숫자만, 10-12)
+  seenLocal(findRow(id), null, false);   // 대화방 열기 = 읽음(서버는 s_room이 찍는다 — 한유성은 숫자 그대로, 10-31)
   S.cur = { id: id, ver: c && c.ver === verOf(row) ? c.ver : '' };
   // ext = 카드 방(nv 톡톡 / kk 카카오, 10-29) — 답은 그 센터 파트너센터에 붙여 넣는다(아래 「카드 방 = 복사」)
   R = { id: id, msgs: c ? c.msgs.slice() : [], more: c ? c.more : false, hasPhone: !!row.hasPhone, live: !!S.live[id], owner: row.owner || '', loaded: !!c, ext: isCard(row) ? row.ch : '', copied: '' };
