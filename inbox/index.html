@@ -2017,13 +2017,13 @@ function fqScore(row, txt, hit, any){
   return sc;
 }
 function fqTitleOf(a){ var one = String(a || '').replace(/\s+/g, ' ').trim(), cut = one.search(/[.?!](\s|$)/); return Array.from(cut > 0 && cut < 30 ? one.slice(0, cut + 1) : one.slice(0, 24)).slice(0, FQ_TMAX).join(''); }   // 제목 없는 저장 답(10-23 첫 판) = 첫 문장
-function fqBaseRow(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, kw: b.kw, svc: b.svc, g: b.g, fit: b.fit, i: i }; }
+function fqBaseRow(b, i){ return { id: b.id, t: b.t, p: b.a.split('\n')[0], a: b.a, kw: b.kw, svc: b.svc, g: b.g, fit: b.fit, mo: b.mo, i: i }; }
 function fqMineRow(m, i){ var one = m.a.replace(/\s+/g, ' ').trim(), t = m.t || fqTitleOf(m.a); return { id: m.id, t: t, tt: m.t || '', p: m.t ? one : (one.slice(t.length).trim() || one), a: m.a, mine: 1, i: 1000 + i }; }
 function fqOrder(){   // 찾기 칸이 비었을 때 = 그 대화 학부모 글 순서 → [{id, t(제목), p(첫 줄), a(넣을 글), mine}]
   var d = FQ.data; if (!d) return [];
   var txt = fqAsked(), hit = {}, any = 0;
   Object.keys(d.svc || {}).forEach(function(c){ var kw = d.svc[c]; for (var k in kw) if (txt && txt.indexOf(fqNorm(k)) >= 0) { hit[c] = 1; any = 1; break; } });
-  var base = (d.base || []).map(function(b, i){ var x = fqBaseRow(b, i); x.sc = fqScore(b, txt, hit, any); if (x.sc > 0 && b.fit) x.sc += fqFit(b); return x; });
+  var base = (d.base || []).map(function(b, i){ var x = fqBaseRow(b, i); x.sc = fqScore(b, txt, hit, any); if (x.sc > 0 && b.fit) x.sc += fqFit(b); if (x.sc > 0) x.sc += fqMo(b); return x; });
   var on = base.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
   var off = base.filter(function(x){ return !(x.sc > 0); });
   return on.concat(off, (d.mine || []).map(fqMineRow));
@@ -2047,6 +2047,7 @@ function fqFind(q){   // 찾기 = 친 낱말 분석 → 점수 높은 순(위 �
     if (n >= 2) sc *= 1.5;
     if (sc > 0 && anySvc && typeof x.svc === 'string') sc += x.svc ? (svcHit[x.svc] ? 3 : -3) : -1;
     if (sc > 0 && x.fit) sc += fqFit(x);   // 띠 아이에 맞는 갈래를 위로(10-26, 찾기 순서와 같은 규칙)
+    if (sc > 0) sc += fqMo(x);             // 맞는 달이 아닌 갈래는 아래로(11-05, 위와 같은 규칙)
     x.sc = sc;
   });
   return all.filter(function(x){ return x.sc > 0; }).sort(function(x, y){ return y.sc - x.sc || x.i - y.i; });
@@ -2143,6 +2144,9 @@ function fqFit(x){   // 학부모 글로 맞은 갈래에 더할 점수 — 맞�
   var y = +k.y || 1, m = +k.m || 0;
   if ((f.ymin && y < f.ymin) || (f.ymax && y > f.ymax) || (f.mmin && m < f.mmin) || (f.mmax && m > f.mmax) || (f.ac != null && (k.ac ? 1 : 0) !== f.ac)) return -2;
   return 4;
+}
+function fqMo(x){   // 정본 mo = 이 갈래가 맞는 달력 달(이 PC 시계). 그 밖의 달 −2 = 보통판과 연말판이 달에 따라 자리를 바꿈(11-05 — 23번 카드, 24번 「(12월)」 「(11~12월)」)
+  return x.mo && x.mo.length && x.mo.indexOf(new Date().getMonth() + 1) < 0 ? -2 : 0;
 }
 function fqYmd(s){ var m = String(s || '').match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/); return m ? [+m[1], +m[2], m[3] ? +m[3] : 0] : null; }
 function fqMd(y, m, d){ return (y !== new Date().getFullYear() ? y + '년 ' : '') + m + '월 ' + d + '일'; }
