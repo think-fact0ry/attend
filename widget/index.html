@@ -278,7 +278,7 @@ var act = null, actAt = 0;
      그래서 08-15에 배포한 알약 수정이 **그 PC에서 한 번도 실행되지 않은 채** "아직도 안 고쳐졌다"가 됐다.
      ⇒ 날짜가 바뀌면 알약이 스스로 다시 읽는다. 자정=세션 종료 규칙과 이미 같은 결이라 잃는 것도 없다
        (act가 없을 때만 = 아무도 쓰는 중이 아닐 때만). 호스트는 `ready`에 auth·앱상태를 다시 밀어준다. */
-var PILL_VER = 'v136';                     // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
+var PILL_VER = 'v137';                     // 로그에 찍는다 — "지금 도는 알약이 몇 판인가"를 추측하지 않으려고
 function ymdLocal(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 var BOOT_DAY = ymdLocal();
 var ACT_IDLE_MS = 60 * 60 * 1000;
@@ -587,6 +587,7 @@ function verify(){
       var ak = askAct; askAct = null;
       if (ak && askPending()) {
         if (ak === 'out') { punch('out'); return; }
+        if (ak === 'leave') { sendLeave(); return; }
         $('okName').textContent = (act.name ? act.name + '님 안녕하세요' : '안녕하세요');
         setStep('ok');
         setTimeout(function(){ if (open && step === 'ok') setStep(askPending() ? 'cells' : 'act'); }, 500);
@@ -863,16 +864,23 @@ function punchFailed(prev, msg){
 
 /* ══════════ 늦은 퇴근 물음(C안) — 위 설정 절 주석이 정본 ══════════ */
 // 지금 물을 때인가 = 물을 날(서버 ask) + 출근 중 + 아직 안 고름 + 소정을 채움(알약 자기 시계 — 서버 workedMin과 같은 셈)
-function askPending(){
-  if (!snap || !snap.ask || !snap.open || snap.more || snap.external || snap.exempt) return false;
-  if (!(snap.planMin > 0) || serverSecNow() >= 24 * 3600) return false;
-  return workedMinNow() >= snap.planMin;
+// 11-05 반차 날(유성 「권장대로」): 남은 소정(소정 − 반차)을 채우면 먼저 'leave' 물음(누르면 더 일한 만큼 반차를 돌려받음 — 일 고르기 없음),
+//   소정(4시간)을 채우면 늘 쓰던 'over' 물음(연장, 3칸). 앱 outAskStage와 같은 판정.
+function askStage(){
+  if (!snap || !snap.ask || !snap.open || snap.more || snap.external || snap.exempt) return '';
+  if (!(snap.planMin > 0) || serverSecNow() >= 24 * 3600) return '';
+  var w = workedMinNow(), lv = snap.leaveMin || 0;
+  if (lv >= snap.planMin) return '';   // 하루 연차 날 = 묻지 않는다(출근한 분은 월마감 머문 시간으로 — 11-05 리뷰)
+  if (lv > 0 && lv < snap.planMin && !snap.workLeave && w >= snap.planMin - lv && w < snap.planMin) return 'leave';
+  return w >= snap.planMin ? 'over' : '';
 }
+function askPending(){ return !!askStage(); }
+function askGoal(){ return askStage() === 'leave' ? snap.planMin - (snap.leaveMin || 0) : snap.planMin; }   // 물음 글자의 「N시간을 채웠어요」
 function p2(n){ return (n < 10 ? '0' : '') + n; }
 // 소정을 채운 시각 = 지금 − 넘긴 분(재출근으로 구간이 여럿이어도 맞다). 화면 꼴 = ampm(앱과 같은 「오후 3:03」)
-function askFillHm(){ var m = serverMinNow() - Math.max(0, workedMinNow() - snap.planMin); return ampm(p2(Math.floor(m / 60) % 24) + ':' + p2(m % 60)); }
+function askFillHm(){ var m = serverMinNow() - Math.max(0, workedMinNow() - askGoal()); return ampm(p2(Math.floor(m / 60) % 24) + ':' + p2(m % 60)); }
 // 저절로 커지는 건 출근 구간마다 한 번(접어 두면 다시 안 커진다 — 알약을 누르면 그때 물음). 다시 읽기·날짜 넘김에도 이 표시로 안 겹친다
-function askKey(){ return (snap && snap.today || BOOT_DAY) + '|' + (snap && snap.open || ''); }
+function askKey(){ return (snap && snap.today || BOOT_DAY) + '|' + (snap && snap.open || '') + (askStage() === 'leave' ? '|leave' : ''); }   // 물음마다 한 번 — 반차 물음만 꼬리를 붙인다(4시간 물음 표시는 옛 꼴 그대로 = 이미 저장된 표시와 맞음, 11-05)
 function askPopped(){ try { return localStorage.getItem('att_askpop') === askKey(); } catch (e) { return false; } }
 function askPop(){
   try { localStorage.setItem('att_askpop', askKey()); } catch (e) { }
@@ -895,9 +903,10 @@ function askGo(kind){
   $('aErr').textContent = '';
   if (actAlive() && !outPending) {
     actAt = Date.now(); seenNow();
-    if (kind === 'out') punch('out'); else setStep('cells');
+    if (kind === 'out') punch('out'); else if (askStage() === 'leave') sendLeave(); else setStep('cells');
     return;
   }
+  if (kind === 'more' && askStage() === 'leave') kind = 'leave';   // 키패드를 거쳐도 반차 물음이면 일 고르기 없이(아래 verify)
   askAct = kind; pin = ''; drawDots(); setStep('pin');   // 누가 눌렀는지부터 — 비밀번호가 맞으면 verify가 이 일을 잇는다
 }
 $('aOut').addEventListener('click', function(){ askGo('out'); });
@@ -931,6 +940,36 @@ function sendMore(what){
       .catch(function(){
         if (n < 1) { setTimeout(function(){ send(n + 1); }, 2500); return; }   // 응답만 잃었을 수 있다 — 같은 번호로 한 번 더(남았으면 그대로)
         punching = false; snap.more = prev; askFailed('연결이 안 돼요');
+      });
+  })(0);
+}
+/* 반차 날 「더 일할게요」(11-05) — sendMore와 같은 규칙(낙관 갱신·완료 화면·시한·같은 요청 번호로 한 번 더). 일 고르기 없이 서버 more에 leave:true. */
+function sendLeave(){
+  if (punching || !snap) return;
+  if (!act) { askAct = 'leave'; pin = ''; drawDots(); setStep('pin'); return; }
+  punching = true; punchAt = performance.now();
+  var dev = null; try { dev = JSON.parse(localStorage.getItem('att_dev') || 'null'); } catch (e) { }
+  var body = { action:'more', leave: true, token: act.token, emp: act.emp, cid: 'w' + Date.now() + Math.random().toString(36).slice(2) };
+  if (dev && dev.id) { body.device = dev.id; body.deviceToken = dev.token; }
+  var prev = snap.workLeave;
+  snap.workLeave = true;
+  $('okName').textContent = '근무로 남겼어요';
+  setStep('ok'); render();
+  setTimeout(function(){ if (step === 'ok') setOpen(false); }, 900);
+  (function send(n){
+    ask(body)
+      .then(function(r){
+        punching = false;
+        diag('반차 날 더 일할게요 → ' + (r && r.ok ? 'ok' + (r.dup ? '(이미 있음)' : '') : ('실패: ' + ((r && (r.error || r.code)) || '빈 응답'))));
+        if (!r || !r.ok) { snap.workLeave = prev; askFailed((r && r.error) || '기록이 안 됐어요'); return; }
+        if (r.tick && r.tick.ok) {
+          snap = r.tick; snapAt = performance.now(); lastOkAt = performance.now(); dayRolled = false;
+          inqSave(r.tick.inq); render(); schedule(true);
+        } else fetchTick();
+      })
+      .catch(function(){
+        if (n < 1) { setTimeout(function(){ send(n + 1); }, 2500); return; }
+        punching = false; snap.workLeave = prev; askFailed('연결이 안 돼요');
       });
   })(0);
 }
@@ -1229,7 +1268,8 @@ function render(){
   }
   if (open && (step === 'ask' || step === 'cells') && snap && snap.planMin) {   // 늦은 퇴근 물음 글자(채운 시각은 지금 기준으로 다시 셈)
     var fillAt = askFillHm();
-    $('aLabel').textContent = fillAt + '에 ' + fmt(snap.planMin) + '을 채웠어요';
+    $('aLabel').textContent = fillAt + '에 ' + fmt(askGoal()) + '을 채웠어요';   // 반차 날 반차 물음 = 남은 소정(예: 2시간)
+    if (step === 'ask' && askPending()) { try { localStorage.setItem('att_askpop', askKey()); } catch (e) { } }   // 보여 준 물음은 열린 것으로(반차 물음을 연 채 4시간을 넘기고 접으면 곧바로 다시 커지던 것 — 11-05 리뷰)
     $('aVal').textContent = v.text;
     $('cLabel').textContent = fillAt + '부터 연장';
   }

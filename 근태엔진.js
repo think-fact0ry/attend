@@ -14,6 +14,7 @@
  *   근무일변경     val={off:'YYYY-MM-DD', on:'YYYY-MM-DD'}  (스왑 — on날짜가 off날짜의 시각을 물려받음)
  *   정정           val={target:'YYYY-MM-DD', in:'HH:MM'|null, out:'HH:MM'|null, note} (그 날 도장을 통째 대체)
  *   연장           val={what:'전화 대응'|'방문 대응'|'급한 서류'} (C안 「더 일할게요」 — ASK_FROM부터 이게 있는 날만 넘긴 시간이 연장, 2026-11-04)
+ *   휴가근무       val={} (반차 날 남은 소정을 채운 뒤 「더 일할게요」 — 더 일한 만큼 반차를 돌려준다, 연장 아님. 2026-11-05)
  *
  * ── 승인 플로우 v6 (2026-07-21, docs/4 §10) — 상태 저장 없이 전부 파생 ──
  *   신청           val={rid, kind:'연차', hours:4|2, half:'front'|'back'|''} date=휴가일
@@ -41,6 +42,9 @@
  *   - 미승인 연장만은 2026-11-01부터 따로 10분(OT_MIN — 10분 이상이면 전부, 9분까지 0). 그 전 날은 위 5분 규칙.
  *   - ASK_FROM(2026-11-16)부터는 「더 일할게요」(연장 기록)가 있는 날만 연장, 없으면 머문 시간(stayMin, 근무 아님).
  *     누른 날은 1분부터 다 센다(2026-11-05 — 10분 규칙은 안 누른 날의 머문 시간 표시에만 남는다).
+ *   - 반차 날(ASK_FROM부터): 남은 소정(소정 − 반차)을 채운 뒤 「더 일할게요」(휴가근무 또는 연장 기록)면 더 일한 만큼 반차를 돌려준다
+ *     (leaveBackMin, 반차 시간까지). 소정을 넘긴 분은 그날 연장 기록이 있을 때만 연장(위와 같음). 안 누르면 반차 그대로, 넘긴 분은 머문 시간.
+ *     하루 연차(반차 아님)는 돌려주지 않는다 — 그날 출근한 분은 머문 시간으로 월마감에 보인다(2026-11-05).
  *   적법 근거: 취업규칙에 "지각·조퇴·외출 누계를 연차에서 계산"을 두는 것은 노사 특약으로 유효(고용노동부).
  *     위법한 건 "지각 N회=결근 1일" 쪽. ⚠️이 정의는 취업규칙 문언이 있어야 적법 — 문언 트랙은 별도(백로그).
  *
@@ -220,11 +224,12 @@ var AttEngine = (function () {
     var ins = [], outs = [], leaves = [], amended = false, external = false;
     // remoteOut = 등록된 출퇴근 PC가 아닌 곳(폰)에서 남긴 퇴근. 출처 열 src === SRC_PHONE 규약(Code.js `_punch_`/`_amend_`가 심는다).
     //   21차(2026-07-28 유성): 퇴근은 어디서든 남길 수 있게 열되, 어디서 남겼는지는 캘린더·월마감에 보이게 한다.
-    var remoteOut = false, extPlace = '', more = null;
+    var remoteOut = false, extPlace = '', more = null, workLeave = null;
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if (e.date !== dateStr) continue;
       if (e.type === '연장') { if (!more) more = { what: (e.val && e.val.what) || '', at: e.at }; continue; }   // C안 「더 일할게요」 — 그날 첫 기록(두 번 눌러도 하나)
+      if (e.type === '휴가근무') { if (!workLeave) workLeave = { at: e.at }; continue; }                        // 반차 날 「더 일할게요」(11-05) — 연장이 아니라 반차를 돌려받는 기록
       if (e.type === '출근') ins.push(e.val);
       else if (e.type === '퇴근') { outs.push(e.val); if (e.src === SRC_PHONE) remoteOut = true; }
       else if (e.type === '보정퇴근') { outs.push(e.val + ':00'); amended = true; if (e.src === SRC_PHONE) remoteOut = true; }
@@ -240,6 +245,7 @@ var AttEngine = (function () {
         date: dateStr, plan: plan, segments: [], open: null, firstIn: null, lastOut: null,
         workedMin: plan.work ? plan.planMin : 0, late: false, lateMin: 0, leaves: [], leaveMin: 0,
         amended: false, missingOut: false, absent: false, deficitMin: 0, overtimeMin: 0, offdayMin: 0, stayMin: 0, more: null,
+        workLeave: null, leaveBackMin: 0,
         closed: dateStr < todayStr, external: true, externalPlace: extPlace, remoteOut: false
       };
     }
@@ -299,12 +305,22 @@ var AttEngine = (function () {
       var shortMin = Math.max(0, plan.planMin - workedMin - leaveMin);
       deficitMin = shortMin <= settings.graceMin ? 0 : shortMin;     // 소정 미달분(분) → 연차 차감 후보
     }
+    // 반차 날 돌려받기(11-05 유성 「권장대로」, ASK_FROM부터) — 남은 소정(needMin = 소정 − 반차)을 넘겨 일한 분을 반차 시간까지 돌려준다.
+    //   「더 일할게요」 기록(휴가근무, 또는 4시간 물음의 연장 — 소정을 넘겨 일했으면 반차 시간도 일한 것)이 있을 때만. 확정 시점 = 미달과 같다(settled).
+    //   하루 연차(반차 = 소정 전부)는 돌려주지 않는다 — 위 머리 주석.
+    var leaveBackMin = 0;
+    var needMin = plan.work ? plan.planMin - leaveMin : 0;
+    var isHalf = plan.work && leaveMin > 0 && leaveMin < plan.planMin;
+    if (dateStr >= ASK_FROM && isHalf && settled && !missingOut && !absent && (workLeave || more))
+      leaveBackMin = Math.min(leaveMin, Math.max(0, workedMin - needMin));
     // 미승인 연장만은 마감된 날에만 센다 — 당일 집계에 얹으면 '실시간 초과 신호'가 되어 불변(실시간 경고 0)에 닿는다.
     if (plan.work && closed && !missingOut && !absent) {
       var overMin = Math.max(0, workedMin - plan.planMin);
       if (dateStr >= ASK_FROM) {                                     // C안: 「더 일할게요」를 누른 날만 연장, 안 누른 날은 머문 시간(위 ASK_FROM)
         overtimeMin = more ? overMin : 0;                            // 누른 날 = 1분부터 다(11-05) · 소정을 채운 때부터 센다(누른 시각부터가 아니다 — 늦게 눌러도 손해 없음)
-        stayMin = (!more && overMin >= OT_MIN) ? overMin : 0;        // 안 누른 날 = 10분부터 머문 시간(근무 아님)
+        // 머문 시간 = 남은 소정을 넘긴 분 중 반차로 돌려받지도, 연장도 아닌 분(반차 없는 날은 넘긴 분 그대로) — 10분부터(근무 아님)
+        var uncounted = Math.max(0, workedMin - needMin) - leaveBackMin - overtimeMin;
+        stayMin = uncounted >= OT_MIN ? uncounted : 0;
       } else overtimeMin = dateStr >= OT_FROM
         ? (overMin >= OT_MIN ? overMin : 0)                          // 11월부터: 10분 이상이면 전부(위 OT_MIN)
         : (overMin <= settings.graceMin ? 0 : overMin);              // 그 전: 채우려다 몇 분 넘긴 건 연장 아님(같은 오차)
@@ -322,6 +338,7 @@ var AttEngine = (function () {
       late: late, lateMin: lateMin, leaves: leaves, leaveMin: leaveMin, amended: amended,
       missingOut: missingOut, absent: absent, deficitMin: deficitMin, overtimeMin: overtimeMin, offdayMin: offdayMin,
       stayMin: stayMin, more: more,   // more = 그날 「더 일할게요」 {what, at} 또는 null(마감 전에도 실린다 — 위젯·앱이 물음을 거둘 때 씀)
+      workLeave: workLeave, leaveBackMin: leaveBackMin,   // 반차 날 「더 일할게요」 {at}(마감 전에도 실림) · 돌려받은 반차 분(leaveMin은 신청한 그대로 — 게이지·물음 기준)
       closed: closed, external: false, externalPlace: '', remoteOut: remoteOut
     };
   }
@@ -408,12 +425,12 @@ var AttEngine = (function () {
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       if ((e.type === '연차' || e.type === '병가') && e.val) {
-        ded.push({ at: e.date, min: e.val.hours * 60, type: e.type, label: e.type + ' ' + e.val.hours + '시간' });
+        ded.push({ at: e.date, min: e.val.hours * 60, type: e.type, label: e.type + ' ' + e.val.hours + '시간', leave: true });
       }
       // 신청=즉시 차감(§10.3) — 반려·취소면 목록에서 빠져 파생 재계산이 곧 lot 복원
       if (e.type === '신청' && e.val && e.val.rid && reqIdx[e.val.rid] && reqActive(reqIdx[e.val.rid])) {
         var kd = e.val.hours === 2 ? '반차' : '연차';
-        ded.push({ at: e.date, min: e.val.hours * 60, type: kd, label: kd + ' ' + e.val.hours + '시간' });
+        ded.push({ at: e.date, min: e.val.hours * 60, type: kd, label: kd + ' ' + e.val.hours + '시간', leave: true });
       }
     }
     // 확정된 소정근로일의 미달분 — 이벤트가 있는 날만 훑으면 결근일을 놓치므로 계획일 전체 훑기
@@ -426,6 +443,14 @@ var AttEngine = (function () {
       if (seen[d]) continue; seen[d] = 1;
       var st = dayStatus(d, events, settings, swaps, corr, todayStr, null);
       if (st.deficitMin > 0) ded.push({ at: d, min: st.deficitMin, type: '소정 미달', label: '소정 미달 ' + fmtMin(st.deficitMin) });
+      // 반차 날 돌려받기(11-05) — 그날 휴가 차감을 돌려받은 분만큼 줄인다(값을 지우지 않고 그 줄의 분을 줄임, 라벨에 남김)
+      var back = st.leaveBackMin || 0;
+      for (var b = 0; b < ded.length && back > 0; b++) {
+        if (!ded[b].leave || ded[b].at !== d) continue;
+        var give = Math.min(ded[b].min, back);
+        ded[b].min -= give; back -= give;
+        ded[b].label += ' (' + fmtMin(give) + ' 일해서 돌려받음)';
+      }
     }
     ded.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
     return ded;
@@ -497,20 +522,22 @@ var AttEngine = (function () {
     var days = monthDates(ym), out = [], planTotal = 0, workedTotal = 0;
     var lateCount = 0, absentCount = 0, leaveCount = 0, leaveMinTotal = 0, overtimeTotal = 0, deficitTotal = 0;
     var amendCount = 0, missingOutCount = 0, remoteOutCount = 0, offdayTotal = 0, offdays = [];
-    var stayTotal = 0, stays = [], moreTotal = 0, mores = [];   // C안(ASK_FROM부터): 머문 시간 날들·「더 일할게요」 연장 날들(월마감 문자 줄의 소스)
+    var stayTotal = 0, stays = [], moreTotal = 0, mores = [], backTotal = 0, backs = [];   // backs = 반차 날 일해서 돌려받은 날들(월마감 문자 「반차 근무」 줄, 11-05)   // C안(ASK_FROM부터): 머문 시간 날들·「더 일할게요」 연장 날들(월마감 문자 줄의 소스)
     for (var i = 0; i < days.length; i++) {
       var st = dayStatus(days[i], events, settings, swaps, corr, todayStr, days[i] === todayStr ? nowHms : null);
       if (st.plan.work) planTotal += st.plan.planMin;
       workedTotal += st.workedMin;
       if (st.late) lateCount++;
       if (st.absent) absentCount++;
-      if (st.leaves.length) { leaveCount++; leaveMinTotal += st.leaveMin; }
+      var usedLeave = st.leaveMin - (st.leaveBackMin || 0);   // 쓴 휴가 = 신청 − 반차 날 일해서 돌려받은 분(11-05) — 다 돌려받은 날은 휴가 날로 안 센다
+      if (st.leaves.length && usedLeave > 0) { leaveCount++; leaveMinTotal += usedLeave; }
+      if (st.leaveBackMin) { backTotal += st.leaveBackMin; backs.push({ date: days[i], min: st.leaveBackMin }); }
       if (st.amended) amendCount++;
       if (st.missingOut) missingOutCount++;
       if (st.remoteOut) remoteOutCount++;
       overtimeTotal += st.overtimeMin; deficitTotal += st.deficitMin;
       if (st.offdayMin) { offdayTotal += st.offdayMin; offdays.push({ date: days[i], min: st.offdayMin, maybeSwap: false }); }
-      if (st.stayMin) { stayTotal += st.stayMin; stays.push({ date: days[i], min: st.stayMin }); }
+      if (st.stayMin) { stayTotal += st.stayMin; stays.push({ date: days[i], min: st.stayMin, half: st.leaveMin > 0 && st.leaveMin < st.plan.planMin }); }   // half = 반차 날(머문 시간에 반차 시간이 들어 있음 — 문자에 표시)
       if (st.more && st.overtimeMin && days[i] >= ASK_FROM) { moreTotal += st.overtimeMin; mores.push({ date: days[i], min: st.overtimeMin, what: st.more.what }); }
       // 그 날짜 신청들(상태 포함 — 캘린더 대기 점·확정 텍스트·처리 내역의 소스)
       var reqs = [];
@@ -535,7 +562,8 @@ var AttEngine = (function () {
         segs: st.segments, open: st.open, leaves: st.leaves, late: st.late, amended: st.amended,
         missingOut: st.missingOut, absent: st.absent, workedMin: st.workedMin, remoteOut: st.remoteOut,
         planStart: st.plan.start || null, planEnd: st.plan.end || null, offdayMin: st.offdayMin,
-        stayMin: st.stayMin, more: st.more, overtimeMin: st.overtimeMin
+        stayMin: st.stayMin, more: st.more, overtimeMin: st.overtimeMin,
+        workLeave: st.workLeave, leaveBackMin: st.leaveBackMin
       });
     }
     // 「바꾼 날일 수 있어요」 = 그 주(월~일)에 쉰 근무일(absent)이 있다 → 근무일 바꾸기로 정리할 후보(판단은 유성).
@@ -553,7 +581,7 @@ var AttEngine = (function () {
       lateCount: lateCount, absentCount: absentCount, leaveCount: leaveCount, leaveMin: leaveMinTotal,
       overtimeMin: overtimeTotal, deficitMin: deficitTotal, offdayMin: offdayTotal, offdays: offdays,
       // overtimeMin = 그 달 연장 합(ASK_FROM 전 날 = 미승인 연장 플래그, 그 뒤 = 「더 일할게요」 연장) · moreMin = 그중 「더 일할게요」분
-      moreMin: moreTotal, mores: mores, stayMin: stayTotal, stays: stays,
+      moreMin: moreTotal, mores: mores, stayMin: stayTotal, stays: stays, leaveBackMin: backTotal, leaveBacks: backs,
       amendCount: amendCount, missingOutCount: missingOutCount, remoteOutCount: remoteOutCount,
       perfect: perfectMonth(ym, events, settings, swaps, corr, todayStr)
     };

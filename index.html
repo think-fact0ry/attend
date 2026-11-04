@@ -1368,7 +1368,9 @@ function compose() { // 서버 _status_와 같은 모양을 로컬에서
     missing: db.exempt ? [] : E.missingDays(evs, s, today), cards: cards, rejections: rejections,
     deviceOk: db.deviceOk, pinSet: db.pinSet, anyPinSet: db.anyPinSet,
     // 늦은 퇴근 C안(11-04): ask = 오늘 「더 일할게요」를 물을 날(엔진 ASK_FROM·근무일·외부근무 아님·면제 아님 — 서버 tick ask와 같은 판정), more = 오늘 고른 일
-    ask: !!(E.askOn && E.askOn(today)) && !!st.plan.work && !st.external && !db.exempt, more: st.more || null
+    ask: !!(E.askOn && E.askOn(today)) && !!st.plan.work && !st.external && !db.exempt, more: st.more || null,
+    // 11-05 반차 날: leaveMin = 신청한 휴가 분(물음 기준 = 소정 − 이것), workLeave = 반차 물음에서 이미 「더 일할게요」를 눌렀나
+    leaveMin: st.leaveMin || 0, workLeave: st.workLeave || null
   };
 }
 function calView(ym) { // 서버 _month_와 같은 모양
@@ -1762,9 +1764,18 @@ var OUT_CELLS = [
   { v: '급한 서류', i: '<svg viewBox="0 0 24 24"><path d="M7 3.5h7l4.5 4.5v12.5H7z"/><path d="M14 3.5V8h4.5"/><path d="M10 13h5.5M10 16.5h5.5"/></svg>' }
 ];
 $('outCells').innerHTML = OUT_CELLS.map(function (c) { return '<button class="mopt" data-v="' + c.v + '"><span class="moi">' + c.i + '</span><span class="mot">' + c.v + '</span></button>'; }).join('');
-function outAskPending(r) { return !!(r && r.ask && r.open && !r.more && r.plan && r.plan.planMin && r.workedMin >= r.plan.planMin); }
-function outFillHm(r) { // 소정을 채운 시각 = 지금 − 넘긴 분(알약 askFillHm과 같은 셈)
-  var nowM = (+r.nowHms.slice(0, 2)) * 60 + (+r.nowHms.slice(3, 5)), m = nowM - Math.max(0, r.workedMin - r.plan.planMin);
+// 물을 때 = 'leave'(반차 날 남은 소정을 채움, 아직 안 누름 — 11-05) | 'over'(소정을 채움, 연장 물음) | ''. 알약 askStage와 같은 판정
+function outAskStage(r) {
+  if (!(r && r.ask && r.open && !r.more && r.plan && r.plan.planMin)) return '';
+  var lv = r.leaveMin || 0, need = r.plan.planMin - lv;
+  if (lv >= r.plan.planMin) return '';   // 하루 연차 날 = 묻지 않는다(알약과 같게 — 11-05 리뷰)
+  if (lv > 0 && lv < r.plan.planMin && !r.workLeave && r.workedMin >= need && r.workedMin < r.plan.planMin) return 'leave';
+  return r.workedMin >= r.plan.planMin ? 'over' : '';
+}
+function outAskPending(r) { return !!outAskStage(r); }
+function outFillHm(r) { // 소정을 채운 시각 = 지금 − 넘긴 분(알약 askFillHm과 같은 셈 — 반차 물음이면 남은 소정 기준)
+  var goal = outAskStage(r) === 'leave' ? r.plan.planMin - (r.leaveMin || 0) : r.plan.planMin;
+  var nowM = (+r.nowHms.slice(0, 2)) * 60 + (+r.nowHms.slice(3, 5)), m = nowM - Math.max(0, r.workedMin - goal);
   return ampm(('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2));
 }
 function outMoreReset(r) {
@@ -1775,6 +1786,7 @@ function outMoreReset(r) {
 }
 $('outMore').addEventListener('click', function () {
   var r = state.status; if (!outAskPending(r)) { hideSheet(); return; }
+  if (outAskStage(r) === 'leave') { doLeave(); return; }   // 반차 날 = 일 고르기 없이 바로(연장이 아니라 반차를 돌려받는 기록 — 11-05)
   $('outTitle').textContent = '무슨 일을 더 하세요?';
   $('outInfo').textContent = outFillHm(r) + '부터 연장으로 세요';
   ['outTw', 'outWarn', 'outNow', 'outGo', 'outMore'].forEach(function (id) { $(id).style.display = 'none'; });
@@ -1806,6 +1818,34 @@ function doMore(what) {
     if (!r.ok) { rollback(r.error || '기록이 안 됐어요'); return; }
     if (state.db !== db) { refreshMain(); return; }        // 대기 중 sync가 원장을 갈아끼웠으면 서버본을 따른다
     var c3 = compose(); state.status = c3; pollKey = pollSnap(c3);   // 비행 중 잠가 둔 출퇴근 버튼을 다시 연다(doPunch 성공 길과 같게)
+    if (c3 && $('s-main').classList.contains('on')) renderMain(c3);
+  }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요', true); });
+}
+/* 반차 날 「더 일할게요」(11-05 유성 「권장대로」) — doMore와 같은 낙관 규칙. 퇴근하면 엔진이 더 일한 만큼 반차를 돌려준다(반차 시간까지). */
+function doLeave() {
+  var db = state.db;
+  if (!db || state.punching) return;
+  var myCid = cid();
+  var optimistic = { at: new Date().toISOString(), emp: store.emp, date: db.today, type: '휴가근무', val: {}, src: db.deviceOk ? 'opt' : 'phone', flag: '', cid: myCid };
+  db.events.push(optimistic);
+  state.punching = true;
+  var c = compose(); state.status = c; renderMain(c); pollKey = pollSnap(c);
+  hideSheet();
+  showDone('근무로 남겼어요', '더 일하신 만큼 반차를 돌려 드려요');
+  function rollback(msg, resync) {
+    state.punching = false;
+    var i = db.events.indexOf(optimistic);
+    if (i >= 0) db.events.splice(i, 1);
+    $('doneOv').classList.remove('on');
+    if (resync || state.db !== db) refreshMain();
+    else { var c2 = compose(); state.status = c2; renderMain(c2); }
+    toast(msg);
+  }
+  api('more', { leave: true, cid: myCid }, true).then(function (r) {
+    state.punching = false;
+    if (!r.ok) { rollback(r.error || '기록이 안 됐어요'); return; }
+    if (state.db !== db) { refreshMain(); return; }
+    var c3 = compose(); state.status = c3; pollKey = pollSnap(c3);
     if (c3 && $('s-main').classList.contains('on')) renderMain(c3);
   }).catch(function () { rollback('기록이 안 됐어요. 다시 눌러 주세요', true); });
 }
@@ -2673,7 +2713,7 @@ function loadMy() {
     $('stLate').textContent = r.month.lateCount + '회';
     $('stLate').className = 'sv' + (r.month.lateCount ? ' warn' : '');
     $('stAbs').textContent = r.month.absentCount + '회';
-    $('stLeave').textContent = r.month.leaveCount + '회 - ' + Math.round(r.month.leaveMin / 60) + '시간';
+    $('stLeave').textContent = r.month.leaveCount + '회 - ' + (r.month.leaveMin ? fmtMin(r.month.leaveMin) : '0시간');   // 분까지(반차 날 일해서 돌려받으면 1시간 30분처럼 — 11-05 리뷰, 옛 반올림은 2시간으로 보였다)
     var wrap = $('myCards'); wrap.innerHTML = '';
     r.month.days.slice().reverse().forEach(function (d) {
       if (!d.segs.length && !d.open && !d.leaves.length && !d.absent) return;
