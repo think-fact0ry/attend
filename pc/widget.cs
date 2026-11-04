@@ -47,7 +47,7 @@ static class Cfg {
     // ── 판 번호·자동 업데이트(2026-10-09, 문의 알리미 1-c — 유성 「업데이트해도 재설치 안 하게」) ──
     //   ⚠️이 파일을 고치면 **SHELL_VER를 올리고** `node tools/위젯배포/publish.js`로 올린다(안 올리면 스크립트가 거부).
     //   각 PC가 6시간마다 attend/pc/ver.txt를 보고, 서명이 맞는 더 높은 판이면 받아서 **그 PC에서 만들고** 쉬는 틈에 바꿔 끼운다.
-    public const int SHELL_VER = 5;   // 5 = 자동 실행 바로가기 --startup(부팅 때 앱 창이 혼자 뜨던 것) 10-24 / 4 = 문의 알림(소리·두 번 흔들림·미리보기)·앱 열기(닫지 않음)·이름 「생각공작소」 10-10 / 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
+    public const int SHELL_VER = 6;   // 6 = 늦은 퇴근 물음이 알약 자리에서 커짐(state grow, caps grow) 11-04 / 5 = 자동 실행 바로가기 --startup(부팅 때 앱 창이 혼자 뜨던 것) 10-24 / 4 = 문의 알림(소리·두 번 흔들림·미리보기)·앱 열기(닫지 않음)·이름 「생각공작소」 10-10 / 3 = 알약 배율(125%·150% PC에서 잘림) 10-09
     public const string PC_URL = "https://think-fact0ry.github.io/attend/pc/";
     // 서명 확인용 **공개** 열쇠(RSA 3072). 비밀 열쇠는 레포 밖(유성 노트북 %USERPROFILE%\.saenggak\pc-sign.pem) —
     //   깃허브 계정만 털려서는 가짜 판을 못 만든다. 열쇠를 바꾸면 이 줄이 바뀌므로 전 PC 재설치 1회.
@@ -614,6 +614,15 @@ static class Alert {
         peek = wantPeek && visible && !expanded && !appFront;
         shake = wantShake && visible && !expanded;
     }
+    // 6판(11-04 늦은 퇴근 C안): 4시간 물음이 알약 자리에서 커진다(폰 앱이 열리듯 — 유성 「핸드폰 어플을 눌렀을 때 켜지는 모션처럼」).
+    //   아래·왼쪽 모서리를 붙잡고 창이 자란다(평소 펼침과 같은 기준점). 곡선 = 프리뷰 .wpanel.g1 실값 cubic-bezier(.2,.9,.25,1) .44s.
+    public const int GROW_MS = 440;
+    public static Rectangle GrowRect(Size from, Size to, int left, int bottom, double p) {
+        double e = p <= 0 ? 0 : (p >= 1 ? 1 : Bezier(.2, .9, .25, 1, p));
+        int w = Math.Max(1, (int)Math.Round(from.Width + (to.Width - from.Width) * e));
+        int h = Math.Max(1, (int)Math.Round(from.Height + (to.Height - from.Height) * e));
+        return new Rectangle(left, bottom - h, w, h);
+    }
     // 미리보기 카드 = CSS 260×62(5차 .peek 폭 + 두 줄). 알약 왼쪽 위에 GAP만큼 띄워 붙인다.
     //   위에 자리가 없으면(작업 표시줄이 위에 있거나 알약을 위로 옮김) 아래로, 오른쪽이 넘치면 안으로 민다.
     public const int PEEK_W = 260, PEEK_H = 62;
@@ -688,6 +697,16 @@ static class Logic {
         Ok("피어나기 곡선: 살짝 넘쳤다 돌아온다(1.0 초과, 1.2 미만)", over > 1.0 && over < 1.2);
         bool mono = true; double prev = -1; for (int i = 0; i <= 200; i++) { double v = Alert.Bezier(.25, .1, .25, 1, i / 200.0); if (v < prev - 1e-9) mono = false; prev = v; }
         Ok("사라짐 곡선(ease): 되돌아가지 않는다", mono);
+        // 6판 커지기(늦은 퇴근 물음) — 아래·왼쪽 모서리 그대로, 처음 = 알약, 끝 = 패널, 사이는 줄지 않고 자란다
+        Size gf = new Size(110, 34), gt = new Size(236, 178);
+        Rectangle g0 = Alert.GrowRect(gf, gt, 1500, 1000, 0), g1 = Alert.GrowRect(gf, gt, 1500, 1000, 1), gh = Alert.GrowRect(gf, gt, 1500, 1000, .5);
+        Ok("커지기: 처음 = 알약 크기", g0.Width == 110 && g0.Height == 34);
+        Ok("커지기: 끝 = 패널 크기", g1.Width == 236 && g1.Height == 178);
+        Ok("커지기: 아래·왼쪽 모서리는 그대로", g0.Left == 1500 && g1.Left == 1500 && gh.Left == 1500 && g0.Bottom == 1000 && g1.Bottom == 1000 && gh.Bottom == 1000);
+        bool grows = true; int pw = 0, ph = 0;
+        for (int i = 0; i <= 20; i++) { Rectangle gi = Alert.GrowRect(gf, gt, 0, 1000, i / 20.0); if (gi.Width < pw || gi.Height < ph) grows = false; pw = gi.Width; ph = gi.Height; }
+        Ok("커지기: 사이에 줄었다 커지지 않는다", grows);
+        Ok("커지기: 절반 시점엔 이미 대부분(빠르게 열리고 천천히 멈춤)", gh.Height > 34 + (178 - 34) * .7);
         byte[] w = Chime.Wav();
         Ok("소리: RIFF/WAVE 머리", Encoding.ASCII.GetString(w, 0, 4) == "RIFF" && Encoding.ASCII.GetString(w, 8, 4) == "WAVE");
         Ok("소리: 44.1kHz 모노 16비트 1.0초", BitConverter.ToInt32(w, 24) == 44100 && BitConverter.ToInt16(w, 22) == 1 && BitConverter.ToInt16(w, 34) == 16 && BitConverter.ToInt32(w, 40) == 44100 * 2);
@@ -826,7 +845,7 @@ class Pill : Form {
         BackColor = Color.White;
         ClientSize = PhysSize(pillW, Cfg.PILL_H);
         // 모니터를 옮겨 배율이 바뀌면(PerMonitorV2) 같은 CSS 크기를 새 배율로 다시 잰다 — 페이지는 크기가 안 바뀌어서 다시 안 보낸다
-        DpiChanged += delegate { BeginInvoke((MethodInvoker)delegate { StopShake(); int b = Location.Y + Height; ClientSize = PhysSize(pillW, cssH); Location = new Point(Location.X, b - Height); placed = false; }); };
+        DpiChanged += delegate { BeginInvoke((MethodInvoker)delegate { StopShake(); EndGrow(); int b = Location.Y + Height; ClientSize = PhysSize(pillW, cssH); Location = new Point(Location.X, b - Height); placed = false; }); };
 
         web = new WebView2();
         web.Dock = DockStyle.Fill;
@@ -1065,6 +1084,7 @@ class Pill : Form {
         if (type == "locked") { if (app != null && !app.IsDisposed) app.FadeClose(); return; }
         if (type == "state") {
             if (shaking) StopShake();   // 흔들림 자리(±5px)에서 재면 제자리가 밀린다 — 먼저 제자리로
+            if (growing) EndGrow();     // 커지는 도중 새 크기가 오면 끝 크기로 먼저 맞추고 이어서 잰다(6판)
             int w = J.Int(j, "w", pillW);
             int h = J.Int(j, "h", Cfg.PILL_H);
             bool nOn = J.Bool(j, "on"), nWarn = J.Bool(j, "warn"), nDim = J.Bool(j, "dim");
@@ -1076,10 +1096,16 @@ class Pill : Form {
             // 패널이 열리면 **아래를 고정한 채 위로 자란다** — 작업표시줄 위에 붙어 있으므로
             //   위로 자라야 알약이 제자리에 있는 것처럼 보인다.
             int bottom = Location.Y + Height;
+            // 6판: 페이지가 grow를 실어 보내면(4시간 물음) 알약 자리에서 0.44초에 걸쳐 커진다 — 접힌 알약에서 펼칠 때만
+            bool grow = J.Bool(j, "grow") && !expanded && newH > Cfg.PILL_H && Visible && !dragging;
+            Size from = ClientSize;
             expanded = newH > Cfg.PILL_H;
             cssH = newH;
-            ClientSize = PhysSize(pillW, newH);
-            Location = new Point(Location.X, bottom - Height);
+            if (grow) StartGrow(from, PhysSize(pillW, newH), Location.X, bottom);
+            else {
+                ClientSize = PhysSize(pillW, newH);
+                Location = new Point(Location.X, bottom - Height);
+            }
             if (borderChanged) ApplyBorder();
             // 펼친 동안·끄는 동안엔 자동 배치가 끼어들지 않는다.
             //   ⚠️`dragging` 가드가 없던 구판은, 3초 꾹 눌러 옮기는 **도중에 분이 바뀌면**(글자 폭 변화 → state 전송)
@@ -1202,7 +1228,7 @@ class Pill : Form {
     }
     // 알약이 뜰 때마다 「이 exe가 할 줄 아는 것」을 알린다 — boot는 프로세스당 한 번이라 다시 읽기·날짜 넘김 뒤의 페이지는 판을 모른다.
     //   페이지는 이걸 받은 뒤에만 notify·show-app을 쓴다(3판 exe에 보내면 show-app은 무시, open 토글이 창을 닫는 사고).
-    void SendCaps() { Send("{\"type\":\"caps\",\"v\":" + Cfg.SHELL_VER + ",\"notify\":true,\"showApp\":true}"); }
+    void SendCaps() { Send("{\"type\":\"caps\",\"v\":" + Cfg.SHELL_VER + ",\"notify\":true,\"showApp\":true,\"grow\":true}"); }   // grow = 6판(state에 grow를 실으면 알약 자리에서 커짐)
 
     // ── 두 번 흔들림(원칙 §4.18) — **창 자체를** 움직인다(알약 창은 투명 영역이 없어 웹 CSS로는 못 함, 10-09 실측) ──
     //   흔드는 동안엔 1초 자리 맞추기(OnTick)·크기 변경(state)·끌기가 끼어들지 않고, 끝나면 정확히 처음 자리로 돌아온다.
@@ -1232,6 +1258,46 @@ class Pill : Form {
         if (Cfg.Test) Log("흔들림 끝 — 제자리 " + Location.X + "," + Location.Y);
     }
     float Dpi() { uint d = 0; try { if (IsHandleCreated) d = Native.GetDpiForWindow(Handle); } catch (Exception) { } return d > 0 ? d / 96f : 1f; }
+
+    // ── 6판 커지기(11-04 늦은 퇴근 C안) — 미리보기 창(PeekWin.Apply)과 같은 방식 ──
+    //   페이지는 **다 큰 크기로** 그려 두고(web 크기 고정 + 아래 왼쪽에 붙임) 창만 키운다 → 매 프레임 페이지를 다시 배치하지 않아 부드럽다.
+    //   끝나면 web을 다시 창에 맞춘다(Dock Fill). 커지는 동안은 펼친 상태(expanded)라 자리 맞추기·흔들림·업데이트 바꿔 끼우기가 안 끼어든다.
+    bool growing = false;
+    System.Windows.Forms.Timer growT;
+    Stopwatch growSw;
+    Size growFrom, growTo;
+    int growLeft, growBottom;
+    void StartGrow(Size from, Size to, int left, int bottom) {
+        if (growT == null) {
+            growT = new System.Windows.Forms.Timer();
+            growT.Interval = 15;
+            growT.Tick += delegate {
+                double p = growSw.ElapsedMilliseconds / (double)Alert.GROW_MS;
+                if (p >= 1 || dragging) { EndGrow(); return; }
+                GrowApply(p);
+            };
+        }
+        growing = true; growFrom = from; growTo = to; growLeft = left; growBottom = bottom;
+        web.Dock = DockStyle.None;
+        web.Size = to;
+        growSw = Stopwatch.StartNew();
+        GrowApply(0);
+        growT.Start();
+        Log("물음 커지기 " + from.Width + "×" + from.Height + " → " + to.Width + "×" + to.Height);
+    }
+    void GrowApply(double p) {
+        Rectangle r = Alert.GrowRect(growFrom, growTo, growLeft, growBottom, p);
+        SetBounds(r.X, r.Y, r.Width, r.Height);
+        web.Location = new Point(0, r.Height - growTo.Height);   // 아래에 붙인다(위가 먼저 잘려 보이고 자라며 드러남)
+    }
+    void EndGrow() {
+        if (growT != null) growT.Stop();
+        if (!growing) return;
+        growing = false;
+        SetBounds(growLeft, growBottom - growTo.Height, growTo.Width, growTo.Height);
+        web.Location = Point.Empty;
+        web.Dock = DockStyle.Fill;
+    }
 
     // ── 미리보기 창 — 한 번 만들어 두고 다시 쓴다(WebView2 준비에 1초 안팎이라 첫 문의에서 늦지 않게, 알약이 뜬 8초 뒤 미리 데운다) ──
     PeekWin peek;
