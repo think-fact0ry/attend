@@ -270,6 +270,12 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 /* 닫힌 시트 5개(퇴근 확인, PC 확인, 미기록일, 반려, 날짜)는 화면 바로 아래 1.6~28px에 숨어 있어 위로 30px 번지는 그림자가 맨 아래에 띠로 비친다(10-10 실측).
    문의 채팅에선 그 띠가 답장 입력 줄에 얹혀 보여서 이 화면에서만 끈다(유성 10-10 「그 문의 채팅방으로 들어왔을때만 안 그렇게」). 열린 시트(.on)는 그대로 */
 #app:has(#s-inq.on) .vsheet:not(.on),#app:has(#s-inq.on) .csheet:not(.on){box-shadow:none}
+/* ── 예약 화면(11-07 38차 — 07 종료 안내 「네, 여쭤봐 주세요」 다음 흐름) = 문의 채팅과 같은 틀: 예약 페이지(booking/)를 이 화면 안 창으로(파일은 따로 = 3-G).
+     머리(← 제목 − ≡)도 예약 페이지가 그린다. 메뉴 숫자 = 진행 중 카드 수, 초록(급한 대화가 아니라 조용히 — 36차 정한 것 10) ── */
+#bkFrame{display:block;flex:1;width:100%;min-height:0;border:0;background:#fff}
+#s-bk.on{height:100vh;height:100dvh}
+#app:has(#s-bk.on) .vsheet:not(.on),#app:has(#s-bk.on) .csheet:not(.on){box-shadow:none}
+.mi .nb.calm{background:var(--green700)}
 
 /* ── 신청 ── */
 .seg3{display:flex;gap:8px;margin-bottom:18px}
@@ -866,6 +872,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 
   <!-- 문의 채팅(10-10) — 안 창(iframe #inqFrame)은 처음 열 때(또는 출근 중 미리) JS가 넣고, 잠기면 뺀다 -->
   <section class="scr" id="s-inq"></section>
+  <!-- 예약(11-07) — 안 창(iframe #bkFrame)은 문의 채팅과 같은 때(보일 자격이 생기면 미리) JS가 넣고, 잠기면 뺀다 -->
+  <section class="scr" id="s-bk"></section>
 
   <!-- 오버레이들 -->
   <div class="dim" id="dim"></div>
@@ -877,6 +885,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <!-- 문의 채팅(10-10) = PC 프로그램 안 + 한유성(보기 서명)이거나 행정 출근 중일 때만(알약 문의 칸과 같은 규칙). 폰은 한유성 계정만(10-18 — 열쇠 전엔 등록 화면). 보이기는 inqSync -->
     <div class="div" id="inqDiv" style="display:none"></div>
     <button class="mi" data-go="inq" id="miInq" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span class="lab">문의 채팅<span class="nb" id="miInqN"></span></span></span></button>
+    <!-- 예약(11-07) = 문의 채팅과 같은 자격 + 06이 예약 서명을 받을 때만(06 속성 INQ_KEY 전엔 꺼짐 = 칸 없음). 보이기는 bkSync -->
+    <button class="mi" data-go="bk" id="miBk" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15l2 2 4-4"/></svg><span class="lab">예약<span class="nb calm" id="miBkN"></span></span></span></button>
     <div class="div"></div>
     <button class="mi" data-go="me"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>내 정보</span></button>
   </div>
@@ -1153,6 +1163,7 @@ function inqSync() {
     $('miInqN').textContent = n > 99 ? '99+' : String(n); $('miInqN').classList.toggle('show', n > 0);
     document.querySelectorAll('.mdot').forEach(function (d) { d.classList.toggle('on', n > 0); });
     inqPost({ type: 'dot', on: n > 0 });   // 문의 채팅 머리의 메뉴 아이콘 점도(10-10 메뉴 넣기)
+    bkPost({ type: 'dot', on: n > 0 });    // 예약 머리의 메뉴 아이콘도 같은 점(문의 숫자 — 예약 숫자는 점을 안 켠다)
   }
   inqRegShow(reg);
   if (ok === true) {
@@ -1167,6 +1178,7 @@ function inqSync() {
     if ($('s-inq').classList.contains('on')) { go('main'); refreshMain(); }   // 퇴근 등으로 자격이 사라졌다
     inqUnload();
   }
+  bkSync();   // 예약 = 같은 자격(1초마다, 저장소 신호마다 같이 판정)
 }
 function inqFrameEnsure() {
   if (inqUi.frame) return;
@@ -1197,6 +1209,56 @@ function inqPost(o) { o.tf = 'inq'; try { if (inqUi.frame && inqUi.frame.content
 function inqVis(on) {
   if (on && !$('inqReg')) inqFrameEnsure();   // 폰 등록 화면이 떠 있으면 받은함을 안 띄운다(서명이 없어 「다시 로그인」만 보인다)
   inqPost({ type: 'vis', on: !!on });
+}
+/* ══ 예약(11-07 38차 — 07 종료 안내 「네, 여쭤봐 주세요」 다음 흐름. 정본 = 생각공작소 prototype/07_종료안내_여쭤봐주세요다음_흐름대안_프리뷰.html 36~38차, 서버 = 06 예약.js) ══
+   · 자격 = 문의 채팅과 같은 규칙(inqAllowed — PC 프로그램 안 + 이 계정 서명 + 행정 출근 중 / 한유성 보기 서명 / 폰은 한유성 열쇠) = 36차 정한 것 5.
+   · 06이 예약 서명을 받아야(06 스크립트 속성 INQ_KEY) 메뉴 칸이 보인다. 자격이 생기면 안 창을 미리 띄우고(문의 받은함 뒤 3초),
+     그 창이 목록을 받으면 count, 서명을 거절당하면 off를 보낸다. 꺼진 동안 안 창은 남아 10분마다 다시 묻는다 → 06에 키를 넣으면 저절로 칸이 생긴다.
+   · 숫자 = 진행 중 카드 수(초록, 메뉴 칸에만 — 빨간 점은 문의만. 36차 정한 것 10 「메뉴 숫자만 조용히」).
+   · 잠기면(퇴근 도장, 유휴, 자정, 로그아웃 = inqAllowed false) 안 창을 뺀다 — 보호자 이름, 번호가 잠금 뒤에 남지 않게(받은함과 같은 이유).
+   · 창 신호(← − ≡, 위 12px 이동)는 받은함처럼 이 부모를 거쳐 호스트로. */
+var bkUi = { frame: null, ready: false, preT: null, on: false, n: 0, sig: '' };
+function bkSync() {
+  if (!bkUi) return;   // 스크립트가 아직 이 줄까지 안 온 부팅 순간
+  var ok = inqAllowed();
+  if (ok === true) {
+    if (!bkUi.frame && !bkUi.preT) bkUi.preT = setTimeout(function () { bkUi.preT = null; if (inqAllowed() === true) bkFrameEnsure(); }, 3000);
+  } else if (ok === false) {
+    if ($('s-bk').classList.contains('on')) { go('main'); refreshMain(); }   // 퇴근 등으로 자격이 사라졌다
+    bkUnload();
+  }
+  var show = ok === true && bkUi.on, sig = (show ? 1 : 0) + '|' + bkUi.n;
+  if (sig !== bkUi.sig) {
+    bkUi.sig = sig;
+    $('miBk').style.display = show ? '' : 'none';
+    $('miBkN').textContent = bkUi.n > 99 ? '99+' : String(bkUi.n); $('miBkN').classList.toggle('show', show && bkUi.n > 0);
+  }
+}
+function bkFrameEnsure() {
+  if (!bkUi || bkUi.frame) return;
+  var f = document.createElement('iframe');
+  f.id = 'bkFrame'; f.title = '예약'; f.src = './booking/';
+  f.addEventListener('load', function () {
+    bkUi.ready = true;
+    bkPost({ type: 'dot', on: +(String(inqUi.sig).split('|')[1] || 0) > 0 });   // 막 뜬 창에도 지금 문의 점
+    if ($('s-bk').classList.contains('on')) bkPost({ type: 'vis', on: true });
+  });
+  bkUi.ready = false;
+  $('s-bk').appendChild(f); bkUi.frame = f;
+}
+function bkUnload() {
+  if (!bkUi) return;
+  clearTimeout(bkUi.preT); bkUi.preT = null;
+  bkUi.ready = false; bkUi.on = false; bkUi.n = 0;
+  if (!bkUi.frame) return;
+  try { bkUi.frame.remove(); } catch (e) { }
+  bkUi.frame = null;
+}
+function bkPost(o) { if (!bkUi) return; o.tf = 'bk'; try { if (bkUi.frame && bkUi.frame.contentWindow) bkUi.frame.contentWindow.postMessage(o, location.origin); } catch (e) { } }
+function bkVis(on) {
+  if (!bkUi) return;
+  if (on && inqAllowed() === true) bkFrameEnsure();
+  bkPost({ type: 'vis', on: !!on });
 }
 // 폰 등록 화면(10-18) — 「문의 채팅」 화면 안. 머리는 연차 내역과 같은 3칸(← 제목 ≡). 열쇠를 받으면 inqSync가 지우고 받은함을 띄운다
 function inqRegShow(on) {
@@ -1260,7 +1322,7 @@ if (!IS_HOST) {
 var VP_META = document.querySelector('meta[name="viewport"]'), VP_BASE = VP_META ? VP_META.getAttribute('content') : '';
 function inqViewport(name) {
   if (IS_HOST || !VP_META) return;
-  var want = name === 'inq' ? VP_BASE + ', interactive-widget=resizes-content' : VP_BASE;
+  var want = (name === 'inq' || name === 'bk') ? VP_BASE + ', interactive-widget=resizes-content' : VP_BASE;   // 예약 = 「가능해요」 시트의 시간 칸이 키패드에 안 가리게
   if (VP_META.getAttribute('content') !== want) VP_META.setAttribute('content', want);
 }
 // 알약 「문의」·미리보기 누름 = 여기로. 잠겨 있으면 비밀번호 뒤에(pending). id = 미리보기로 띄운 방(있으면 받은함이 그 방을 연다)
@@ -1312,6 +1374,17 @@ function takeInqGo() {
     else if (d.type === 'menu') openDrawer();   // 문의 채팅 머리의 ≡(10-10 유성 「우상단 메뉴바 넣기」)
     else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
     else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
+  });
+  // 예약 안 창이 보내는 것 — 받은함과 같은 창 신호 + count(목록을 받음 = 06이 켜짐)·off(서명 거절 = 꺼짐)
+  window.addEventListener('message', function (e) {
+    if (!bkUi.frame || e.source !== bkUi.frame.contentWindow || e.origin !== location.origin) return;
+    var d = e.data || {}; if (d.tf !== 'bk') return;
+    if (d.type === 'back') { go('main'); refreshMain(); }
+    else if (d.type === 'menu') openDrawer();
+    else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
+    else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
+    else if (d.type === 'count') { bkUi.on = true; bkUi.n = Math.max(0, Math.floor(+d.n) || 0); bkSync(); }
+    else if (d.type === 'off') { bkUi.on = false; bkUi.n = 0; bkSync(); }
   });
   // 메뉴 아이콘 빨간 점 — 메뉴 버튼 6곳(메인, 캘린더, 신청, 나의 근태, 연차 내역, 내 정보)에 한 번 심는다. 켜고 끄기는 inqSync
   document.querySelectorAll('#menuBtnMain,#menuBtn,.hd .goMenu').forEach(function (b) { var d = document.createElement('span'); d.className = 'mdot'; b.appendChild(d); });
@@ -1555,7 +1628,7 @@ function kDate(d) { var wd = '일월화수목금토'[new Date(+d.slice(0, 4), +d
 function kDateShort(d) { var wd = '일월화수목금토'[new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)).getDay()]; return (+d.slice(5, 7)) + '월 ' + (+d.slice(8, 10)) + '일 (' + wd + ')'; }
 
 /* ── 화면 전환 ── */
-var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin', 'inq'];
+var SCREENS = ['token', 'main', 'cal', 'apply', 'my', 'ledger', 'me', 'admin', 'inq', 'bk'];
 function go(name) {
   SCREENS.forEach(function (s) { $('s-' + s).classList.toggle('on', s === name); });
   // 07-23 유성: 창이 콘텐츠보다 넓을 때 #app 밖 흰 줄 제거 — body 배경을 화면 배경과 동기
@@ -1571,7 +1644,8 @@ function go(name) {
   if (name === 'ledger') loadLedger();
   if (name === 'me') loadMe();
   inqVis(name === 'inq');   // 문의 채팅 안 창에 보이는지 알린다(가려진 동안 받은함은 서버를 안 부른다)
-  inqViewport(name);        // 폰 키패드 = 문의 채팅에서만 화면을 줄인다(10-18)
+  bkVis(name === 'bk');     // 예약 안 창도 같은 신호(보일 때 1분, 가려지면 5분마다만 묻는다)
+  inqViewport(name);        // 폰 키패드 = 문의 채팅, 예약에서만 화면을 줄인다(10-18)
 }
 function closeDrawer() { $('drawer').classList.remove('on'); $('dim').classList.remove('on'); $('outDim').classList.remove('on'); }
 function openDrawer() { $('drawer').classList.add('on'); $('dim').classList.add('on'); $('outDim').classList.add('on'); } // 19차: 바깥(body)도 같이 어둡게
@@ -2885,6 +2959,7 @@ window.addEventListener('popstate', function () {
   if (closeTopLayer()) { hideExitHint(); backGuardPush(); return; }
   // 문의 채팅(10-18 폰) — 받은함이 먼저 받는다: 크게 보기, 메뉴, 대화방 순으로 닫고 다 닫혀 있으면 {type:'back'}을 돌려줘 메인으로
   if ($('s-inq').classList.contains('on') && inqUi.frame && inqUi.ready) { hideExitHint(); inqPost({ type: 'hwback' }); backGuardPush(); return; }
+  if ($('s-bk').classList.contains('on') && bkUi.frame && bkUi.ready) { hideExitHint(); bkPost({ type: 'hwback' }); backGuardPush(); return; }   // 예약 = 열린 시트, 확인 창부터 닫고 다 닫혀 있으면 back
   if (!$('s-main').classList.contains('on')) { hideExitHint(); go('main'); refreshMain(); backGuardPush(); return; }
   if (exitArmed) { hideExitHint(); history.go(-1); return; }        // 아래에 앱 칸이 남아 있던 경우(브라우저 탭 등)의 종료
   showExitHint(); exitArmed = true;                                 // 첫 번째 → 머무르고 안내(가드는 다시 안 쌓는다)

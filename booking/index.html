@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>예약</title>
+<!--
+  예약 (2026-11-07 38차, 07 종료 안내 「네, 여쭤봐 주세요」 다음 흐름 — 유성 11-07 「①로 GO」 → 「Go」)
+  · 무엇 = 보호자가 먼저 요청하고 답을 기다리는 일(범위 ① = 이어 가기 먼저 → 문의 채팅에서 여쭙는 대기 아이)을 카드로.
+    카드 하나 = 집 하나(형제면 카드 안에 아이 둘). 카드는 지금 단계의 버튼 하나만 보여 새 행정인력도 카드만 보고 한다
+    (메모리 requester-waiting-goes-to-admin-card). 새 신청 배정은 지금처럼 지도.
+  · 정본 = 생각공작소 레포 prototype/07_종료안내_여쭤봐주세요다음_흐름대안_프리뷰.html 36~38차 「지금」 · 서버 = scripts/06_신청배정/예약.js(bk_list, bk_step, bk_ok).
+  · 근태 앱(attend/index.html)의 「예약」 화면 안 창(iframe)으로만 산다 — 받은함(inbox/)과 같은 틀(창 신호는 부모를 거침, 따로 열리면 앱으로 돌려보냄).
+  · 신원 = 문의 채팅과 같은 서명(att_inq — 19가 등록 PC에서만 준다, 한유성 = 보기 서명). 06이 같은 키(INQ_KEY)로 확인한다(26을 거치지 않음).
+    06에 INQ_KEY가 아직 없으면 bk_list = Unauthorized → 앱에 off를 알려 메뉴 칸을 숨긴다(꺼진 채 = 메뉴 없음). 10분마다 다시 물어 켜지면 저절로 보인다.
+  · 읽기 = GET + 4초 헤지(GAS가 가끔 구글 HTML, 수십 초 — 메모리 gas-webapp-reply-can-be-google-html).
+    쓰기 = 한 번만 보낸다. 응답을 놓치면 목록을 다시 받아 그 아이 단계가 바뀌었는지로 결과를 본다(같은 단계로 다시 가는 쓰기는 없다 — 화면이 현재 단계와 다른 단계만 보냄).
+    쓰기 응답엔 새 목록이 실려 온다(왕복 1회). 쓰기 전에 출발한 조회가 늦게 오면 버린다(낙관 반영 없음 — 누른 버튼만 출렁이는 점).
+  · 「가능」 = 지도 배정과 같은 서버 길(assignFromMap — Q 제공인력, R 배정완료, S 요일, T 시간, 겹침 가드). 겹치면 아무것도 안 쓰고 지도와 같은 판단 재료가 온다:
+    형제(오감, 같은 번호, 다른 생년) = [형제 합반], 신청 시트에 없는 아이(대장에만) = [그래도 적기], 그 밖 = 다른 시간을 고르거나 지도에서 옮긴다.
+  · 감시 = 생각공작소 scripts/19_근태관리/tests/예약.test.js(진짜 크롬 + 가짜 06).
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
+  --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968;
+  --g800:#333d4b; --g900:#191f28;
+  --green50:#f8fbf9; --green100:#e9f8ee; --green200:#cef2db; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
+  --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
+  --p-disabled:#b7e0c8; --danger:#D25357;
+  --fs-h3:20px;
+  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --ease:cubic-bezier(.22,.7,.25,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#fff}
+body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-body);
+  line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased;user-select:none}
+button,input,select{font-family:inherit}
+#app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+
+/* 머리 = 받은함 .hd 그대로(= 근태 앱 .hd 실값). 순서 = [←] 예약 [− ≡], −는 PC 프로그램 안에서만 */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff}
+.hd .rt{display:flex;gap:2px}
+.hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;line-height:normal}
+.hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;padding:0;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.hd .ic:active{transform:scale(.82)}
+.hd .ic svg{width:22px;height:22px}
+svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#hostMin{display:none}
+#appMenu{position:relative}
+.mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
+.mdot.on{display:block}
+
+/* 세그 = 받은함 .seg 그대로 — 진행 중 / 끝남 */
+.seg{display:flex;margin:6px 18px 8px;background:var(--g100);border-radius:12px;padding:3px;flex:none}
+.seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:9px;font-size:14px;font-weight:500;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:#fff;color:var(--g900);font-weight:600;box-shadow:0 1px 3px rgba(25,31,40,.08)}
+.seg .n{font-size:11.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;color:#fff;background:var(--green700);display:none;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
+.seg .n.show{display:inline-flex}
+
+/* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6, 받은함 .sw) */
+.sw{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.sw::before,.sw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
+.sw::before{top:0;background:var(--sf-top)}
+.sw::after{bottom:0;background:var(--sf-bot)}
+.sw.more::after,.sw.moreTop::before{opacity:1}
+.list{flex:1;overflow-y:auto;padding:4px 16px 18px;scrollbar-width:none;display:flex;flex-direction:column;gap:12px}
+.list::-webkit-scrollbar{width:0}
+
+/* 카드 = 흰 바탕 + 1px g200 + radius 16. 끝난 카드는 글자만 흐리게 */
+.cd{border:1px solid var(--g200);border-radius:16px;padding:16px 16px 12px;background:#fff;flex:none}
+.cd .c1{display:flex;align-items:center;gap:6px;min-width:0}
+.cd .nm{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tag{font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}
+.cd .el{margin-left:auto;font-size:11.5px;color:var(--g600);white-space:nowrap;flex:none;padding-left:8px}
+.cd .el.late{color:var(--warn-weak-fg);font-weight:600}
+/* 단계 칩 — 행정 차례(확인 전) = 주황 약함, 제공인력 차례(여쭙는 중) = 회색, 정해진 뒤 = 초록 약함, 끝 = 회색 테두리 */
+.stp{display:inline-flex;align-items:center;font-size:12px;font-weight:700;border-radius:8px;padding:2px 8px;margin-top:8px;white-space:nowrap}
+.stp.s0{background:var(--warn-weak-bg);color:var(--warn-weak-fg)}
+.stp.s1{background:var(--g100);color:var(--g700)}
+.stp.s2{background:var(--green100);color:var(--green800)}
+.stp.s9{background:none;color:var(--g600);box-shadow:inset 0 0 0 1px var(--g200)}
+.cd .hint{font-size:var(--fs-sm);color:var(--g700);margin-top:8px}
+/* 라벨↔값 줄(§4.8) — 라벨 g600 고정 폭, 값 g900 */
+.kv{margin:10px 0 0;padding:0}
+.kv div{display:flex;gap:10px;font-size:var(--fs-sm);line-height:1.55;padding:2px 0}
+.kv dt{width:64px;flex:none;color:var(--g600)}
+.kv dd{margin:0;color:var(--g900);min-width:0;overflow-wrap:anywhere}
+.kv .kid{font-weight:600}
+.acts{display:flex;gap:8px;margin-top:14px}
+.b{flex:1;border:0;border-radius:12px;padding:12px 10px;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;min-height:46px}
+.b:active{transform:scale(.97)}
+.b.pri{background:var(--green600);color:#fff}
+.b.pri:active{background:var(--green700)}
+.b.weak{background:var(--g100);color:var(--g700);flex:0 0 auto;padding:12px 16px}
+.b:disabled{cursor:default;transform:none}
+.b.pri:disabled{background:var(--p-disabled)}
+/* 보내는 중 = 버튼 글자 자리에 출렁이는 점 3개(§5.2 — 정적 「…」 금지) */
+.b .dots{display:none;gap:4px;justify-content:center;align-items:center;height:22px}
+.b.busy .lb{visibility:hidden}
+.b.busy .dots{display:flex;position:absolute;inset:0}
+.dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;animation:dot 1s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.7}}
+.foot{display:flex;justify-content:flex-end;gap:2px;margin-top:8px}
+.lk{border:0;background:none;font-size:var(--fs-caption);font-weight:600;color:var(--g600);padding:6px 8px;border-radius:8px;cursor:pointer;transition:transform .12s}
+.lk:hover{background:var(--g100);color:var(--g800)}
+.lk:active{transform:scale(.94)}
+.cd.end .nm{color:var(--g700)}
+.cd.end .kv dd{color:var(--g700)}
+
+/* 뼈대(§5.4) = 받은함 .sk-b 그대로 */
+.sk-b{display:block;background:var(--g100);border-radius:8px;background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite;pointer-events:none}
+@keyframes sksh{0%{background-position:150% 0}70%,100%{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.sk-b{animation:none}}
+.cd.sk{pointer-events:none}
+.empty{text-align:center;color:var(--g600);font-size:14px;padding:60px 16px}
+.empty b{display:block;color:var(--g900);font-size:15px;margin-bottom:4px}
+
+/* 토스트 = 받은함 .atoast 그대로 */
+.atoast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--g800);color:#F9FBFA;font-size:13.5px;padding:9px 14px;border-radius:12px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;z-index:40;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.atoast.on{opacity:1;transform:translateX(-50%)}
+
+/* 딤 + 아래 시트(§4.3) + 가운데 확인 창(§4.4 — 받은함 .cmodal 값 그대로) */
+.mdim{position:absolute;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+.mdim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;padding:10px 22px 18px;transform:translateY(105%);transition:transform .28s var(--ease);z-index:31;max-height:92%;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(25,31,40,.12)}
+.sheet.on{transform:none}
+.sheet .handle{width:36px;height:4px;border-radius:2px;background:var(--g200);margin:0 auto 12px;flex:none}
+.sheet .sb{overflow-y:auto;scrollbar-width:none;min-height:0}
+.sheet .sb::-webkit-scrollbar{width:0}
+.sh-t{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4}
+.sh-s{font-size:var(--fs-sm);color:var(--g600);margin-top:4px}
+.fld{margin-top:16px}
+.fld > label{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--g700);margin-bottom:6px}
+/* 큰 채움 입력(§4.1) = g100 바탕, 포커스 = 초록 테두리 */
+.inp{width:100%;border:1.5px solid transparent;background:var(--g100);border-radius:14px;padding:13px 14px;font-size:var(--fs-body);color:var(--g900);outline:none;user-select:text;appearance:none;-webkit-appearance:none}
+.inp:focus{border-color:var(--green600);background:#fff}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234e5968' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:18px;padding-right:38px;cursor:pointer}
+.days{display:flex;gap:6px}
+.days button{flex:1;border:0;background:var(--g100);color:var(--g700);border-radius:12px;padding:11px 0;font-size:var(--fs-body);font-weight:600;cursor:pointer;transition:transform .12s}
+.days button:active{transform:scale(.94)}
+.days button.on{background:var(--green600);color:#fff}
+.pre{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pre:empty{display:none}
+.chip{border:1px solid var(--g200);background:#fff;border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:600;color:var(--g700);cursor:pointer;transition:transform .08s;white-space:nowrap}
+.chip:active{transform:scale(.96)}
+.chip.on{border-color:var(--green600);color:var(--green700);background:var(--green50)}
+.chip small{font-weight:500;color:var(--g500);margin-right:4px}
+/* 겹침 = 주황 약함 상자(빨강 덮기 금지 §4.5) */
+.cf{display:none;margin-top:16px;background:var(--warn-weak-bg);border-radius:14px;padding:12px 14px}
+.cf.on{display:block}
+.cf .t{font-size:var(--fs-body);font-weight:700;color:var(--g900)}
+.cf .s{font-size:var(--fs-sm);color:var(--g700);margin-top:2px;white-space:pre-line}
+.cf .w{font-size:var(--fs-sm);color:var(--warn-weak-fg);margin-top:6px}
+.cf .bs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.cf .bs .chip{background:#fff}
+.err{display:none;margin-top:12px;font-size:var(--fs-sm);color:var(--warn-weak-fg);font-weight:600}
+.err.on{display:block}
+.sbtns{display:flex;gap:8px;margin-top:20px;flex:none}
+.mb{flex:1;border:0;border-radius:15px;padding:14px;font:inherit;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s;position:relative}
+.mb:active{transform:scale(.97)}
+.mb.no{background:var(--g100);color:var(--g600)}
+.mb.go{background:var(--green600);color:#fff}
+.mb.go:disabled{background:var(--p-disabled);cursor:default;transform:none}
+.mb.del{background:var(--danger);color:#fff}
+.mb .dots{display:none;gap:4px;justify-content:center;align-items:center;position:absolute;inset:0}
+.mb.busy .lb{visibility:hidden}
+.mb.busy .dots{display:flex}
+/* 단계 고치기 = 줄 누름(§5.3 — 흰 바탕 유지 + 2겹 그림자 + 내용 .96) */
+.opt{display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;background:#fff;border-radius:14px;padding:11px 12px;margin-top:4px;text-align:left;cursor:pointer;transition:box-shadow .12s}
+.opt:first-child{margin-top:12px}
+.opt > *{transition:transform .12s}
+.opt:active{box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.12)}
+.opt:active > *{transform:scale(.96)}
+.opt b{font-size:var(--fs-body);color:var(--g900)}
+.opt span{font-size:var(--fs-sm);color:var(--g600)}
+.opt:disabled{opacity:.45;cursor:default;box-shadow:none}
+.note{font-size:var(--fs-sm);color:var(--warn-weak-fg);background:var(--warn-weak-bg);border-radius:12px;padding:9px 12px;margin-top:12px;display:none}
+.note.on{display:block}
+.cmodal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 84px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:33;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4;overflow-wrap:anywhere}
+.cmodal .ms2{font-size:var(--fs-sm);color:var(--g500);margin-top:8px}
+.cmodal .mbtns{display:flex;gap:8px;margin-top:16px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hd">
+    <button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="t">예약</div>
+    <div class="rt">
+      <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button class="ic" id="appMenu" title="메뉴" aria-label="메뉴"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="mdot" id="menuDot"></span></button>
+    </div>
+  </div>
+  <div class="seg" id="seg"><button class="on" data-t="open">진행 중<span class="n" id="nOpen"></span></button><button data-t="end">끝남</button></div>
+  <div class="sw" id="lsw"><div class="list" id="list"></div></div>
+  <div class="atoast" id="atoast" role="status"></div>
+
+  <div class="mdim" id="dim"></div>
+  <!-- 「가능해요」 = 제공인력, 요일, 시작 시간을 골라 06에 적는다(지도 배정과 같은 길) -->
+  <div class="sheet" id="okSheet" role="dialog" aria-labelledby="okT">
+    <div class="handle"></div>
+    <div class="sb">
+      <div class="sh-t" id="okT"></div>
+      <div class="sh-s" id="okS"></div>
+      <div class="fld"><label for="okProv">제공인력</label><select class="inp" id="okProv"></select></div>
+      <div class="fld"><label>요일</label><div class="days" id="okDays"></div></div>
+      <div class="fld"><label for="okTime">시작 시간</label><input class="inp" id="okTime" inputmode="numeric" autocomplete="off" placeholder="15:30" maxlength="5"><div class="pre" id="okPre"></div></div>
+      <div class="cf" id="okCf"></div>
+      <div class="err" id="okErr"></div>
+    </div>
+    <div class="sbtns"><button class="mb no" id="okNo">닫기</button><button class="mb go" id="okGo" disabled><span class="lb">이 시간으로 적기</span><span class="dots"><i></i><i></i><i></i></span></button></div>
+  </div>
+  <!-- 단계 고치기 = 잘못 누른 것 되돌리기, 끝난 카드 다시 열기(「가능」은 위 시트로만) -->
+  <div class="sheet" id="fixSheet" role="dialog" aria-labelledby="fixT">
+    <div class="handle"></div>
+    <div class="sb">
+      <div class="sh-t" id="fixT">단계 고치기</div>
+      <div class="sh-s" id="fixS"></div>
+      <div class="note" id="fixNote">정한 요일, 시간은 그대로 남아요. 비우려면 지도에서 배정을 풀어 주세요.</div>
+      <div id="fixList"></div>
+    </div>
+    <div class="sbtns"><button class="mb no" id="fixNo">닫기</button></div>
+  </div>
+  <div class="cmodal" id="cfm" role="alertdialog" aria-labelledby="cfmT"><div class="mt2" id="cfmT"></div><div class="ms2" id="cfmS"></div><div class="mbtns"><button type="button" class="mb no" id="cfmNo">닫기</button><button type="button" class="mb go" id="cfmGo"><span class="lb" id="cfmGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div></div>
+</div>
+
+<script>
+/* ══════════ 설정 ══════════ */
+var GAS06 = 'https://script.google.com/macros/s/AKfycbyDLm7VCcRNmPrK08waOFx3JHt9lvxP22coImDfK9xfWNheiS11My2xcJJrqrE6GVRPSw/exec';   // 06 신청배정 웹앱(지도와 같은 배포)
+var MAP_URL = 'https://think-fact0ry.github.io/saenggak/provider-map.html';   // 받은함 KB_MAP과 같은 지도 — 주소 끝 #find=탭|이름
+var REQ_TIMEOUT_MS = 15000;      // 읽기 시한(알약 07-31 사고: 시한 없는 fetch가 조회를 영구히 멈췄다)
+var WRITE_TIMEOUT_MS = 30000;    // 단계 쓰기 시한 — 잠금 5초 + 쓰기 + 새 목록
+var OK_TIMEOUT_MS = 60000;       // 「가능」 시한 — 잠금 5초 + 점유표 다시 짓기(처음 지을 때 10초대 실측 기록) + 새 목록. 넘으면 놓친 쓰기로 결과를 본다
+var SHOWN_POLL_MS = 60000;       // 화면이 보일 때 = 1분(06 bk_list 캐시도 60초)
+var HIDDEN_POLL_MS = 5 * 60000;  // 다른 화면에 있을 때 = 5분(메뉴 숫자만)
+var OFF_RETRY_MS = 10 * 60000;   // 꺼짐(06 INQ_KEY 없음, 서명 없음) = 10분마다 한 번 다시 물음
+var SLOW_MS = 20000;             // 첫 목록이 20초 넘게 안 오면 뼈대를 걷고 「아직 못 불러왔어요」
+var LATE_MS = 2 * 86400000;      // 같은 단계로 이틀 = 시각 글자 주황(36차 정한 것 10 「2근무일 넘게 멈춘 카드」 — 브리핑은 다음 조각)
+var DAYS = ['월', '화', '수', '목', '금', '토'];
+// 단계 순서(06 BK_STEPS와 같은 낱말). 카드 버튼은 카드 안 아이들 중 **가장 앞 단계**를 보고 고른다(형제가 단계가 갈릴 때 = 그 단계 아이만)
+var ORDER = { '확인 전': 0, '여쭙는 중': 1, '가능': 2, '보호자 연락': 3, '계약 끝': 4 };
+var END = { '계약 끝': 1, '어려움': 1, '멈춤': 1 };
+var NEED_ASSIGN = { '보호자 연락': 1, '계약 끝': 1 };   // 「가능」 뒤 단계 = 요일, 시간을 정한 아이만(06 BK_NEED_ASSIGN과 같게)
+// 표시 낱말(표시와 값 분리 §2.1-8) — 06에 적히는 값은 그대로. 「계약 끝」은 「계약이 끝남(종료)」으로 읽혀서 화면만 「계약함」
+var LABEL = { '확인 전': '확인 전', '여쭙는 중': '여쭙는 중', '가능': '가능', '보호자 연락': '보호자 연락', '계약 끝': '계약함', '어려움': '어려움', '멈춤': '멈춤' };
+var FIX_DESC = { '확인 전': '처음 단계로 돌려요', '여쭙는 중': '제공인력 답을 기다려요', '보호자 연락': '보호자께 정한 시간을 알렸어요',
+                 '계약 끝': '계약까지 마쳤어요', '어려움': '이어서 하기 어려워요', '멈춤': '보호자가 멈췄어요' };
+var TAB_LABEL = { '비바우처재가': '일반 재가', '비바우처기관': '일반 기관' };   // 06 탭 이름 → 짧은 표시(03 「일반」과 같은 말)
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+
+/* ══════════ 앱 안 창으로만 산다(받은함과 같은 틀) ══════════
+   창 신호(− 닫기, 위 12px 이동, ← 뒤로, ≡ 메뉴)는 부모(앱)에게 보내고 앱이 호스트로 넘긴다.
+   따로 열리면(주소 직접) 앱으로 돌려보낸다 — 앱 잠금(비밀번호)을 안 거친 채 그날 서명으로 열리는 틈을 막는다. */
+var EMBED = (function(){ try { return window.parent !== window && !!window.frameElement && parent.location.origin === location.origin; } catch (e) { return false; } })();
+var HOSTED = EMBED && (function(){ try { return !!(parent.chrome && parent.chrome.webview); } catch (e) { return false; } })();
+function toApp(o){ if (!EMBED) return; try { o.tf = 'bk'; parent.postMessage(o, location.origin); } catch (e) { } }
+// 앱 유휴 잠금의 손길(att_seen) — 이 안 창의 입력은 부모 문서로 안 올라간다(받은함과 같은 이유). 10초에 한 번만 쓴다
+if (EMBED) ['pointerdown', 'keydown'].forEach(function(ev){ document.addEventListener(ev, function(){
+  try { if (localStorage.getItem('att_locked')) return; var n = Date.now(); if (n - (+localStorage.getItem('att_seen') || 0) > 10000) localStorage.setItem('att_seen', String(n)); } catch (e) { }
+}, true); });
+if (!EMBED) {
+  document.documentElement.style.visibility = 'hidden';
+  var bounced = 0; try { bounced = +sessionStorage.getItem('bk_bounce') || 0; } catch (e) { }
+  if (Date.now() - bounced < 8000) {
+    $('app').style.display = 'none'; document.documentElement.style.visibility = '';
+    var bn = document.createElement('div'); bn.style.cssText = 'padding:60px 24px;text-align:center;color:var(--g600);font-size:15px';
+    bn.textContent = '예약은 근태 앱 메뉴의 예약에서 볼 수 있어요'; document.body.appendChild(bn);
+  } else {
+    try { sessionStorage.setItem('bk_bounce', String(Date.now())); } catch (e) { }
+    location.replace('../');
+  }
+}
+
+/* ══════════ 신원 = 문의 채팅 서명(att_inq) — 요청마다 새로 읽는다(알약이 날짜가 바뀌면 새 서명으로 바꿔 쓴다) ══════════ */
+function readId(){
+  try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
+  return null;
+}
+
+/* ══════════ 06 부르기 ══════════
+   GET ?action=bk_*&a=<서명 JSON>&… — 06 doGet이 bk_로 시작하는 동작을 예약.js로 넘긴다. 응답은 글자로 받아 직접 해석(가끔 구글 HTML). */
+function call(action, params, ms){
+  var id = readId();
+  if (!id) { var e0 = new Error('NO_ID'); e0.noid = true; return Promise.reject(e0); }
+  var q = 'action=' + encodeURIComponent(action) + '&a=' + encodeURIComponent(JSON.stringify(id));
+  Object.keys(params || {}).forEach(function(k){ if (params[k] != null) q += '&' + k + '=' + encodeURIComponent(params[k]); });
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opt = { method: 'GET', cache: 'no-store' }; if (ctl) opt.signal = ctl.signal;
+  var t = setTimeout(function(){ if (ctl) ctl.abort(); }, ms || REQ_TIMEOUT_MS);
+  return fetch(GAS06 + '?' + q, opt).then(function(r){ return r.text(); }).then(function(s){
+    clearTimeout(t);
+    var out; try { out = JSON.parse(s); } catch (e) { var err = new Error('BAD_REPLY'); err.bad = true; throw err; }
+    return out;
+  }, function(e){ clearTimeout(t); throw e; });
+}
+// 읽기 — 4초 안에 안 오면 같은 요청을 하나 더(먼저 온 쪽). 둘 다 실패해야 실패
+function callRead(action, params){
+  return new Promise(function(res, rej){
+    var done = false, fails = 0, n = 0;
+    function go(){ n++; call(action, params).then(function(r){ if (!done) { done = true; res(r); } }, function(e){ if (e && e.noid) { if (!done) { done = true; rej(e); } return; } if (++fails >= n && n >= 2 && !done) { done = true; rej(e); } else if (n < 2) go(); }); }
+    go();
+    setTimeout(function(){ if (!done && n < 2) go(); }, 4000);
+  });
+}
+
+/* ══════════ 상태 ══════════
+   cards = 서버 목록 그대로(열린 카드 먼저, 그 안에선 오래 기다린 집 먼저 — 06이 정렬), provs = 「가능」에서 고를 제공인력 이름,
+   loaded = 한 번이라도 목록을 받았나(전엔 뼈대), off = 06이 서명을 안 받음(꺼짐), writing = 쓰는 중인 카드 key,
+   wAt = 마지막 쓰기가 끝난 때(그보다 먼저 출발한 조회 결과는 버린다), skew = 서버 시각 − 이 PC 시각,
+   tryAt = 마지막으로 목록을 물은 때(성공, 실패, 꺼짐 다 — 주기는 이걸로 센다. 38차 리뷰: 받은 때로 세면 꺼진 동안 30초마다 06을 불렀다) */
+var S = { tab: 'open', cards: [], provs: null, loaded: false, off: false, slow: false, t0: Date.now(), writing: '', wAt: 0, busy: false, lastAt: 0, tryAt: 0, skew: 0, pollT: null };
+function nowS(){ return Date.now() + (S.skew || 0); }
+
+function take(list){
+  if (!list || !list.ok) return;
+  S.cards = list.cards || [];
+  if (list.provs) S.provs = list.provs;
+  if (list.now) { var sv = Date.parse(list.now); if (sv) S.skew = sv - Date.now(); }
+  S.loaded = true; S.slow = false; S.lastAt = Date.now();
+  if (S.off) { S.off = false; }
+  toApp({ type: 'count', n: openCount() });
+  render();
+}
+// 끝난 카드 = 서버 end(아이들 단계가 같고 끝난 단계) 또는 아이 전부 끝난 단계(형제가 계약함 + 어려움으로 갈린 카드 — 서버는 mixed라 end를 안 줌)
+function isEnd(c){ return !!c.end || ((c.kids || []).length > 0 && (c.kids || []).every(function(k){ return !!END[k.step]; })); }
+function openCount(){ return S.cards.filter(function(c){ return !isEnd(c); }).length; }
+
+function load(force){
+  if (S.busy || S.writing) return;
+  if (!force && Date.now() - S.tryAt < 10000) return;   // 방금 물었으면 쉰다(보이기 신호가 연달아 와도 한 번)
+  S.busy = true;
+  var started = Date.now(); S.tryAt = started;
+  callRead('bk_list').then(function(r){
+    S.busy = false;
+    if (started < S.wAt) return;   // 쓰기가 그사이 끝났다 — 쓰기 응답의 목록이 더 새것
+    if (r && r.error === 'Unauthorized') { goOff(); return; }
+    if (!r || !r.ok) { failedRead(); return; }
+    take(r);
+  }, function(e){
+    S.busy = false;
+    if (e && e.noid) { goOff(); return; }
+    failedRead();
+  });
+}
+function failedRead(){
+  if (!S.loaded && Date.now() - S.t0 > SLOW_MS) { S.slow = true; render(); }
+}
+// 꺼짐 = 06에 INQ_KEY가 아직 없거나 서명이 없다 → 앱이 메뉴 칸을 숨긴다. 이 창은 남아 10분마다 다시 묻는다
+function goOff(){
+  S.off = true; S.loaded = false;
+  toApp({ type: 'off' });
+  render();
+}
+
+/* 조회 주기 — 보일 때 1분, 가려졌을 때 5분(메뉴 숫자), 앱 창이 숨었으면(document.hidden) 안 부른다, 꺼짐이면 10분 */
+function shownNow(){
+  if (document.hidden) return false;
+  if (!EMBED) return true;
+  try { return window.frameElement.getClientRects().length > 0; } catch (e) { return true; }
+}
+function tick(){
+  clearTimeout(S.pollT);
+  var shown = shownNow(), ms = S.off ? OFF_RETRY_MS : shown ? SHOWN_POLL_MS : HIDDEN_POLL_MS;
+  S.pollT = setTimeout(tick, Math.min(ms, 30000));   // 30초마다 깨어나 때가 됐는지만 본다(보이기가 바뀌어도 늦지 않게)
+  if (document.hidden) return;
+  if (Date.now() - S.tryAt >= ms - 500) load(true);
+}
+
+/* ══════════ 그리기 ══════════ */
+function ago(iso){
+  var d = nowS() - Date.parse(iso);
+  if (!(d >= 0)) return '';
+  if (d < 60000) return '방금';
+  if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+  if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+  return Math.floor(d / 86400000) + '일 전';
+}
+function tabLabel(t){ return TAB_LABEL[t] || t; }
+// 희망 시간(06 C) = 「화-15,목-17」(신청폼 체크) 또는 「화 15:30」 — 요일 + 시(+분)를 뽑는다.
+//   손으로 적은 「화요일 16시」는 「요일」을 먼저 뗀다(안 떼면 「요일」의 「일」 뒤 숫자를 일요일로 읽었다 — 38차 리뷰)
+function wishPairs(w){
+  var out = [], re = /([월화수목금토일])\s*-?\s*(\d{1,2})(?::(\d{2}))?/g, m, seen = {};
+  var src = String(w || '').replace(/([월화수목금토일])요일/g, '$1');
+  while ((m = re.exec(src))) {
+    var h = +m[2], mi = m[3] ? +m[3] : 0; if (h > 23 || mi > 59) continue;
+    var t = (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi, k = m[1] + ' ' + t;
+    if (!seen[k]) { seen[k] = 1; out.push({ day: m[1], time: t }); }
+  }
+  return out;
+}
+function wishText(w){
+  var p = wishPairs(w);
+  if (p.length) return p.map(function(x){ return x.day + ' ' + x.time; }).join(', ');
+  return String(w || '').trim();
+}
+// 카드 안 아이들 중 지금 버튼이 다룰 아이 = 가장 앞 단계(열린 단계만)
+function frontStep(c){
+  var best = null;
+  (c.kids || []).forEach(function(k){ if (END[k.step] && k.step !== '계약 끝') return; var o = ORDER[k.step]; if (o == null) return; if (best == null || o < ORDER[best]) best = k.step; });
+  return best;
+}
+function kidsAt(c, step){ return (c.kids || []).filter(function(k){ return k.step === step; }); }
+function teacherOf(k){ return k.q || (k.cur && k.cur.q) || ''; }
+function stepClass(st){ return END[st] ? 's9' : st === '확인 전' ? 's0' : st === '여쭙는 중' ? 's1' : 's2'; }
+
+function cardHtml(c){
+  var kids = c.kids || [], end = isEnd(c), st = end ? c.step : (frontStep(c) || c.step);
+  var names = kids.map(function(k){ return k.name; }).join(', ');
+  var tabs = {}; kids.forEach(function(k){ tabs[tabLabel(k.tab)] = 1; });
+  var late = !end && c.at && nowS() - Date.parse(c.at) >= LATE_MS;
+  var h = '<div class="cd' + (end ? ' end' : '') + '" data-k="' + esc(c.key) + '">'
+    + '<div class="c1"><span class="nm">' + esc(names) + '</span>' + Object.keys(tabs).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('')
+    + '<span class="el' + (late ? ' late' : '') + '">' + esc(ago(c.at)) + '</span></div>'
+    + '<span class="stp ' + stepClass(st) + '">' + esc(end && kids.some(function(k){ return k.step !== st; }) ? '끝남' : (LABEL[st] || st)) + '</span>';   // 형제가 다른 끝 단계 = 「끝남」(아이마다 단계는 아래 줄)
+  // 할 일 한 줄 — 행정 차례인 단계만(버튼이 이미 말하는 단계는 안 씀, §2.1-7)
+  if (!end && st === '확인 전') {
+    var tq = kidsAt(c, '확인 전').map(teacherOf).filter(Boolean)[0];
+    h += '<div class="hint">' + (tq ? esc(tq) + ' 선생님께 가능한지 개별 카톡으로 여쭤봐 주세요.' : '맡을 제공인력을 찾아 개별 카톡으로 여쭤봐 주세요.') + '</div>';
+  } else if (!end && st === '가능') {
+    h += '<div class="hint">보호자께 정한 요일, 시간을 알려 주세요.</div>';
+  }
+  h += '<dl class="kv">';
+  kids.forEach(function(k){
+    var lead = kids.length > 1 ? '<span class="kid">' + esc(k.name) + '</span> ' : '';
+    var t = teacherOf(k);
+    if (k.s && k.t && ORDER[k.step] >= 2) h += '<div><dt>정한 시간</dt><dd>' + lead + esc(k.s + ' ' + k.t) + (k.q ? ', ' + esc(k.q) + ' 선생님' : '') + '</dd></div>';
+    else if (t) h += '<div><dt>' + (k.cur && k.cur.q === t ? '지금' : '맡을 분') + '</dt><dd>' + lead + esc(t) + ' 선생님' + (k.cur && k.cur.q === t && k.cur.tab ? ' (' + esc(tabLabel(k.cur.tab)) + ')' : '') + '</dd></div>';
+    var w = wishText(k.wish);
+    if (w) h += '<div><dt>희망</dt><dd>' + lead + esc(w) + '</dd></div>';
+  });
+  // 형제가 단계가 갈렸으면 아이마다 단계(칩은 앞 단계 하나만 말한다)
+  if (kids.length > 1 && kids.some(function(k){ return k.step !== kids[0].step; }))
+    h += '<div><dt>단계</dt><dd>' + kids.map(function(k){ return esc(k.name) + ' ' + esc(LABEL[k.step] || k.step); }).join(', ') + '</dd></div>';
+  if (c.phone) h += '<div><dt>연락처</dt><dd>' + esc(c.phone) + '</dd></div>';
+  var place = [c.gu, c.dong].filter(Boolean).join(' ');
+  if (place) h += '<div><dt>동네</dt><dd>' + esc(place) + '</dd></div>';
+  h += '</dl>';
+  if (!end) {
+    var busy = S.writing === c.key, dis = S.writing ? ' disabled' : '';
+    var dots = '<span class="dots"><i></i><i></i><i></i></span>';
+    var btn = function(a, cls, lb){ return '<button class="b ' + cls + (busy && S.wBtn === a ? ' busy' : '') + '" data-a="' + a + '"' + dis + '><span class="lb">' + lb + '</span>' + dots + '</button>'; };
+    h += '<div class="acts">';
+    if (st === '확인 전') h += btn('ask', 'pri', '여쭤봤어요');
+    else if (st === '여쭙는 중') h += btn('ok', 'pri', '가능해요') + btn('hard', 'weak', '어려워요');
+    else if (st === '가능') h += btn('told', 'pri', '보호자께 알렸어요');
+    else if (st === '보호자 연락') h += btn('done', 'pri', '계약했어요');
+    h += '</div>';
+  }
+  h += '<div class="foot"><button class="lk" data-a="map">지도에서 보기</button><button class="lk" data-a="fix"' + (S.writing ? ' disabled' : '') + '>단계 고치기</button></div>';
+  return h + '</div>';
+}
+function skeleton(){
+  var b = function(w, h, mt){ return '<span class="sk-b" style="width:' + w + ';height:' + h + 'px' + (mt ? ';margin-top:' + mt + 'px' : '') + '"></span>'; };
+  var one = '<div class="cd sk">' + b('40%', 22) + b('64px', 22, 8) + b('80%', 16, 12) + b('60%', 16, 6) + b('100%', 46, 14) + '</div>';
+  return one + one;
+}
+function render(){
+  var n = openCount();
+  $('nOpen').textContent = n > 99 ? '99+' : String(n); $('nOpen').classList.toggle('show', S.loaded && n > 0);
+  var el = $('list');
+  if (!S.loaded) {
+    if (S.off) el.innerHTML = '<div class="empty"><b>예약을 아직 열 수 없어요</b>잠시 뒤 다시 불러올게요</div>';
+    else if (S.slow) el.innerHTML = '<div class="empty"><b>아직 못 불러왔어요</b>계속 불러오고 있어요</div>';
+    else el.innerHTML = skeleton();
+    return;
+  }
+  var rows = S.cards.filter(function(c){ return S.tab === 'end' ? isEnd(c) : !isEnd(c); });
+  if (!rows.length) {
+    el.innerHTML = S.tab === 'end' ? '<div class="empty"><b>끝난 카드가 없어요</b>끝난 카드는 14일 동안 여기 남아요</div>'
+                                   : '<div class="empty"><b>기다리는 요청이 없어요</b>보호자 요청이 오면 여기에 카드로 생겨요</div>';
+    return;
+  }
+  var top = el.scrollTop;
+  el.innerHTML = rows.map(cardHtml).join('');
+  el.scrollTop = top;
+}
+function cardOf(key){ for (var i = 0; i < S.cards.length; i++) if (S.cards[i].key === key) return S.cards[i]; return null; }
+
+/* ══════════ 토스트 ══════════ */
+function toast(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2600); }
+
+/* ══════════ 쓰기 ══════════
+   한 번만 보낸다. 응답을 놓치면(시한, 구글 HTML) 목록을 다시 받아 그 아이들 단계가 target이 됐는지로 결과를 판정한다. */
+function afterWrite(r){
+  S.wAt = Date.now();
+  if (r && r.list) take(r.list);
+}
+// 놓친 쓰기는 6번(약 30초 + 왕복) 다시 본다 — 「가능」 한 번에 잠금 5초 + 점유표 다시 짓기가 들어가 늦게 끝날 수 있다(38차 리뷰)
+var LOST_TRIES = 6;
+function lostWrite(kids, target, okMsg){
+  S.wAt = Date.now();
+  var tries = 0;
+  (function again(){
+    tries++;
+    callRead('bk_list').then(function(r){
+      if (r && r.ok) {
+        take(r);
+        var hit = kids.every(function(k){ return S.cards.some(function(c){ return (c.kids || []).some(function(x){ return x.tab === k.tab && x.row === k.row && x.step === target; }); }); });
+        if (hit) { toast(okMsg); return; }
+      }
+      if (tries < LOST_TRIES) setTimeout(again, 5000);
+      else toast('결과를 아직 못 받았어요. 카드를 확인해 주세요');
+    }, function(){ if (tries < LOST_TRIES) setTimeout(again, 5000); else toast('결과를 아직 못 받았어요. 카드를 확인해 주세요'); });
+  })();
+}
+var STALE_SAY = '그사이 카드가 바뀌었어요. 목록을 다시 불러왔어요';
+function stepWrite(c, kids, step, btnKey, okMsg, onDone){
+  if (S.writing || !kids.length) { if (onDone) onDone(); return; }
+  S.writing = c.key; S.wBtn = btnKey; render();
+  // from = 이 화면이 본 그 아이 단계 — 다른 PC, 폰이 그사이 바꿨으면 06이 안 쓰고 stale(38차 리뷰: 낡은 화면이 「가능」을 되돌림)
+  var ks = kids.map(function(k){ return { tab: k.tab, row: k.row, name: k.name, from: k.step }; });
+  call('bk_step', { k: JSON.stringify(ks), step: step }, WRITE_TIMEOUT_MS).then(function(r){
+    S.writing = ''; afterWrite(r); render();
+    if (onDone) onDone();
+    if (r && r.error === 'Unauthorized') { goOff(); return; }
+    if (r && r.ok) toast(okMsg);
+    else if (r && r.stale) toast(STALE_SAY);
+    else toast((r && r.error) || '적지 못했어요. 다시 눌러 주세요');
+  }, function(){
+    S.writing = ''; render();
+    if (onDone) onDone();
+    lostWrite(ks, step, okMsg);
+  });
+}
+
+/* ══════════ 카드 버튼 ══════════ */
+$('list').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-a]'); if (!b || b.disabled) return;
+  var cd = b.closest('.cd'); var c = cd && cardOf(cd.getAttribute('data-k')); if (!c) return;
+  var a = b.getAttribute('data-a'), st = frontStep(c);
+  if (a === 'map') {
+    var k0 = (c.kids || [])[0]; if (!k0) return;
+    window.open(MAP_URL + '#find=' + encodeURIComponent(k0.tab + '|' + k0.name), '_blank');   // 새 창 = PC 프로그램이 기본 브라우저로(받은함과 같은 길)
+    return;
+  }
+  if (a === 'fix') { openFix(c); return; }
+  if (a === 'ask') stepWrite(c, kidsAt(c, '확인 전'), '여쭙는 중', a, '여쭙는 중으로 적었어요');
+  else if (a === 'told') stepWrite(c, kidsAt(c, '가능'), '보호자 연락', a, '보호자 연락으로 적었어요');
+  else if (a === 'done') stepWrite(c, kidsAt(c, '보호자 연락'), '계약 끝', a, '계약함으로 적었어요');
+  else if (a === 'hard') {
+    var ks = kidsAt(c, '여쭙는 중');
+    confirmBox(ks.map(function(k){ return k.name; }).join(', ') + ' 카드를 어려움으로 끝낼까요?', '끝남 칸에 14일 동안 남아요', '끝내기', function(done){
+      stepWrite(c, ks, '어려움', a, '어려움으로 적었어요', done);
+    });
+  }
+  else if (a === 'ok' && st === '여쭙는 중') openOk(c, kidsAt(c, '여쭙는 중')[0]);
+});
+document.querySelectorAll('#seg button').forEach(function(b){ b.addEventListener('click', function(){
+  S.tab = b.getAttribute('data-t');
+  document.querySelectorAll('#seg button').forEach(function(x){ x.classList.toggle('on', x === b); });
+  $('list').scrollTop = 0; render();
+}); });
+
+/* ══════════ 시트, 확인 창 ══════════ */
+var layer = '', layerAt = 0;   // 지금 열린 겹 = 'ok' | 'fix' | 'cfm' | '' / 연 때
+// 겹이 뜨고 0.4초 안의 누름 = 여는 누름의 둘째(더블클릭) — 딤, 시트 버튼, 단계 줄에 안 먹인다(38차 리뷰: 아래쪽 카드에서 둘째 클릭이 올라오는 시트의 「멈춤」, 「이 시간으로 적기」에 떨어짐)
+function layerFresh(){ return Date.now() - layerAt < 400; }
+function openLayer(id){ layer = id; layerAt = Date.now(); $('dim').classList.add('on'); $(id === 'ok' ? 'okSheet' : id === 'fix' ? 'fixSheet' : 'cfm').classList.add('on'); }
+function closeLayer(){
+  if (!layer) return false;
+  if (layer === 'ok' && okCtx && okCtx.sending) return true;   // 보내는 중엔 안 닫는다(결과를 그 자리에서 보여 줘야 한다)
+  $('okSheet').classList.remove('on'); $('fixSheet').classList.remove('on'); $('cfm').classList.remove('on'); $('dim').classList.remove('on');
+  layer = ''; okCtx = null; cfmCtx = null; return true;
+}
+$('dim').addEventListener('click', function(){ if (!layerFresh()) closeLayer(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeLayer(); });
+
+var cfmCtx = null;
+function confirmBox(title, sub, goLabel, fn){
+  $('cfmT').textContent = title; $('cfmS').textContent = sub || ''; $('cfmGoL').textContent = goLabel;
+  $('cfmGo').classList.remove('busy');
+  cfmCtx = { fn: fn, at: Date.now() };
+  openLayer('cfm'); setTimeout(function(){ $('cfmNo').focus(); }, 30);
+}
+$('cfmNo').addEventListener('click', closeLayer);
+$('cfmGo').addEventListener('click', function(){
+  if (!cfmCtx || Date.now() - cfmCtx.at < 400) return;   // 뜨자마자 떨어진 누름(직전 누름의 잔상)은 확인이 아니다(지도 iwConfirm과 같은 방어)
+  var f = cfmCtx.fn; $('cfmGo').classList.add('busy');
+  f(function(){ $('cfmGo').classList.remove('busy'); closeLayer(); });
+});
+
+/* ── 「가능해요」 시트 ── */
+var okCtx = null;
+DAYS.forEach(function(d){ var b = document.createElement('button'); b.type = 'button'; b.textContent = d; b.setAttribute('data-d', d); $('okDays').appendChild(b); });
+function normTime(v){
+  var s = String(v || '').replace(/[^\d:]/g, '');
+  if (/^\d{1,2}$/.test(s)) s += ':00';   // 「15」만 치면 15:00
+  var m = /^(\d{1,2}):?(\d{2})$/.exec(s.indexOf(':') >= 0 ? s : (s.length === 3 ? s.slice(0, 1) + ':' + s.slice(1) : s.length === 4 ? s.slice(0, 2) + ':' + s.slice(2) : s));
+  if (!m) return '';
+  var h = +m[1], mi = +m[2]; if (h < 6 || h > 22 || mi > 59) return '';
+  return (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi;
+}
+function openOk(c, k){
+  if (!k) return;
+  okCtx = { c: c, k: k, day: '', sending: false };
+  $('okT').textContent = k.name + ' 가능한 시간';
+  $('okS').textContent = tabLabel(k.tab) + (k.birth ? ', ' + k.birth + '년생' : '');
+  fillProv(teacherOf(k));
+  // 미리 채움 = 희망 시간 첫째(이어 가기 = 지금 요일 시간이 들어온다), 없으면 비움
+  var pre = wishPairs(k.wish);
+  if (k.s && k.t && !pre.some(function(p){ return p.day === k.s && p.time === normTime(k.t); })) pre.unshift({ day: k.s, time: normTime(k.t), cur: 1 });
+  $('okPre').innerHTML = pre.map(function(p, i){ return '<button type="button" class="chip" data-i="' + i + '"><small>' + (p.cur ? '적힌 시간' : '희망') + '</small>' + esc(p.day + ' ' + p.time) + '</button>'; }).join('');
+  okCtx.pre = pre;
+  setDay(pre[0] ? pre[0].day : ''); $('okTime').value = pre[0] ? pre[0].time : '';
+  $('okCf').classList.remove('on'); $('okCf').innerHTML = ''; $('okErr').classList.remove('on');
+  $('okGo').classList.remove('busy');
+  if ($('okProv').options.length < 2) okErr('제공인력 목록을 아직 못 받았어요. 잠시 뒤 다시 열어 주세요');   // 버튼이 이유 없이 꺼져 있지 않게(38차 리뷰)
+  okSync(); openLayer('ok');
+}
+// 제공인력 고르기 칸 = 06 목록(provs). 고른 이름이 목록에 남아 있으면 그대로. 목록을 못 받은 판 = 지금 선생님만(06이 다시 거른다)
+function fillProv(def){
+  var sel = $('okProv'), keep = def != null ? def : sel.value, list = (S.provs || []).slice();
+  if (keep && list.indexOf(keep) < 0 && !list.length) list = [keep];
+  sel.innerHTML = '<option value="">고르기</option>' + list.map(function(p){ return '<option' + (p === keep ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('');
+}
+function setDay(d){ if (!okCtx) return; okCtx.day = d; document.querySelectorAll('#okDays button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-d') === d); }); }
+function okSync(){
+  if (!okCtx) return;
+  var t = normTime($('okTime').value);
+  document.querySelectorAll('#okPre .chip').forEach(function(b){ var p = okCtx.pre[+b.getAttribute('data-i')]; b.classList.toggle('on', !!p && p.day === okCtx.day && p.time === t); });
+  $('okGo').disabled = !($('okProv').value && okCtx.day && t) || okCtx.sending;
+}
+$('okDays').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || !okCtx || okCtx.sending) return; setDay(b.getAttribute('data-d')); okClearCf(); okSync(); });
+$('okPre').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (!b || !okCtx || okCtx.sending) return; var p = okCtx.pre[+b.getAttribute('data-i')]; if (!p) return; setDay(p.day); $('okTime').value = p.time; okClearCf(); okSync(); });
+$('okTime').addEventListener('input', function(){ okClearCf(); okSync(); });
+$('okTime').addEventListener('blur', function(){ var t = normTime(this.value); if (t) this.value = t; okSync(); });
+$('okTime').addEventListener('keydown', function(e){ if (e.key === 'Enter' && !$('okGo').disabled) $('okGo').click(); });
+$('okProv').addEventListener('change', function(){ okClearCf(); okSync(); });
+$('okNo').addEventListener('click', closeLayer);
+function okClearCf(){ $('okCf').classList.remove('on'); $('okCf').innerHTML = ''; $('okErr').classList.remove('on'); }
+function okErr(t){ var e = $('okErr'); e.textContent = t; e.classList.add('on'); }
+$('okGo').addEventListener('click', function(){ if (!layerFresh()) okSend(null, false); });
+function okSend(resolve, force){
+  if (!okCtx || okCtx.sending) return;
+  var c = okCtx.c, k = okCtx.k, prov = $('okProv').value, day = okCtx.day, time = normTime($('okTime').value);
+  if (!prov || !day || !time) return;
+  okCtx.sending = true; $('okGo').classList.add('busy'); okSync(); okClearCf();
+  S.writing = c.key; S.wBtn = 'ok'; render();
+  // from = 이 화면이 본 그 아이 단계(그사이 끝났거나 바뀐 카드에 배정을 쓰지 않게 — 06이 잠금 안에서 대조)
+  var p = { tab: k.tab, row: k.row, name: k.name, provider: prov, day: day, time: time, from: k.step };
+  if (resolve) p.resolve = JSON.stringify(resolve);
+  if (force) p.force = '1';
+  var ctx = okCtx;
+  call('bk_ok', p, OK_TIMEOUT_MS).then(function(r){
+    S.writing = ''; ctx.sending = false; $('okGo').classList.remove('busy');
+    afterWrite(r); render();
+    if (r && r.error === 'Unauthorized') { closeLayer(); goOff(); return; }
+    if (r && r.ok) {
+      closeLayer();
+      var as0 = r.assign || {};
+      // stamped = 06이 S, T를 다시 읽어 확인한 값(Code.js) — false면 선생님만 적히고 시간은 안 적힌 것
+      if (as0.stamped === false) toast(k.name + ' 제공인력은 적었는데 요일, 시간을 못 적었어요. 지도에서 확인해 주세요');
+      else toast(k.name + ' ' + day + ' ' + time + ' 가능으로 적었어요' + (r.step === false ? '. 단계는 못 적어서 다시 눌러 주세요' : ''));
+      return;
+    }
+    if (r && r.stale) { closeLayer(); toast(STALE_SAY); return; }
+    var as = r && r.assign;
+    if (okCtx === ctx && as && as.conflict) { showConflict(as.conflict); okSync(); return; }
+    if (okCtx === ctx) { fillProv(null); okErr((as && as.error) || (r && r.error) || '적지 못했어요. 다시 눌러 주세요'); okSync(); }   // 목록 밖 이름이면 응답의 새 목록으로 고르기 칸을 다시
+  }, function(){
+    S.writing = ''; ctx.sending = false; $('okGo').classList.remove('busy');
+    closeLayer(); render();
+    lostWrite([{ tab: k.tab, row: k.row }], '가능', k.name + ' 가능으로 적었어요');
+  });
+}
+// 겹침 — 지도 _cgOpen과 같은 판단 재료. 밀린 아이를 옮기는 일(바꾸기)은 이 화면에 안 둔다(지도에서) — 여긴 다른 시간 고르기가 먼저
+function showConflict(cf){
+  var v = cf.victim || {};
+  var src = v.src === 'recon' ? '결제 이력 기준, 최근 8주 ' + (v.sessions || 0) + '회' + (v.lastDaysAgo != null ? ' (마지막 ' + v.lastDaysAgo + '일 전)' : '') : '시트에 적힌 시간';
+  var sub = (v.time || '') + '~' + (v.endTime || '') + ', ' + src;
+  if (cf.others && cf.others.length) sub += '\n같은 시간에 ' + cf.others.length + '명 더 있어요';
+  var w = [];
+  if (v.inProgress) w.push('이 아이는 지금 수업을 하고 있어요');
+  if (cf.unknown && cf.unknown.length) w.push('이 제공인력에게 시간을 모르는 아이가 ' + cf.unknown.length + '명 더 있어요');
+  var bs = [];
+  if (cf.siblingOk) bs.push('<button type="button" class="chip" data-r="sib">형제 합반으로 적기</button>');
+  if (!v.movable) bs.push('<button type="button" class="chip" data-r="force">그래도 이 시간으로 적기</button>');
+  var tip = v.movable ? '다른 시간을 고르거나, 그 아이를 옮기려면 지도에서 바꿔 주세요' : '';
+  $('okCf').innerHTML = '<div class="t">' + esc(cf.day + ' ' + cf.time) + '에는 ' + esc(v.name || '다른 아이') + ' 아이가 있어요</div>'
+    + '<div class="s">' + esc(sub) + '</div>'
+    + (w.length ? '<div class="w">' + esc(w.join('. ')) + '</div>' : '')
+    + (tip ? '<div class="s" style="margin-top:6px">' + esc(tip) + '</div>' : '')
+    + (bs.length ? '<div class="bs">' + bs.join('') + '</div>' : '');
+  $('okCf').classList.add('on');
+}
+$('okCf').addEventListener('click', function(e){
+  var b = e.target.closest('.chip[data-r]'); if (!b) return;
+  if (b.getAttribute('data-r') === 'sib') okSend({ mode: 'sibling' }, false);
+  else okSend(null, true);
+});
+
+/* ── 단계 고치기 ── */
+var fixCtx = null;
+function openFix(c){
+  fixCtx = { c: c };
+  var kids = c.kids || [], cur = isEnd(c) ? c.step : (frontStep(c) || c.step);
+  $('fixS').textContent = kids.map(function(k){ return k.name; }).join(', ') + ', 지금 ' + (LABEL[cur] || cur);
+  var held = kids.some(function(k){ return k.s && k.t && ORDER[k.step] >= 2; });
+  $('fixNote').classList.toggle('on', held);
+  var opts = ['확인 전', '여쭙는 중', '보호자 연락', '계약 끝', '어려움', '멈춤'];
+  $('fixList').innerHTML = opts.map(function(s){
+    var same = kids.every(function(k){ return k.step === s; });
+    // 「가능」 뒤 단계(보호자 연락, 계약함) = 바꿀 아이가 다 요일, 시간을 정했을 때만(06도 거절 — 배정을 건너뛰면 카드는 계약함인데 지도와 월 스케줄엔 없다, 38차 리뷰)
+    var noAssign = NEED_ASSIGN[s] && kids.some(function(k){ return k.step !== s && !(k.q && k.s && k.t); });
+    return '<button type="button" class="opt" data-s="' + esc(s) + '"' + (same || noAssign ? ' disabled' : '') + '><b>' + esc(LABEL[s]) + '</b><span>'
+      + esc(noAssign ? '가능해요로 요일, 시간을 먼저 정해요' : FIX_DESC[s]) + '</span></button>';
+  }).join('');
+  openLayer('fix');
+}
+$('fixList').addEventListener('click', function(e){
+  var b = e.target.closest('.opt'); if (!b || b.disabled || !fixCtx || layerFresh()) return;
+  var c = fixCtx.c, s = b.getAttribute('data-s');
+  var kids = (c.kids || []).filter(function(k){ return k.step !== s; });   // 이미 그 단계인 아이는 안 보낸다(같은 단계로 다시 가는 쓰기 0)
+  closeLayer();
+  stepWrite(c, kids, s, 'fix', (LABEL[s] || s) + '으로 고쳤어요');
+});
+$('fixNo').addEventListener('click', closeLayer);
+
+/* ══════════ ← 뒤로, 창 −, 이동 그립(받은함과 같은 문법) ══════════ */
+$('appBack').addEventListener('click', function(){ toApp({ type: 'back' }); });
+$('appMenu').addEventListener('click', function(){ toApp({ type: 'menu' }); });
+if (HOSTED) {
+  $('hostMin').style.display = 'flex';
+  $('hostMin').addEventListener('click', function(){ toApp({ type: 'close' }); });
+  (function(){
+    var st = document.createElement('style'); document.documentElement.appendChild(st);
+    var on = false;
+    function setCur(v){ if (v === on) return; on = v; st.textContent = v ? '*{cursor:move !important}' : ''; }
+    document.addEventListener('mousemove', function(e){ setCur(e.clientY <= 12); }, true);
+    document.addEventListener('mouseleave', function(){ setCur(false); }, true);
+    document.addEventListener('mousedown', function(e){
+      if (e.button !== 0 || e.clientY > 12) return;
+      e.preventDefault(); e.stopPropagation();
+      toApp({ type: 'edge' });
+    }, true);
+  })();
+}
+window.addEventListener('message', function(e){
+  if (!EMBED || e.source !== parent || e.origin !== location.origin) return;
+  var d = e.data || {}; if (d.tf !== 'bk') return;
+  if (d.type === 'vis' && d.on) { render(); load(false); tick(); }   // 다시 보이는 순간 한 번(방금 받았으면 쉼)
+  if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱 다른 메뉴 아이콘과 같은 값(문의 숫자)
+  if (d.type === 'hwback') { if (!closeLayer()) toApp({ type: 'back' }); }   // 폰 뒤로가기 = 열린 겹부터
+});
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) tick(); });
+// 화면 폭이 바뀌어도(PC 창 크기) 스크롤 흐림을 다시 잰다
+(function(){
+  var sc = $('list'), host = $('lsw');
+  var f = function(){ var h = sc.clientHeight, over = h > 0 && sc.scrollHeight > h + 1;
+    host.classList.toggle('more', over && sc.scrollTop + h < sc.scrollHeight - 1);
+    host.classList.toggle('moreTop', over && sc.scrollTop > 1); };
+  sc.addEventListener('scroll', f); if (typeof ResizeObserver !== 'undefined') new ResizeObserver(f).observe(sc);
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(f).observe(sc, { childList: true, subtree: true });
+})();
+
+if (EMBED) { render(); load(true); tick(); }
+</script>
+</body>
+</html>
