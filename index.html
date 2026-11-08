@@ -2090,7 +2090,7 @@ function twMount(host, hintHm, onInput) {
   apSeg.addEventListener('pointerdown', function () {
     apSeg.classList.remove('shake'); void apSeg.offsetWidth; apSeg.classList.add('shake');
     setTimeout(function () { apSeg.classList.remove('shake'); }, 420);
-    toast('오전·오후는 고르지 않아요. 시각을 적으면 따라가요');
+    toast('오전, 오후는 고르지 않아요. 시각을 적으면 따라가요');
   });
   input.addEventListener('input', function () {
     var v = input.value.replace(/\D/g, '').slice(0, 4);
@@ -3561,7 +3561,7 @@ function renderAdmin(r) {
     busyBtn(this, function () {
       return adminApi('admin_grant', { emp: m.emp, hours: h, note: $('grantNote').value, cid: cid() }, true).then(function (rr) {
         if (!rr.ok) { toast(rr.error); return; }
-        toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요 · 잔여 ' + fmtBalPlain(rr.balance), true); loadAdmin();
+        toast(m.name + '님에게 연차 ' + h + '시간을 부여했어요. 잔여 ' + fmtBalPlain(rr.balance), true); loadAdmin();
       });
     });
   });
