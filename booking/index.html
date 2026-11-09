@@ -219,6 +219,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
       <div class="fld"><label for="okTime">시작 시간</label><input class="inp" id="okTime" inputmode="numeric" autocomplete="off" placeholder="15:30" maxlength="5"><div class="pre" id="okPre"></div></div>
       <div class="cf" id="okCf"></div>
       <div class="err" id="okErr"></div>
+      <button type="button" class="lk skip" id="okHard">이 아이는 어려워요</button>
     </div>
     <div class="sbtns"><button class="mb no" id="okNo">닫기</button><button class="mb go" id="okGo" disabled><span class="lb">이 시간으로 적기</span><span class="dots"><i></i><i></i><i></i></span></button></div>
   </div>
@@ -233,7 +234,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
     </div>
     <div class="sbtns"><button class="mb no" id="fixNo">닫기</button></div>
   </div>
-  <!-- 글 시트 = 제공인력께 여쭐 글(복사) / 보호자께 보낼 문자(032) — 글은 카드가 채우고 고칠 수 있다 -->
+  <!-- 글 시트 = 제공인력께 여쭐 글(복사, 고칠 수 있음) / 보호자 알림톡 미리 보기(승인된 틀 그대로 나가서 못 고침) -->
   <div class="sheet" id="msgSheet" role="dialog" aria-labelledby="msgT">
     <div class="handle"></div>
     <div class="sb">
@@ -241,7 +242,7 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
       <div class="sh-s" id="msgS"></div>
       <div class="fld"><textarea class="inp ta" id="msgTx" maxlength="500" aria-label="보낼 글"></textarea></div>
       <div class="err" id="msgErr"></div>
-      <button type="button" class="lk skip" id="msgSkip">문자 없이 끝내기</button>
+      <button type="button" class="lk skip" id="msgSkip">알림톡 없이 끝내기</button>
     </div>
     <div class="sbtns"><button class="mb no" id="msgNo">닫기</button><button class="mb go" id="msgGo"><span class="lb" id="msgGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div>
   </div>
@@ -429,7 +430,7 @@ function frontStep(c){
 function kidsAt(c, step){ return (c.kids || []).filter(function(k){ return k.step === step; }); }
 function teacherOf(k){ return k.q || (k.cur && k.cur.q) || ''; }
 function isCont(k){ return k.src === 'continue'; }
-function canAsk(k){ return isCont(k) && !!teacherOf(k) && !!wishText(k.wish); }
+function canAsk(k){ return isCont(k) && !!teacherOf(k); }   // 희망 칸이 비어도 「현재 요일과 시간 그대로」로 여쭙는다(시간을 안 적어도 되는 글, 44차)
 // 대장에서 읽어 넣은 「지금」 꼴(요일 한 칸 + 시각)일 때만 「현재」라고 쓴다 — 보호자가 본인수정으로 희망을 바꾼 줄은 「화-15,목-17」
 function isNowWish(k){ return /^[월화수목금토일] \d{1,2}:\d{2}$/.test(String(k.wish || '').trim()); }
 // 이 제공인력께 여쭐 아이 = 열린 카드 전부에서 확인 전 + 이어 가기 + 같은 선생님(오래 기다린 집 먼저 = 목록 순서). 한 글에 10명까지(06 bk_step 상한)
@@ -438,32 +439,46 @@ function bundleOf(t){
   S.cards.forEach(function(c){ if (isEnd(c)) return; (c.kids || []).forEach(function(k){ if (k.step === '확인 전' && canAsk(k) && teacherOf(k) === t) out.push(k); }); });
   return out.slice(0, 10);
 }
-// ⚠️글 세 개 = 유성 확인 대상. 말투 정본 = docs/1 §2.1 「문의 답변」(보호자), 공지방 문체(제공인력). 보호자 글에 금액은 안 씀(금액은 행정이 말로, 계약 전에 꼭 — §2.1 「선을 긋는 말, 돈 말을 줄인다」)
+// ⚠️글 = 유성 11-09 확정(44차), 글자를 바꿀 땐 유성 확인. 괄호 = 지금과 다른 시간을 고른 아이만, 나머지는 이름만
+function chgWish(k){ return !!wishText(k.wish) && !isNowWish(k); }
 function askText(kids){
   var mons = {}; kids.forEach(function(k){ mons[k.fromMon || ''] = 1; });
-  var ms = Object.keys(mons), one = ms.length === 1, when = one && ms[0] ? ms[0] + '부터 ' : '';
-  var lines = kids.map(function(k){ return k.name + ' ' + wishText(k.wish) + (!one && k.fromMon ? ', ' + k.fromMon + '부터' : ''); });
-  return '선생님, 오감쑥쑥 바우처가 끝난 뒤에도 ' + when + '바우처 없이 1년 더 이어 가고 싶어 하시는 ' + (kids.length > 1 ? '보호자님들이' : '보호자님이') + ' 계세요.\n\n'
-    + lines.join('\n') + '\n\n' + (kids.every(isNowWish) ? '현재 요일, 시간 그대로' : '적어 드린 요일, 시간으로') + ' 가능하신지 알려 주세요.\n선생님 몫은 지금 바우처 없이 하시는 수업과 같아요.\n보호자님께는 센터에서 안내드릴게요.';
+  var ms = Object.keys(mons), one = ms.length === 1, mon = one ? ms[0] : '';
+  var names = kids.map(function(k){ return k.name + (chgWish(k) ? '(' + wishText(k.wish) + ')' : '') + (!one && k.fromMon ? ' ' + k.fromMon + '부터' : ''); });
+  var chg = kids.filter(chgWish).length;
+  var how = !chg ? '현재 요일과 시간 그대로' : chg === kids.length ? '적어 드린 요일과 시간으로' : '현재 요일과 시간 그대로(괄호 안은 적어 드린 시간으로)';
+  return '선생님~ 오감쑥쑥 바우처가 끝난 뒤에도 ' + (mon ? mon + '부터 ' : '') + '바우처 없이 1년을 더 이어 가고 싶어 하시는 ' + (kids.length > 1 ? '보호자분들이' : '보호자분이') + ' 계세요.\n\n: ' + names.join(', ') + '\n\n'
+    + how + ' 가능하신지 알려 주세요! 가능하시다면 ' + (mon ? mon + ' ' : '') + '신규 아동을 받기 전에 그 자리를 미리 잡아 둘게요 :)';
 }
 var DAY_FULL = { '월': '월요일', '화': '화요일', '수': '수요일', '목': '목요일', '금': '금요일', '토': '토요일', '일': '일요일' };
 function userTime(t){ var m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); if (!m) return String(t || ''); var h = +m[1], mi = +m[2]; return (h < 12 ? '오전 ' : '오후 ') + (h > 12 ? h - 12 : h) + '시' + (mi ? ' ' + mi + '분' : ''); }
 function userSlot(k){ return (DAY_FULL[k.s] || k.s) + ' ' + userTime(k.t); }
 function sameAsNow(k){ return isNowWish(k) && wishPairs(k.wish).some(function(p){ return p.day === k.s && p.time === normTime(k.t); }); }
-function parentHead(kids){ return '[생각공작소]\n안녕하세요, ' + kids.map(function(k){ return k.name; }).join(', ') + ' 보호자님.\n\n'; }
-function parentFrom(kids){ return kids[0].fromMon ? kids[0].fromMon + '부터 ' : ''; }
+function uniq(a){ var seen = {}, out = []; a.forEach(function(x){ if (x && !seen[x]) { seen[x] = 1; out.push(x); } }); return out; }
+function hasSlot(k){ return !!(k.q && k.s && /^\d{1,2}:\d{2}/.test(k.t)); }
+function kidNames(kids){ return kids.map(function(k){ return k.name; }).join(', '); }
+// 알림톡 미리 보기 = 06 _bkVars_, _bkWhen_과 같은 값으로 채운 승인 틀 글(실제로 나가는 글은 06이 승인된 틀로 만든다)
+function okWhen(kids){
+  if (kids.every(sameAsNow)) return '동일한 요일과 시간 그대로';
+  var txt = uniq(kids.map(userSlot)).join(', ');
+  return txt + (/분$/.test(txt) ? '으로' : '로');
+}
 function okText(kids){
-  var mon = parentFrom(kids), body;
-  if (kids.length === 1) body = '요청하신 오감쑥쑥 이어 가기를 ' + kids[0].q + ' 선생님께 여쭤보니, ' + mon + (sameAsNow(kids[0]) ? '현재와 같은 ' : '') + userSlot(kids[0]) + '에 이어 가실 수 있어요.';
-  else body = '요청하신 오감쑥쑥 이어 가기를 선생님께 여쭤보니, ' + mon + '아래 시간으로 이어 가실 수 있어요.\n\n' + kids.map(function(k){ return k.name + ': ' + userSlot(k) + ', ' + k.q + ' 선생님'; }).join('\n');
-  return parentHead(kids) + body + '\n\n수업료와 계약은 센터에서 다시 연락드릴게요 :)';
+  var mon = kids[0].fromMon || '';
+  return '안녕하세요, ' + kidNames(kids) + " 보호자님 ☺️\n\n요청하신 '오감쑥쑥 이어 가기'를 " + uniq(kids.map(function(k){ return k.q; })).join(', ') + ' 선생님께 여쭤보니, ' + mon + '부터 ' + okWhen(kids) + " 이어 가실 수 있다고 연락을 받았어요!\n\n아래 버튼에서 '이어 갈게요'만 눌러 주시면 " + mon + '부터 이어져요 :)';
 }
 function hardText(kids){
-  var ts = {}; kids.forEach(function(k){ ts[teacherOf(k)] = 1; });
-  var names = Object.keys(ts), who = names.length === 1 && names[0] ? names[0] + ' 선생님께' : '선생님께';
-  // 문장 틀 = 유성 10-21 「~께 여쭤봤는데, ~답변을 받았어요」, 연락 약속 = 매뉴얼 Q1 말(조건에 묶음), 죄송 X
-  return parentHead(kids) + '요청하신 오감쑥쑥 이어 가기를 ' + who + ' 여쭤봤는데, 선생님 일정상 ' + parentFrom(kids) + (kids.every(isNowWish) ? '현재' : '말씀하신') + ' 시간으로는 어렵다는 답변을 받았어요.\n\n'
-    + '다른 요일 및 시간이나 다른 선생님으로 이어 가고 싶으시면 아래 문의 창에 남겨 주세요. 가능한 선생님이 생기면 연락드릴게요 :)\nhttps://think-factory.kr/ask';
+  var mon = kids[0].fromMon || '', who = uniq(kids.map(function(k){ return (k.cur && k.cur.q) || k.q; })).join(', ');
+  return '안녕하세요, ' + kidNames(kids) + " 보호자님\n\n요청하신 '오감쑥쑥 이어 가기'를 " + who + ' 선생님께 여쭤보니, 선생님 일정상 ' + mon + '부터 현재 시간으로는 어렵다는 답변을 받았어요 😭\n\n다른 요일 및 시간이나 다른 선생님으로 이어 가고 싶으시다면, 아래 버튼에서 가능한 시간을 골라 주세요! 가능한 선생님이 생기면 연락드릴게요 :)';
+}
+// 25일 뒤에 난 결과 = 제공인력께 행정이 전하는 글(25일 전 결과는 07 명단 글에 실린다)
+function tellText(c){
+  var out = [];
+  [['yes', '이어 가기로 하셨어요!'], ['no', '이어 가지 않기로 하셨어요.']].forEach(function(p){
+    var ks = (c.kids || []).filter(function(k){ return k.tell === p[0]; });
+    if (ks.length) out.push('선생님~ ' + (ks[0].fromMon ? ks[0].fromMon + '부터 ' : '') + p[1] + '\n\n: ' + kidNames(ks));
+  });
+  return out.join('\n\n');
 }
 function stepClass(st){ return END[st] ? 's9' : st === '확인 전' ? 's0' : st === '여쭙는 중' ? 's1' : 's2'; }
 
@@ -481,7 +496,10 @@ function cardHtml(c){
     var tq = kidsAt(c, '확인 전').map(teacherOf).filter(Boolean)[0];
     h += '<div class="hint">' + (tq ? esc(tq) + ' 선생님께 ' + (kidsAt(c, '확인 전').every(canAsk) ? '여쭐 글을 복사해 개별 카톡으로 보내 주세요.' : '가능한지 개별 카톡으로 여쭤봐 주세요.') : '맡을 제공인력을 찾아 개별 카톡으로 여쭤봐 주세요.') + '</div>';
   } else if (!end && st === '가능') {
-    h += '<div class="hint">' + (kidsAt(c, '가능').every(isCont) ? '보호자께 정한 요일, 시간을 문자로 보내 주세요.' : '보호자께 정한 요일, 시간을 알려 주세요.') + '</div>';
+    h += '<div class="hint">' + (kidsAt(c, '가능').every(isCont) ? '보호자께 정한 요일, 시간을 알림톡으로 보내 주세요.' : '보호자께 정한 요일, 시간을 알려 주세요.') + '</div>';
+  } else if (end && kids.some(function(k){ return k.tell; })) {
+    var tt = kids.filter(function(k){ return k.tell; }).map(teacherOf).filter(Boolean)[0];
+    h += '<div class="hint">' + (tt ? esc(tt) + ' 선생님께' : '제공인력께') + ' 결과 글을 복사해 개별 카톡으로 보내 주세요.</div>';
   }
   h += '<dl class="kv">';
   kids.forEach(function(k){
@@ -500,15 +518,20 @@ function cardHtml(c){
   var place = [c.gu, c.dong].filter(Boolean).join(' ');
   if (place) h += '<div><dt>동네</dt><dd>' + esc(place) + '</dd></div>';
   h += '</dl>';
+  var busy = S.writing === c.key, dis = S.writing ? ' disabled' : '';
+  var dots = '<span class="dots"><i></i><i></i><i></i></span>';
+  var btn = function(a, cls, lb){ return '<button class="b ' + cls + (busy && S.wBtn === a ? ' busy' : '') + '" data-a="' + a + '"' + dis + '><span class="lb">' + lb + '</span>' + dots + '</button>'; };
+  if (end) {   // 끝난 카드에서 할 일 2가지 = 어려움이었는데 맡을 제공인력을 찾음, 결과를 제공인력께 전함
+    var backK = kidsAt(c, '어려움').filter(isCont), hasTell = kids.some(function(k){ return k.tell; });
+    if (backK.length || hasTell) h += '<div class="acts">' + (hasTell ? btn('tell', 'pri', '결과 글 복사') : '') + (backK.length ? btn('okhard', hasTell ? 'weak' : 'pri', '가능해요') : '') + '</div>';
+  }
   if (!end) {
-    var busy = S.writing === c.key, dis = S.writing ? ' disabled' : '';
-    var dots = '<span class="dots"><i></i><i></i><i></i></span>';
-    var btn = function(a, cls, lb){ return '<button class="b ' + cls + (busy && S.wBtn === a ? ' busy' : '') + '" data-a="' + a + '"' + dis + '><span class="lb">' + lb + '</span>' + dots + '</button>'; };
     h += '<div class="acts">';
     if (st === '확인 전') h += kidsAt(c, '확인 전').every(canAsk) ? btn('askmsg', 'pri', '여쭐 글 복사') : btn('ask', 'pri', '여쭤봤어요');
     else if (st === '여쭙는 중') h += btn('ok', 'pri', '가능해요') + btn('hard', 'weak', '어려워요');
     else if (st === '가능') h += kidsAt(c, '가능').every(isCont) ? btn('sendok', 'pri', '보호자께 보내기') + btn('told', 'weak', '따로 알렸어요') : btn('told', 'pri', '보호자께 알렸어요');
     else if (st === '보호자 연락') h += btn('done', 'pri', '계약했어요');
+    if (st !== '여쭙는 중' && kidsAt(c, '어려움').some(isCont)) h += btn('okhard', 'weak', '가능해요');   // 형제 중 어려움으로 남은 아이
     h += '</div>';
   }
   h += '<div class="foot"><button class="lk" data-a="map">지도에서 보기</button><button class="lk" data-a="fix"' + (S.writing ? ' disabled' : '') + '>단계 고치기</button></div>';
@@ -612,6 +635,8 @@ $('list').addEventListener('click', function(e){
     });
   }
   else if (a === 'ok' && st === '여쭙는 중') openOk(c, kidsAt(c, '여쭙는 중')[0]);
+  else if (a === 'okhard') openOk(c, kidsAt(c, '어려움').filter(isCont)[0]);
+  else if (a === 'tell') copyText(tellText(c)).then(function(ok){ toast(ok ? '복사했어요. 개별 카톡으로 보내 주세요' : '복사하지 못했어요. 다시 눌러 주세요'); });
 });
 document.querySelectorAll('#seg button').forEach(function(b){ b.addEventListener('click', function(){
   S.tab = b.getAttribute('data-t');
@@ -661,10 +686,13 @@ function normTime(v){
 }
 function openOk(c, k){
   if (!k) return;
-  okCtx = { c: c, k: k, day: '', sending: false };
+  // auto = 이 아이로 이 단계가 끝나면(형제는 마지막 아이에서) 저장 뒤 바로 알림톡. 일반 신청 카드는 옛 길
+  okCtx = { c: c, k: k, day: '', sending: false, auto: isCont(k) && kidsAt(c, k.step).length === 1 && kidsAt(c, '가능').every(isCont) };
+  $('okGo').querySelector('.lb').textContent = okCtx.auto ? '저장하고 보내기' : '이 시간으로 적기';
+  $('okHard').style.display = isCont(k) && k.step === '여쭙는 중' && kidsAt(c, '여쭙는 중').length > 1 ? 'block' : 'none';   // 형제 결과가 갈린 집
   $('okT').textContent = k.name + ' 가능한 시간';
   $('okS').textContent = tabLabel(k.tab) + (k.birth ? ', ' + k.birth + '년생' : '');
-  fillProv(teacherOf(k));
+  fillProv(k.step === '어려움' ? '' : teacherOf(k));   // 어려움 = 지금 선생님이 못 하신다고 한 뒤라 새로 고른다
   // 미리 채움 = 희망 시간 첫째(이어 가기 = 지금 요일 시간이 들어온다), 없으면 비움
   var pre = wishPairs(k.wish);
   if (k.s && k.t && !pre.some(function(p){ return p.day === k.s && p.time === normTime(k.t); })) pre.unshift({ day: k.s, time: normTime(k.t), cur: 1 });
@@ -719,6 +747,7 @@ function okSend(resolve, force){
       var as0 = r.assign || {};
       // stamped = 06이 S, T를 다시 읽어 확인한 값(Code.js) — false면 선생님만 적히고 시간은 안 적힌 것
       if (as0.stamped === false) toast(k.name + ' 제공인력은 적었는데 요일, 시간을 못 적었어요. 지도에서 확인해 주세요');
+      else if (ctx.auto && r.step !== false) autoSend(c.key, k.name + ' ' + day + ' ' + time);
       else toast(k.name + ' ' + day + ' ' + time + ' 가능으로 적었어요' + (r.step === false ? '. 단계는 못 적어서 다시 눌러 주세요' : ''));
       return;
     }
@@ -730,6 +759,25 @@ function okSend(resolve, force){
     S.writing = ''; ctx.sending = false; $('okGo').classList.remove('busy');
     closeLayer(); render();
     lostWrite([{ tab: k.tab, row: k.row }], '가능', k.name + ' 가능으로 적었어요');
+  });
+}
+// 저장 뒤 바로 알림톡(유성 11-09) — 실패해도 카드에 「보호자께 보내기」, 「따로 알렸어요」가 남는다. 응답을 놓치면 다시 안 보내고 목록으로 결과를 본다
+function sendRows(c, kids){ return kids.map(function(k){ return { tab: k.tab, row: k.row, name: k.name, from: k.step, q: k.q, s: k.s, t: k.t, ph: c.phone }; }); }
+function autoSend(key, said){
+  var c = cardOf(key), kids = c ? kidsAt(c, '가능') : [];
+  if (!kids.length || !kids.every(isCont) || !kids.every(hasSlot)) { toast(said + ' 가능으로 적었어요'); return; }
+  var ks = sendRows(c, kids);
+  S.writing = key; S.wBtn = 'sendok'; render();
+  call('bk_send', { k: JSON.stringify(ks), step: '보호자 연락' }, SEND_TIMEOUT_MS).then(function(r){
+    S.writing = ''; afterWrite(r); render();
+    if (r && r.error === 'Unauthorized') { goOff(); return; }
+    if (r && r.ok) { toast('보호자께 보냈어요'); return; }
+    if (r && r.stale) { toast(STALE_SAY); return; }
+    toast('가능으로 적었어요. ' + ((r && r.error) || '보호자께 보내지 못했어요. 다시 눌러 주세요'));
+  }, function(e){
+    S.writing = ''; render();
+    if (e && e.noid) { goOff(); return; }
+    lostWrite(ks, '보호자 연락', '보호자께 보냈어요');
   });
 }
 // 겹침 — 지도 _cgOpen과 같은 판단 재료. 밀린 아이를 옮기는 일(바꾸기)은 이 화면에 안 둔다(지도에서) — 여긴 다른 시간 고르기가 먼저
@@ -758,7 +806,7 @@ $('okCf').addEventListener('click', function(e){
   else okSend(null, true);
 });
 
-/* ── 글 시트: 제공인력께 여쭐 글(복사) / 보호자 문자(032) ──
+/* ── 글 시트: 제공인력께 여쭐 글(복사) / 보호자 알림톡(미리 보기만, 글은 06이 승인된 틀로 만든다) ──
    복사 = 복사가 된 뒤에만 여쭙는 중으로 적는다(붙여 넣을 글이 없는데 단계만 넘어가지 않게).
    보내기 = 한 번만. 응답을 놓치면 다시 안 보내고 목록으로 결과를 본다(06이 from 대조로 두 번 안 보냄). */
 var msgCtx = null;
@@ -767,7 +815,7 @@ function copyText(t){ if (navigator.clipboard && navigator.clipboard.writeText) 
 function msgErr(t){ var e = $('msgErr'); e.textContent = t; e.classList.toggle('on', !!t); }
 function openMsg(o){
   msgCtx = o;
-  $('msgT').textContent = o.title; $('msgS').textContent = o.sub; $('msgTx').value = o.text; $('msgGoL').textContent = o.go;
+  $('msgT').textContent = o.title; $('msgS').textContent = o.sub; $('msgTx').value = o.text; $('msgTx').readOnly = o.mode !== 'ask'; $('msgGoL').textContent = o.go;
   $('msgSkip').style.display = o.mode === 'hard' ? 'block' : 'none';
   $('msgGo').classList.remove('busy'); $('msgGo').disabled = false; msgErr('');
   openLayer('msg');
@@ -777,13 +825,17 @@ function openAsk(c){
   if (!kids.length) return;
   openMsg({ mode: 'ask', c: c, kids: kids, title: t + ' 선생님께 여쭙기', sub: kids.length > 1 ? '기다리는 아이 ' + kids.length + '명을 한 글로 묶었어요. 복사해서 개별 카톡으로 보내 주세요' : '복사해서 개별 카톡으로 보내 주세요', text: askText(kids), go: '복사하기' });
 }
-function openParent(c, kind){
-  var kids = kidsAt(c, kind === 'ok' ? '가능' : '여쭙는 중');
+function openParent(c, kind, only){
+  var kids = only || kidsAt(c, kind === 'ok' ? '가능' : '여쭙는 중');
   if (!kids.length) return;
   if (kind === 'ok' && !kids.every(function(k){ return k.q && k.s && /^\d{1,2}:\d{2}/.test(k.t); })) { toast('요일, 시간을 정하기 전이에요. 단계 고치기로 맞춰 주세요'); return; }   // 지도에서 배정을 취소한 「가능」 카드 = 글이 깨진다
-  openMsg({ mode: kind, c: c, kids: kids, title: '보호자께 보낼 문자', sub: c.phone + ' 번호로 보내요', text: kind === 'ok' ? okText(kids) : hardText(kids), go: kind === 'ok' ? '보내기' : '보내고 끝내기', step: kind === 'ok' ? '보호자 연락' : '어려움' });
+  openMsg({ mode: kind, c: c, kids: kids, title: '보호자께 보낼 알림톡', sub: c.phone + ' 번호로 보내요', text: kind === 'ok' ? okText(kids) : hardText(kids), go: kind === 'ok' ? '보내기' : '보내고 끝내기', step: kind === 'ok' ? '보호자 연락' : '어려움' });
 }
 $('msgNo').addEventListener('click', closeLayer);
+$('okHard').addEventListener('click', function(){
+  if (!okCtx || okCtx.sending || layerFresh()) return;
+  var c = okCtx.c, k = okCtx.k; closeLayer(); openParent(c, 'hard', [k]);
+});
 $('msgSkip').addEventListener('click', function(){
   if (!msgCtx || msgCtx.sending || layerFresh()) return;
   var o = msgCtx; closeLayer();
@@ -791,9 +843,10 @@ $('msgSkip').addEventListener('click', function(){
 });
 $('msgGo').addEventListener('click', function(){
   if (!msgCtx || msgCtx.sending || layerFresh()) return;
-  var o = msgCtx, text = $('msgTx').value.trim();
-  if (!text) { msgErr('보낼 글을 적어 주세요'); return; }
+  var o = msgCtx;
   if (o.mode === 'ask') {
+    var text = $('msgTx').value.trim();
+    if (!text) { msgErr('보낼 글을 적어 주세요'); return; }
     copyText(text).then(function(ok){
       if (!ok) { msgErr('복사하지 못했어요. 글을 직접 복사해 주세요'); return; }
       if (msgCtx !== o) return;
@@ -804,8 +857,8 @@ $('msgGo').addEventListener('click', function(){
   }
   o.sending = true; $('msgGo').classList.add('busy'); msgErr('');
   S.writing = o.c.key; S.wBtn = o.mode === 'ok' ? 'sendok' : 'hard'; render();
-  var ks = o.kids.map(function(k){ return { tab: k.tab, row: k.row, name: k.name, from: k.step, q: k.q, s: k.s, t: k.t, ph: o.c.phone }; }), okMsg = '보호자께 보냈어요';
-  call('bk_send', { k: JSON.stringify(ks), step: o.step, text: text }, SEND_TIMEOUT_MS).then(function(r){
+  var ks = sendRows(o.c, o.kids), okMsg = '보호자께 보냈어요';
+  call('bk_send', { k: JSON.stringify(ks), step: o.step }, SEND_TIMEOUT_MS).then(function(r){
     S.writing = ''; o.sending = false; $('msgGo').classList.remove('busy');
     afterWrite(r); render();
     if (r && r.error === 'Unauthorized') { closeLayer(); goOff(); return; }
