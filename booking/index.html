@@ -182,6 +182,8 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 .opt b{font-size:var(--fs-body);color:var(--g900)}
 .opt span{font-size:var(--fs-sm);color:var(--g600)}
 .opt:disabled{opacity:.45;cursor:default;box-shadow:none}
+.ta{resize:none;line-height:1.55;min-height:210px;font-family:inherit;display:block}
+.skip{display:block;margin:10px auto 0}
 .note{font-size:var(--fs-sm);color:var(--warn-weak-fg);background:var(--warn-weak-bg);border-radius:12px;padding:9px 12px;margin-top:12px;display:none}
 .note.on{display:block}
 .cmodal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 84px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:33;box-shadow:0 12px 40px rgba(0,0,0,.2)}
@@ -231,6 +233,18 @@ select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
     </div>
     <div class="sbtns"><button class="mb no" id="fixNo">닫기</button></div>
   </div>
+  <!-- 글 시트 = 제공인력께 여쭐 글(복사) / 보호자께 보낼 문자(032) — 글은 카드가 채우고 고칠 수 있다 -->
+  <div class="sheet" id="msgSheet" role="dialog" aria-labelledby="msgT">
+    <div class="handle"></div>
+    <div class="sb">
+      <div class="sh-t" id="msgT"></div>
+      <div class="sh-s" id="msgS"></div>
+      <div class="fld"><textarea class="inp ta" id="msgTx" maxlength="500" aria-label="보낼 글"></textarea></div>
+      <div class="err" id="msgErr"></div>
+      <button type="button" class="lk skip" id="msgSkip">문자 없이 끝내기</button>
+    </div>
+    <div class="sbtns"><button class="mb no" id="msgNo">닫기</button><button class="mb go" id="msgGo"><span class="lb" id="msgGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div>
+  </div>
   <div class="cmodal" id="cfm" role="alertdialog" aria-labelledby="cfmT"><div class="mt2" id="cfmT"></div><div class="ms2" id="cfmS"></div><div class="mbtns"><button type="button" class="mb no" id="cfmNo">닫기</button><button type="button" class="mb go" id="cfmGo"><span class="lb" id="cfmGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div></div>
 </div>
 
@@ -241,6 +255,7 @@ var MAP_URL = 'https://think-fact0ry.github.io/saenggak/provider-map.html';   //
 var REQ_TIMEOUT_MS = 15000;      // 읽기 시한(알약 07-31 사고: 시한 없는 fetch가 조회를 영구히 멈췄다)
 var WRITE_TIMEOUT_MS = 30000;    // 단계 쓰기 시한 — 잠금 5초 + 쓰기 + 새 목록
 var OK_TIMEOUT_MS = 60000;       // 「가능」 시한 — 잠금 5초 + 점유표 다시 짓기(처음 지을 때 10초대 실측 기록) + 새 목록. 넘으면 놓친 쓰기로 결과를 본다
+var SEND_TIMEOUT_MS = 45000;     // 문자 보내기 시한 — 잠금 5초 + 솔라피 + 단계 + 새 목록. 넘으면 다시 안 보내고 목록으로 결과를 본다
 var SHOWN_POLL_MS = 60000;       // 화면이 보일 때 = 1분(06 bk_list 캐시도 60초)
 var HIDDEN_POLL_MS = 5 * 60000;  // 다른 화면에 있을 때 = 5분(메뉴 숫자만)
 var OFF_RETRY_MS = 10 * 60000;   // 꺼짐(06 INQ_KEY 없음, 서명 없음) = 10분마다 한 번 다시 물음
@@ -413,6 +428,43 @@ function frontStep(c){
 }
 function kidsAt(c, step){ return (c.kids || []).filter(function(k){ return k.step === step; }); }
 function teacherOf(k){ return k.q || (k.cur && k.cur.q) || ''; }
+function isCont(k){ return k.src === 'continue'; }
+function canAsk(k){ return isCont(k) && !!teacherOf(k) && !!wishText(k.wish); }
+// 대장에서 읽어 넣은 「지금」 꼴(요일 한 칸 + 시각)일 때만 「현재」라고 쓴다 — 보호자가 본인수정으로 희망을 바꾼 줄은 「화-15,목-17」
+function isNowWish(k){ return /^[월화수목금토일] \d{1,2}:\d{2}$/.test(String(k.wish || '').trim()); }
+// 이 제공인력께 여쭐 아이 = 열린 카드 전부에서 확인 전 + 이어 가기 + 같은 선생님(오래 기다린 집 먼저 = 목록 순서). 한 글에 10명까지(06 bk_step 상한)
+function bundleOf(t){
+  var out = [];
+  S.cards.forEach(function(c){ if (isEnd(c)) return; (c.kids || []).forEach(function(k){ if (k.step === '확인 전' && canAsk(k) && teacherOf(k) === t) out.push(k); }); });
+  return out.slice(0, 10);
+}
+// ⚠️글 세 개 = 유성 확인 대상. 말투 정본 = docs/1 §2.1 「문의 답변」(보호자), 공지방 문체(제공인력). 보호자 글에 금액은 안 씀(금액은 행정이 말로, 계약 전에 꼭 — §2.1 「선을 긋는 말, 돈 말을 줄인다」)
+function askText(kids){
+  var mons = {}; kids.forEach(function(k){ mons[k.fromMon || ''] = 1; });
+  var ms = Object.keys(mons), one = ms.length === 1, when = one && ms[0] ? ms[0] + '부터 ' : '';
+  var lines = kids.map(function(k){ return k.name + ' ' + wishText(k.wish) + (!one && k.fromMon ? ', ' + k.fromMon + '부터' : ''); });
+  return '선생님, 오감쑥쑥 바우처가 끝난 뒤에도 ' + when + '바우처 없이 1년 더 이어 가고 싶어 하시는 ' + (kids.length > 1 ? '보호자님들이' : '보호자님이') + ' 계세요.\n\n'
+    + lines.join('\n') + '\n\n' + (kids.every(isNowWish) ? '현재 요일, 시간 그대로' : '적어 드린 요일, 시간으로') + ' 가능하신지 알려 주세요.\n선생님 몫은 지금 바우처 없이 하시는 수업과 같아요.\n보호자님께는 센터에서 안내드릴게요.';
+}
+var DAY_FULL = { '월': '월요일', '화': '화요일', '수': '수요일', '목': '목요일', '금': '금요일', '토': '토요일', '일': '일요일' };
+function userTime(t){ var m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); if (!m) return String(t || ''); var h = +m[1], mi = +m[2]; return (h < 12 ? '오전 ' : '오후 ') + (h > 12 ? h - 12 : h) + '시' + (mi ? ' ' + mi + '분' : ''); }
+function userSlot(k){ return (DAY_FULL[k.s] || k.s) + ' ' + userTime(k.t); }
+function sameAsNow(k){ return isNowWish(k) && wishPairs(k.wish).some(function(p){ return p.day === k.s && p.time === normTime(k.t); }); }
+function parentHead(kids){ return '[생각공작소]\n안녕하세요, ' + kids.map(function(k){ return k.name; }).join(', ') + ' 보호자님.\n\n'; }
+function parentFrom(kids){ return kids[0].fromMon ? kids[0].fromMon + '부터 ' : ''; }
+function okText(kids){
+  var mon = parentFrom(kids), body;
+  if (kids.length === 1) body = '요청하신 오감쑥쑥 이어 가기를 ' + kids[0].q + ' 선생님께 여쭤보니, ' + mon + (sameAsNow(kids[0]) ? '현재와 같은 ' : '') + userSlot(kids[0]) + '에 이어 가실 수 있어요.';
+  else body = '요청하신 오감쑥쑥 이어 가기를 선생님께 여쭤보니, ' + mon + '아래 시간으로 이어 가실 수 있어요.\n\n' + kids.map(function(k){ return k.name + ': ' + userSlot(k) + ', ' + k.q + ' 선생님'; }).join('\n');
+  return parentHead(kids) + body + '\n\n수업료와 계약은 센터에서 다시 연락드릴게요 :)';
+}
+function hardText(kids){
+  var ts = {}; kids.forEach(function(k){ ts[teacherOf(k)] = 1; });
+  var names = Object.keys(ts), who = names.length === 1 && names[0] ? names[0] + ' 선생님께' : '선생님께';
+  // 문장 틀 = 유성 10-21 「~께 여쭤봤는데, ~답변을 받았어요」, 연락 약속 = 매뉴얼 Q1 말(조건에 묶음), 죄송 X
+  return parentHead(kids) + '요청하신 오감쑥쑥 이어 가기를 ' + who + ' 여쭤봤는데, 선생님 일정상 ' + parentFrom(kids) + (kids.every(isNowWish) ? '현재' : '말씀하신') + ' 시간으로는 어렵다는 답변을 받았어요.\n\n'
+    + '다른 요일 및 시간이나 다른 선생님으로 이어 가고 싶으시면 아래 문의 창에 남겨 주세요. 가능한 선생님이 생기면 연락드릴게요 :)\nhttps://think-factory.kr/ask';
+}
 function stepClass(st){ return END[st] ? 's9' : st === '확인 전' ? 's0' : st === '여쭙는 중' ? 's1' : 's2'; }
 
 function cardHtml(c){
@@ -427,9 +479,9 @@ function cardHtml(c){
   // 할 일 한 줄 — 행정 차례인 단계만(버튼이 이미 말하는 단계는 안 씀, §2.1-7)
   if (!end && st === '확인 전') {
     var tq = kidsAt(c, '확인 전').map(teacherOf).filter(Boolean)[0];
-    h += '<div class="hint">' + (tq ? esc(tq) + ' 선생님께 가능한지 개별 카톡으로 여쭤봐 주세요.' : '맡을 제공인력을 찾아 개별 카톡으로 여쭤봐 주세요.') + '</div>';
+    h += '<div class="hint">' + (tq ? esc(tq) + ' 선생님께 ' + (kidsAt(c, '확인 전').every(canAsk) ? '여쭐 글을 복사해 개별 카톡으로 보내 주세요.' : '가능한지 개별 카톡으로 여쭤봐 주세요.') : '맡을 제공인력을 찾아 개별 카톡으로 여쭤봐 주세요.') + '</div>';
   } else if (!end && st === '가능') {
-    h += '<div class="hint">보호자께 정한 요일, 시간을 알려 주세요.</div>';
+    h += '<div class="hint">' + (kidsAt(c, '가능').every(isCont) ? '보호자께 정한 요일, 시간을 문자로 보내 주세요.' : '보호자께 정한 요일, 시간을 알려 주세요.') + '</div>';
   }
   h += '<dl class="kv">';
   kids.forEach(function(k){
@@ -437,6 +489,7 @@ function cardHtml(c){
     var t = teacherOf(k);
     if (k.s && k.t && ORDER[k.step] >= 2) h += '<div><dt>정한 시간</dt><dd>' + lead + esc(k.s + ' ' + k.t) + (k.q ? ', ' + esc(k.q) + ' 선생님' : '') + '</dd></div>';
     else if (t) h += '<div><dt>' + (k.cur && k.cur.q === t ? '지금' : '맡을 분') + '</dt><dd>' + lead + esc(t) + ' 선생님' + (k.cur && k.cur.q === t && k.cur.tab ? ' (' + esc(tabLabel(k.cur.tab)) + ')' : '') + '</dd></div>';
+    if (k.fromMon) h += '<div><dt>시작</dt><dd>' + lead + esc(k.fromMon) + '부터</dd></div>';
     var w = wishText(k.wish);
     if (w) h += '<div><dt>희망</dt><dd>' + lead + esc(w) + '</dd></div>';
   });
@@ -452,9 +505,9 @@ function cardHtml(c){
     var dots = '<span class="dots"><i></i><i></i><i></i></span>';
     var btn = function(a, cls, lb){ return '<button class="b ' + cls + (busy && S.wBtn === a ? ' busy' : '') + '" data-a="' + a + '"' + dis + '><span class="lb">' + lb + '</span>' + dots + '</button>'; };
     h += '<div class="acts">';
-    if (st === '확인 전') h += btn('ask', 'pri', '여쭤봤어요');
+    if (st === '확인 전') h += kidsAt(c, '확인 전').every(canAsk) ? btn('askmsg', 'pri', '여쭐 글 복사') : btn('ask', 'pri', '여쭤봤어요');
     else if (st === '여쭙는 중') h += btn('ok', 'pri', '가능해요') + btn('hard', 'weak', '어려워요');
-    else if (st === '가능') h += btn('told', 'pri', '보호자께 알렸어요');
+    else if (st === '가능') h += kidsAt(c, '가능').every(isCont) ? btn('sendok', 'pri', '보호자께 보내기') + btn('told', 'weak', '따로 알렸어요') : btn('told', 'pri', '보호자께 알렸어요');
     else if (st === '보호자 연락') h += btn('done', 'pri', '계약했어요');
     h += '</div>';
   }
@@ -547,10 +600,13 @@ $('list').addEventListener('click', function(e){
   }
   if (a === 'fix') { openFix(c); return; }
   if (a === 'ask') stepWrite(c, kidsAt(c, '확인 전'), '여쭙는 중', a, '여쭙는 중으로 적었어요');
+  else if (a === 'askmsg') openAsk(c);
+  else if (a === 'sendok') openParent(c, 'ok');
   else if (a === 'told') stepWrite(c, kidsAt(c, '가능'), '보호자 연락', a, '보호자 연락으로 적었어요');
   else if (a === 'done') stepWrite(c, kidsAt(c, '보호자 연락'), '계약 끝', a, '계약함으로 적었어요');
   else if (a === 'hard') {
     var ks = kidsAt(c, '여쭙는 중');
+    if (ks.every(isCont)) { openParent(c, 'hard'); return; }
     confirmBox(ks.map(function(k){ return k.name; }).join(', ') + ' 카드를 어려움으로 끝낼까요?', '끝남 칸에 14일 동안 남아요', '끝내기', function(done){
       stepWrite(c, ks, '어려움', a, '어려움으로 적었어요', done);
     });
@@ -567,12 +623,13 @@ document.querySelectorAll('#seg button').forEach(function(b){ b.addEventListener
 var layer = '', layerAt = 0;   // 지금 열린 겹 = 'ok' | 'fix' | 'cfm' | '' / 연 때
 // 겹이 뜨고 0.4초 안의 누름 = 여는 누름의 둘째(더블클릭) — 딤, 시트 버튼, 단계 줄에 안 먹인다(38차 리뷰: 아래쪽 카드에서 둘째 클릭이 올라오는 시트의 「멈춤」, 「이 시간으로 적기」에 떨어짐)
 function layerFresh(){ return Date.now() - layerAt < 400; }
-function openLayer(id){ layer = id; layerAt = Date.now(); $('dim').classList.add('on'); $(id === 'ok' ? 'okSheet' : id === 'fix' ? 'fixSheet' : 'cfm').classList.add('on'); }
+function openLayer(id){ layer = id; layerAt = Date.now(); $('dim').classList.add('on'); $(id === 'ok' ? 'okSheet' : id === 'fix' ? 'fixSheet' : id === 'msg' ? 'msgSheet' : 'cfm').classList.add('on'); }
 function closeLayer(){
   if (!layer) return false;
   if (layer === 'ok' && okCtx && okCtx.sending) return true;   // 보내는 중엔 안 닫는다(결과를 그 자리에서 보여 줘야 한다)
-  $('okSheet').classList.remove('on'); $('fixSheet').classList.remove('on'); $('cfm').classList.remove('on'); $('dim').classList.remove('on');
-  layer = ''; okCtx = null; cfmCtx = null; return true;
+  if (layer === 'msg' && msgCtx && msgCtx.sending) return true;
+  $('okSheet').classList.remove('on'); $('fixSheet').classList.remove('on'); $('msgSheet').classList.remove('on'); $('cfm').classList.remove('on'); $('dim').classList.remove('on');
+  layer = ''; okCtx = null; cfmCtx = null; msgCtx = null; return true;
 }
 $('dim').addEventListener('click', function(){ if (!layerFresh()) closeLayer(); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeLayer(); });
@@ -699,6 +756,69 @@ $('okCf').addEventListener('click', function(e){
   var b = e.target.closest('.chip[data-r]'); if (!b) return;
   if (b.getAttribute('data-r') === 'sib') okSend({ mode: 'sibling' }, false);
   else okSend(null, true);
+});
+
+/* ── 글 시트: 제공인력께 여쭐 글(복사) / 보호자 문자(032) ──
+   복사 = 복사가 된 뒤에만 여쭙는 중으로 적는다(붙여 넣을 글이 없는데 단계만 넘어가지 않게).
+   보내기 = 한 번만. 응답을 놓치면 다시 안 보내고 목록으로 결과를 본다(06이 from 대조로 두 번 안 보냄). */
+var msgCtx = null;
+function copyOld(t){ var a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) { } a.remove(); return ok; }
+function copyText(t){ if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(function(){ return true; }, function(){ return copyOld(t); }); return Promise.resolve(copyOld(t)); }
+function msgErr(t){ var e = $('msgErr'); e.textContent = t; e.classList.toggle('on', !!t); }
+function openMsg(o){
+  msgCtx = o;
+  $('msgT').textContent = o.title; $('msgS').textContent = o.sub; $('msgTx').value = o.text; $('msgGoL').textContent = o.go;
+  $('msgSkip').style.display = o.mode === 'hard' ? 'block' : 'none';
+  $('msgGo').classList.remove('busy'); $('msgGo').disabled = false; msgErr('');
+  openLayer('msg');
+}
+function openAsk(c){
+  var t = teacherOf(kidsAt(c, '확인 전')[0]), kids = bundleOf(t);
+  if (!kids.length) return;
+  openMsg({ mode: 'ask', c: c, kids: kids, title: t + ' 선생님께 여쭙기', sub: kids.length > 1 ? '기다리는 아이 ' + kids.length + '명을 한 글로 묶었어요. 복사해서 개별 카톡으로 보내 주세요' : '복사해서 개별 카톡으로 보내 주세요', text: askText(kids), go: '복사하기' });
+}
+function openParent(c, kind){
+  var kids = kidsAt(c, kind === 'ok' ? '가능' : '여쭙는 중');
+  if (!kids.length) return;
+  if (kind === 'ok' && !kids.every(function(k){ return k.q && k.s && /^\d{1,2}:\d{2}/.test(k.t); })) { toast('요일, 시간을 정하기 전이에요. 단계 고치기로 맞춰 주세요'); return; }   // 지도에서 배정을 취소한 「가능」 카드 = 글이 깨진다
+  openMsg({ mode: kind, c: c, kids: kids, title: '보호자께 보낼 문자', sub: c.phone + ' 번호로 보내요', text: kind === 'ok' ? okText(kids) : hardText(kids), go: kind === 'ok' ? '보내기' : '보내고 끝내기', step: kind === 'ok' ? '보호자 연락' : '어려움' });
+}
+$('msgNo').addEventListener('click', closeLayer);
+$('msgSkip').addEventListener('click', function(){
+  if (!msgCtx || msgCtx.sending || layerFresh()) return;
+  var o = msgCtx; closeLayer();
+  stepWrite(o.c, o.kids, '어려움', 'hard', '어려움으로 적었어요');
+});
+$('msgGo').addEventListener('click', function(){
+  if (!msgCtx || msgCtx.sending || layerFresh()) return;
+  var o = msgCtx, text = $('msgTx').value.trim();
+  if (!text) { msgErr('보낼 글을 적어 주세요'); return; }
+  if (o.mode === 'ask') {
+    copyText(text).then(function(ok){
+      if (!ok) { msgErr('복사하지 못했어요. 글을 직접 복사해 주세요'); return; }
+      if (msgCtx !== o) return;
+      closeLayer();
+      stepWrite(o.c, o.kids, '여쭙는 중', 'askmsg', '복사했어요. 개별 카톡으로 보내 주세요');
+    });
+    return;
+  }
+  o.sending = true; $('msgGo').classList.add('busy'); msgErr('');
+  S.writing = o.c.key; S.wBtn = o.mode === 'ok' ? 'sendok' : 'hard'; render();
+  var ks = o.kids.map(function(k){ return { tab: k.tab, row: k.row, name: k.name, from: k.step, q: k.q, s: k.s, t: k.t, ph: o.c.phone }; }), okMsg = '보호자께 보냈어요';
+  call('bk_send', { k: JSON.stringify(ks), step: o.step, text: text }, SEND_TIMEOUT_MS).then(function(r){
+    S.writing = ''; o.sending = false; $('msgGo').classList.remove('busy');
+    afterWrite(r); render();
+    if (r && r.error === 'Unauthorized') { closeLayer(); goOff(); return; }
+    if (r && r.ok) { closeLayer(); toast(okMsg); return; }
+    if (r && r.stale) { closeLayer(); toast(STALE_SAY); return; }
+    if (r && r.unknown) { msgErr(r.error); $('msgGo').disabled = true; return; }   // 다시 못 보내게 — 닫기만
+    msgErr((r && r.error) || '보내지 못했어요. 다시 눌러 주세요');
+  }, function(e){
+    S.writing = ''; o.sending = false; $('msgGo').classList.remove('busy');
+    closeLayer(); render();
+    if (e && e.noid) { goOff(); return; }
+    lostWrite(ks, o.step, okMsg);
+  });
 });
 
 /* ── 단계 고치기 ── */
