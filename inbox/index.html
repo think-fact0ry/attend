@@ -1103,11 +1103,12 @@ function kbAns(st){
   if (FQ.data && FQ.data.kb) put(); else { var id = R.id; fqLoad().then(function(){ if (R.id === id) put(); }, function(){ toastA('답 글을 아직 못 받았어요'); }); }
 }
 // 선생님 연락 줄 — 배정 아이의 선생님 이름(현아쌤 글 §8-7: 이름이 있으면 「○○○ 선생님」, 모르면 「해당 제공인력」)
-function kbCue(id, kind){ var c = KB.cue[id] = KB.cue[id] || {}; c[kind || 'teach'] = 1; if (R.id === id) kbDraw(); }   // kind = teach(13번 배정 답) · boss(⑮-6 화가 난 보호자 답, 10-26)
+function kbCue(id, kind){ var c = KB.cue[id] = KB.cue[id] || {}; c[kind || 'teach'] = 1; if (R.id === id) kbDraw(); }   // kind = teach(13번 배정 답) · boss(⑮-6 화가 난 보호자 답, 10-26) · calc(종료일이 계산한 달, 11-09)
 function kbCueHtml(){
   var cu = KB.cue[R.id]; if (!cu) return '';
   var out = '';
   if (cu.boss) out += '<div class="kb-cue"><i></i><span>센터 때문에 그만두려는 보호자예요. <b>한유성</b>님께 이 대화를 바로 전해 주세요.</span><button type="button" data-a="cueok" data-k="boss">전했어요</button></div>';   // 대응 매뉴얼 「민원 발생 시 필수 절차」(유성 10-26 ⑮-6 — 답 글에서 뺀 대표 연락 줄)
+  if (cu.calc) out += '<div class="kb-cue"><i></i><span>종료일은 <b>계산한 달</b>이에요. 전자바우처에서 확인하고 보내 주세요.</span><button type="button" data-a="cueok" data-k="calc">확인했어요</button></div>';   // 11-09 07 종료 예상이 적은 달(서류철 g열을 고치면 다음 조회부터, 색만 칠하면 다음 동기화부터 안 뜸)
   if (!cu.teach) return out;
   var names = [];
   ((KB.card && KB.card.kids) || []).forEach(function(k){ if (k.st === 'assigned' && k.t) { var n = k.t + ' 선생님'; if (names.indexOf(n) < 0) names.push(n); } });
@@ -2121,6 +2122,7 @@ function fqPut(x){
   fqClose();
   kbFill(t);
   fqMarkHole();
+  if (x.g && x.a.indexOf('〔종료일〕') >= 0) { var ek = fqKidOf(x); if (ek && ek.e && ek.c) kbCue(R.id, 'calc'); }   // 11-09 시스템이 계산해 적은 달(26 k.c) = 띠에 알림. 보호자 글에는 안 넣는다
   FQ.ins = { id: x.id, room: R.id, text: ta.value.trim() };
 }
 /* ══════════ 끝난 뒤 갈래(10-26 — 정본 tools/문의답변/정본.js fv 2, 원칙 docs/1 §2.1 「채팅 답의 줄과 인사」) ══════════
