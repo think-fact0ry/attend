@@ -48,6 +48,12 @@
   --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%),
            linear-gradient(to top,rgba(22,104,65,0) 58%,rgba(22,104,65,.115) 100%);
   /* TOKENS:END */
+  /* MOCK:START — §3.8 폰 목업 값. 직접 편집 금지: docs/1 §3.8 고치고 node 디자인프리뷰/토큰동기.js --mock */
+
+  --mock-w:430px; --mock-r:40px; --mock-gap:19px;
+  --mock-bezel:var(--g200,#e5e8eb); --mock-sh:0 8px 20px rgba(25,31,40,.15);
+  /* MOCK:END */
+  --mock-w:460px; /* 근태 = PC 창이 본업 → 앱 폭 그대로(docs/1 §3.8 폭 규칙 예외, 07-23 유성 「살짝 더」 480→460) */
   /* 앱 전용(마커 밖) — 07-22(2) 유성: "크기는 되돌리되 가로폭을 좀 더" → 토큰 축소(~92%) 원복 + maxw만 축소 */
   --r-sm:10px; --r-md:14px; --r-lg:20px;
   --fs-display:clamp(28px,6vw,42px); --fs-h1:clamp(24px,3.4vw,30px); --fs-h2:clamp(20px,2.6vw,26px); --fs-sheet:21px; --fs-h3:20px;
@@ -642,8 +648,8 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
      #app의 transform이 고정 오버레이(시트·PIN·dim·드로어·토스트 — 전원 #app 자식)의 containing block을 #app으로 만들어
      전부 폰 화면 안에 갇히고 40px 라운드로 클립됨. 화면 배경(me/my/admin=g50)은 go()가 #app 인라인으로 담당. ── */
 @media (min-width:480px) and (hover:hover) and (pointer:fine){
-  body{background:var(--g200) !important;padding-top:19px} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
-  #app{max-width:min(var(--maxw),calc(100% - 38px));height:100%;min-height:0;background:#fff;border-radius:40px 40px 0 0;corner-shape:superellipse(2.3);box-shadow:0 8px 20px rgba(25,31,40,.15);transform:translateZ(0)}
+  body{background:var(--mock-bezel) !important;padding-top:var(--mock-gap)} /* !important=go()의 인라인 화면색을 덮음 — 베젤은 항상 g200 */
+  #app{max-width:min(var(--mock-w),calc(100% - 2*var(--mock-gap)));height:100%;min-height:0;background:#fff;border-radius:var(--mock-r) var(--mock-r) 0 0;corner-shape:superellipse(2.3);box-shadow:var(--mock-sh);transform:translateZ(0)}
   .scr.on{overflow-y:auto;overflow-x:hidden;min-height:0} /* #app 높이 고정 → 창 스크롤 대신 화면 내부 스크롤(폰과 동일 감) */
   /* 21차-4 최종(유성 진단이 맞았다): 딤을 어떻게 덧칠해도 모서리 흰 조각은 안 사라진다.
      Chrome은 **배경 페인팅엔 corner-shape를 적용하고 `overflow:clip`엔 적용하지 않는다** →
@@ -664,13 +670,13 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
      겹치는 레이어 구조상 밝은 잔여 자체는 못 없애므로(21차-6 수학), 남은 방법은 그 1px을 가리는 것뿐.
      ⚠️유성 우려 "오히려 더 이상해질 것 같은데" — 테두리처럼 보이면 **이 두 줄만 지우면 원복**(다른 데 영향 0).
      바깥 그림자(0 8px 20px)를 같이 적어야 한다 — box-shadow는 덮어쓰기라 빠뜨리면 앱이 붕 뜬 느낌을 잃는다. */
-  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){box-shadow:inset 0 0 0 1px rgb(163,165,169),0 8px 20px rgba(25,31,40,.15)}
-  #app:has(> .dim.on){box-shadow:inset 0 0 0 1px rgb(117,121,126),0 8px 20px rgba(25,31,40,.15)}
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){box-shadow:inset 0 0 0 1px rgb(163,165,169),var(--mock-sh)}
+  #app:has(> .dim.on){box-shadow:inset 0 0 0 1px rgb(117,121,126),var(--mock-sh)}
   /* 21차-5(유성 적발: "scr background fff 이거 끄니까 사라진다"): 흰 조각의 실제 정체 =
      **화면 레이어(.scr)의 흰 배경이 모서리 밖으로 새는 것**. `#app{overflow:clip}`이 자를 때 Chrome이
      corner-shape를 안 따라 곡선 바깥에 흰 띠가 남는다(7배 확대 실측 — 곡선을 따라 밝은 초승달).
      → 화면 레이어도 앱과 **같은 모양**을 갖게 해 자기 배경이 모서리를 넘지 않게 한다. */
-  #app > .scr{border-radius:40px 40px 0 0;corner-shape:superellipse(2.3)}
+  #app > .scr{border-radius:var(--mock-r) var(--mock-r) 0 0;corner-shape:superellipse(2.3)}
 }
 </style>
 </head>
