@@ -2013,6 +2013,7 @@ function fqAsked(){   // 학부모 글 = 끝에서부터 우리 줄은 건너뛰
 function fqScore(row, txt, hit, any){
   var kw = row.kw, sc = 0, n = 0;
   if (!kw || !txt) return 0;
+  if (row.need && row.need.length && !row.need.some(function(k){ return txt.indexOf(fqNorm(k)) >= 0; })) return 0;   // 정본 need = 이 낱말 중 하나가 있어야 셈(11-18 감사 F-10 — 「때문」 하나로 24번 매달 답이 화가 난 보호자 답을 이겼다). 찾기 칸(fqFind)은 안 봄
   for (var k in kw) if (Object.prototype.hasOwnProperty.call(kw, k) && txt.indexOf(fqNorm(k)) >= 0) { sc += +kw[k] || 0; n++; }
   if (n >= 2) sc *= 1.5;
   if (sc > 0 && typeof row.svc === 'string') sc += row.svc ? (hit[row.svc] ? 3 : any ? -3 : -0.5) : (any ? -2 : 0.5);
