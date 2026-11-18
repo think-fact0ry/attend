@@ -1849,7 +1849,7 @@ function sendOne(id, m, F, recheck){
       if (R.id === id) drawThread(seenAll(), true);
       S.gver = ''; poll(); done();
     }
-    function unknown(){ m.pending = false; m.unknown = true; if (R.id === id) drawThread(seenAll(), true); else lostNote(id, 'unknown'); done(); }
+    function unknown(){ m.pending = false; m.unknown = true; if (R.id === id) drawThread(seenAll(), true); else lostNote(id, 'unknown'); S.gver = ''; poll(); done(); }   // 목록도 서버 것으로(보내며 미리 바꾼 줄 = 내 글 미리보기가 「바뀐 것 없음」 동안 남지 않게 — settle과 같이)
     // ⚠️응답을 못 받았다 ≠ 안 보냈다. 같은 답장을 다시 보내지 않고 5초마다 결과만 묻는다(학부모에게 두 번 가면 안 된다)
     function askJob(){
       if (Date.now() - t0 > SEND_T.cap) { unknown(); return; }
