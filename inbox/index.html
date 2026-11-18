@@ -148,6 +148,11 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .cm button:hover{background:var(--g100)}
 .cm button:active{background:var(--g200)}
 .cm svg{width:16px;height:16px;color:var(--g600);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* 대화방 메뉴(≡ 아래, 11-18 감사 E) = 같은 .cm 꼴. 줄 아이콘만 그 줄이 만드는 상태의 색 원(돌려놓기 = 대기 노랑, 완료 = 체크 초록, 풀기 = g400 — §3.5 메뉴 줄 예외) */
+.cm.rm button{gap:10px;padding:9px 12px 9px 9px}
+.cm .mic{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.cm .mic svg{width:13px;height:13px;color:#fff;stroke-width:2.6}
+.cm .mic.y{background:var(--warn)} .cm .mic.g{background:var(--green600)} .cm .mic.n{background:var(--g400)}
 /* 빨려 들기(§4.18 「목록 사이 옮기기 = 빨려 들기 하나만」, 디자인 5차 .it.fly 그대로) — 복제본은 줄 서식(.it)을 유지(빼면 글자 배치가 무너짐) */
 .it.fly{margin:0;position:absolute;z-index:8;pointer-events:none;background:#fff;box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.12);transform-origin:center}
 .it.fly > *{transform:scale(.96)}
@@ -161,7 +166,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rh .x{width:34px;height:34px;border:0;background:none;color:var(--g700);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:10px;transition:transform .16s;flex:none}
 .rh .x:active{transform:scale(.86)}
 .rh .x svg{width:20px;height:20px}
+.rh .hn{min-width:0;flex:1 1 auto}
 .rh .nm{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;min-width:0}
+.rh .nm #rNm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}   /* 머리는 늘 한 줄 — 넘치면 이름만 「…」(카톡 방 이름과 같은 꼴, 11-18 감사 E) */
 .rh .nm .use{display:none;font-size:11px;font-weight:600;color:var(--green700);box-shadow:inset 0 0 0 1px var(--green200);border-radius:6px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .rh .nm .use.on{display:inline-block}
 .rh .nm .tag{display:none;font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}   /* 카드 방 = 목록 줄 뱃지와 같은 칩(서해구, 카카오 — .it .l1 .tag 실값) */
@@ -171,10 +178,12 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .rh .st.off i{background:var(--g400)}
 .cchip{border:1px solid var(--g200);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--g700);box-shadow:0 1px 3px rgba(25,31,40,.08);cursor:pointer;transition:transform .08s;white-space:nowrap}
 .cchip:active{transform:scale(.96)}
-.rh .rel{margin-left:auto}
+.rh .mn{margin-left:auto;display:none}   /* 대화방 메뉴 ≡(11-18 감사 E) = 메뉴 줄이 하나라도 있을 때만(setPst). 그림 = 목록 화면 ≡과 같은 선, 한 가지 색(§3.5) */
+.rh .mn.on{display:flex}
+.rh .mn svg{width:21px;height:21px}
 .rh .ext{margin-left:auto;display:none}   /* 카드 방 머리 = 「톡톡 열기」(그 센터 파트너센터 — 언제든 다시 열기) */
 .room.ext .rh .ext{display:inline-block}
-.room.ext .rh .ext ~ .rel{margin-left:0}
+.room.ext .rh .mn,.rh .own.on ~ .mn{margin-left:0}
 .room.ext .rh .own.on ~ .ext{margin-left:0}
 /* 맡은 사람 이름표(한유성 화면만, 10-10 유성 「그 채팅을 들어가면 우상단에 뱃지를 달아줘 행정인력 이름으로」) — 행정 화면 「대기로 돌려놓기」 칩 자리.
    누르는 것이 아니라서 칩의 테두리·그림자 없이 회색 꼬리표 — 글자·색·둥글기는 칩(.cchip) 그대로, 칩 테두리 1px만큼 안쪽 여백을 더해 겉 크기도 같다. 대기 대화엔 없음 */
@@ -186,7 +195,10 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .day{align-self:stretch;display:flex;align-items:center;gap:10px;font-size:var(--fs-caption);font-weight:600;color:var(--g700);margin:24px 0 16px;white-space:nowrap}
 .day::before,.day::after{content:"";flex:1;height:1px;background:var(--g200)}
 .day svg{width:13px;height:13px;flex:none;color:var(--g600);margin-right:-5px}
-/* 상담 완료 한 줄(10-28) = 날짜 줄과 같은 선, 달력 대신 초록 체크 + 「한유성님이 상담 완료로 표시했어요」(시각 없음 — 유성 10-28 「', 오후 2:10' 없앨 것」) */
+/* 상담 완료 한 줄(10-28) = 초록 체크 + 「한유성님이 상담 완료로 표시했어요」(시각 없음 — 유성 10-28 「', 오후 2:10' 없앨 것」).
+   11-18 감사 E = 둥근 연회색 상자(유성 「날짜 디자인과 완전히 동일해서 … 눈이 안좋은 사람들은 텍스트를 읽어야 확인이 되는 … 연한 회색 … 라운딩 박스」) — 양옆 선은 날짜 줄만, 바탕 = 학부모 말풍선과 같은 g100 */
+.day.dn{align-self:center;gap:6px;padding:6px 13px 6px 11px;border-radius:99px;font-weight:500;background:var(--g100);margin:18px 0 14px;white-space:normal;text-align:center}
+.day.dn::before,.day.dn::after{display:none}
 .day.dn svg{width:14px;height:14px;color:var(--green600);fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .thread > .day:first-child{margin-top:0}
 .older{align-self:center;border:0;background:var(--g100);color:var(--g700);font-size:12.5px;font-weight:600;border-radius:99px;padding:5px 12px;margin-bottom:8px;cursor:pointer}
@@ -240,7 +252,6 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 body.fileon .room.ext .ta{padding-right:12px}
 body.faqon .room.ext .ta{padding-right:40px}
 body.faqon.fileon .room.ext .taw .faqb{right:3px}
-body.viewer .rh .rel{display:none}
 /* 한유성(관리자 보기) = 답장은 행정처럼, 다만 열기만 해선 읽음이 안 남는다(유성 10-10 「보기 전용이 아니야. 읽음이 찍히지 않게 하는 거지」) — 그 한 줄만 */
 .vnote{font-size:var(--fs-caption);color:var(--g600);text-align:center;padding:6px 12px 2px;display:none;flex:none}
 body.viewer .vnote{display:block}
@@ -512,8 +523,9 @@ body.faqon.fileon .ta{padding-right:74px}
 
   <div class="room" id="room">
     <div class="rh"><button class="x" id="rBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-      <div style="min-width:0"><div class="nm"><span id="rNm">홈페이지 문의</span><span class="tag" id="rTag"></span><span class="use" id="rUse"></span></div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
-      <span class="own" id="rOwn"></span><button class="cchip ext" id="rExt">톡톡 열기</button><button class="cchip rel" id="rel">대기로 돌려놓기</button></div>
+      <div class="hn"><div class="nm"><span id="rNm">홈페이지 문의</span><span class="tag" id="rTag"></span><span class="use" id="rUse"></span></div><div class="st" id="rSt"><i></i><span id="rStT"></span></div></div>
+      <span class="own" id="rOwn"></span><button class="cchip ext" id="rExt">톡톡 열기</button><button class="x mn" id="rMn" title="이 대화 메뉴" aria-label="이 대화 메뉴" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button></div>
+    <div class="cm rm" id="rMenu" role="menu"></div>
     <div class="kbw" id="kbw"></div>
     <div class="sw" id="tsw"><div class="thread" id="thread"></div></div>
     <div class="vnote">열어 봐도 읽음이 안 남아요</div>
@@ -646,10 +658,11 @@ window.addEventListener('message', function(e){
   if (d.type === 'vis' && d.on) { render(); poll(); }   // 다시 보이는 순간 바로 한 번(5초를 안 기다린다)
   if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱의 다른 메뉴 아이콘과 같은 값(알약 숫자 기준)
   if (d.type === 'go') goTo(String(d.id || ''));   // 미리보기 누름 → 그 방(10-12 ①)
-  // 폰 뒤로가기(10-18 한유성 문의 폰) — 앱이 먼저 묻는다: 크게 보기 → 메뉴 → 대화방 순으로 닫고, 다 닫혀 있으면 앱 메인으로
+  // 폰 뒤로가기(10-18 한유성 문의 폰) — 앱이 먼저 묻는다: 크게 보기 → 메뉴(목록, 대화방 ≡) → 대화방 순으로 닫고, 다 닫혀 있으면 앱 메인으로
   if (d.type === 'hwback') {
     if ($('rView').classList.contains('on')) closeView();
     else if ($('cm').classList.contains('on')) closeCm();
+    else if ($('rMenu').classList.contains('on')) closeRm();   // 대화방 메뉴 ≡ = 메뉴만(§4.11 한 단계)
     else if ($('room').classList.contains('on')) { closeRoom(); render(); }
     else toApp({ type:'back' });
   }
@@ -972,8 +985,9 @@ function claim(id){
   S.wait = S.wait.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
   if (r) { r.owner = me.emp; r.pin = 0; r.pinName = ''; S.mine.unshift(r); S.tab = 'mine'; showTab('mine'); }   // 맡으면 대기 고정은 풀린다(26 규칙)
   holdDrop(id, 'pin'); var hd = holdSet(id, 'own', me.emp);
+  if (R.id === id) setPst();   // 대기 방을 열어 맡으면 머리 주인부터 나로(≡ 「대기로 돌려놓기」는 맡기가 서버에 닿은 뒤 — rmItems)
   ask({ action:'s_claim', auth: me, id: id, cid: cid() }).then(function(res){
-    if (res && res.ok) { holdDone(id, 'own', hd); return; }
+    if (res && res.ok) { holdDone(id, 'own', hd); if (R.id === id) setPst(); return; }   // 맡기가 닿은 그 자리에서 ≡에 「대기로 돌려놓기」(옛 판 = 다음 5초 조회까지 없었음, 11-19)
     holdDrop(id, 'own', hd);
     toastA((res && res.error) || '맡지 못했어요');
     if (res && res.code === 'taken') { closeRoom(); }
@@ -1018,7 +1032,7 @@ function roomSkel(){   // 대화 칸 아래쪽에 말풍선 모양 막대 4개(�
   var b = function(side, cont, w, h){ return '<div class="row ' + side + (cont ? ' cont' : '') + '"><span class="sk-b" style="width:' + w + 'px;height:' + h + 'px"></span></div>'; };
   return '<div class="sk-th">' + b('them', false, 190, 42) + b('them', true, 130, 42) + b('me', false, 210, 63) + b('them', false, 160, 42) + '</div>';
 }
-function closeRoom(){ if (S.cur) seenLocal(findRow(S.cur.id), null, false); editStop(); keepDraft(); closeView(); waReset(); fqClose(); FQ.ins = null; $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
+function closeRoom(){ closeRm(); if (S.cur) seenLocal(findRow(S.cur.id), null, false); editStop(); keepDraft(); closeView(); waReset(); fqClose(); FQ.ins = null; $('room').classList.remove('on'); S.cur = null; R.id = ''; }   // 열어 두는 동안 온 글도 본 것(10-12 — 닫는 순간 숫자가 튀지 않게)
 $('rBack').addEventListener('click', function(){ closeRoom(); render(); });
 function loadRoom(id, quietNew){
   var pre = PRE[id]; delete PRE[id];
@@ -1074,8 +1088,11 @@ function setPst(){
   $('rSt').classList.toggle('off', off);
   $('rStT').textContent = R.ext ? '답은 ' + extName() + '에서 보내요' : !off ? '문의자가 채팅창을 보고 있어요' : (R.hasPhone ? '나갔어요, 답장은 문자로 가요' : '나갔어요, 번호를 안 남겼어요');
   $('rExt').textContent = extName() + ' 열기';
-  // 돌려놓기 = 내가 맡은 방에서만(다른 사람 방은 서버도 거절 — taken)
-  $('rel').style.display = (!VIEWER && R.owner === me.emp) ? '' : 'none';
+  // 대화방 메뉴 ≡(11-18 감사 E) = 메뉴 줄이 하나라도 있을 때만(rmItems). 줄이 없어지면(목록이 바뀜) 열린 메뉴도 닫고,
+  //   열려 있으면 줄을 다시 그린다(학부모 새 글로 완료가 풀렸는데 「풀기」가 남아 있던 것 — 11-19 리뷰)
+  var mn = rmItems().length > 0;
+  $('rMn').classList.toggle('on', mn);
+  if (!mn) closeRm(); else if ($('rMenu').classList.contains('on')) openRm();
 }
 /* ══════════ 아이 찾기 띠(10-15 유성 「나머지는 다 괜찮다. go」 — prototype/26_문의채팅_아이찾기카드_4방향_프리뷰.html 「A 다시」 3차) ══════════
    26 s_room이 kid = {phone, pin, kids:[{k, n, s, b, d, st, t, a, h}]}를 실을 때만(처리방침 넓힘 시행 뒤). 띠 = 대기 「김하린 오감 (서해구 심곡동)」,
@@ -1409,12 +1426,42 @@ function drawThread(had, keepBottom){
   if (keepBottom && (atBottom || !had)) T.scrollTop = T.scrollHeight;
   fThread();
 }
-$('rel').addEventListener('click', function(){
-  var id = R.id; if (!id) return;
-  closeRoom();
-  release(id);
+/* ══════════ 대화방 메뉴 ≡(11-18 문의채팅 감사 E — 유성 「굳이 채팅 내에서 '상담완료로 표시' 버튼을 두는 게 좋지 않을 듯 … 차라리 상단바 우측에 햄버거 아이콘을 넣어서,
+   … 노란색 아이콘 넣어서 대기로 돌려놓기 넣고, 초록색 아이콘 넣어서 상담 완료로 표시」 → 「e도」 = 작은 메뉴, 프리뷰 prototype/26_문의채팅_상담완료찾기_프리뷰.html) ══════════
+   · 줄 = 대기로 돌려놓기(내가 맡은 방, 행정만 — 옛 머리 칩과 같은 자격, 같은 길) / 상담 완료로 표시, 풀기(목록 오른쪽 클릭과 같은 자격, 같은 setDone)
+   · 줄이 없으면 ≡도 없다(setPst). 닫기 = 바깥 누름, Esc, 폰 뒤로(메뉴만 — §4.11 한 단계), 방 닫기. 목록 오른쪽 클릭 메뉴는 그대로(글자 「상담 완료」 — 11-18 메모가 가리킴)
+   · 아이콘 = 그 줄이 만드는 상태의 색 원 + 흰 선(docs/1 §3.5 메뉴 줄 예외), 머리 ≡은 한 가지 색 */
+var RM_CHK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';   // = DONE_SVG(원 안에 들어가니 원 없는 체크)
+function rmItems(){
+  if (!R.id) return [];
+  var row = findRow(R.id), out = [], ho = S.hold[R.id] && S.hold[R.id].own;
+  // 돌려놓기 = 맡기가 서버에 닿은 뒤에만(ho.done) — 맡기 요청이 가는 중에 돌려놓으면 서버가 돌려놓기 → 맡기 순으로 받아 내 대화로 튈 수 있다(11-19 리뷰)
+  if (!VIEWER && R.owner === me.emp && !(ho && !ho.done)) out.push({ a: 'back', c: 'y', svg: I_BACK, t: '대기로 돌려놓기' });   // 다른 사람 방은 서버도 거절(taken)
+  if (S.doneOk && row && (VIEWER || !row.owner || row.owner === me.emp)) out.push({ a: 'done', on: !isDone(row), c: isDone(row) ? 'n' : 'g', svg: RM_CHK, t: isDone(row) ? '상담 완료 풀기' : '상담 완료로 표시' });
+  return out;
+}
+function closeRm(){ var m = $('rMenu'); if (!m.classList.contains('on')) return; m.classList.remove('on'); $('rMn').setAttribute('aria-expanded', 'false'); }
+function openRm(){
+  var its = rmItems(); if (!its.length) return;
+  var m = $('rMenu');
+  m.innerHTML = its.map(function(it){ return '<button type="button" role="menuitem" data-a="' + it.a + '"' + (it.a === 'done' ? ' data-on="' + (it.on ? 1 : 0) + '"' : '') + '><span class="mic ' + it.c + '">' + it.svg + '</span>' + it.t + '</button>'; }).join('');
+  m.classList.add('on'); $('rMn').setAttribute('aria-expanded', 'true');
+  var rr = $('room').getBoundingClientRect(), br = $('rMn').getBoundingClientRect();   // ≡ 바로 아래, 오른쪽 끝 맞춤
+  m.style.left = Math.max(8, Math.round(br.right - rr.left - m.offsetWidth + 2)) + 'px';
+  m.style.top = Math.round(br.bottom - rr.top + 4) + 'px';
+}
+$('rMn').addEventListener('click', function(){ if ($('rMenu').classList.contains('on')) closeRm(); else openRm(); });
+$('rMenu').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  var id = R.id, a = b.dataset.a; closeRm();
+  if (!id || !rmItems().some(function(x){ return x.a === a; })) return;   // 누르는 순간 그 줄 자격이 사라졌으면(맡기 실패, 목록에서 빠짐) 아무것도 안 함
+  if (a === 'back') { closeRoom(); release(id); }   // 옛 머리 칩과 같은 길 — 대화방이 닫히고 대기 칸으로
+  else if (a === 'done') { var row = findRow(id); if (row) setDone(row, b.dataset.on === '1'); }   // 보인 글자대로(완료로 표시 = on) — 누르는 순간 다시 셈하면 그사이 바뀐 상태로 뒤집힌다
 });
-// 대기로 돌려놓기 — 대화방 위 칩(홈페이지)과 오른쪽 클릭 메뉴(10-11 유성 「오른쪽 클릭해서 대기로 돌려놓기」)가 같은 길. 돌려놓은 대화 = 대기 맨 위(§4.18)
+document.addEventListener('pointerdown', function(e){ if (!e.target.closest('#rMenu') && !e.target.closest('#rMn')) closeRm(); }, true);
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('rMenu').classList.contains('on')) { e.preventDefault(); e.stopImmediatePropagation(); closeRm(); } }, true);   // 메뉴만 닫는다(입력 칸 Esc, 뒤에 붙은 자주 쓰는 답변 Esc보다 먼저 — 같은 document 캡처라 Immediate)
+window.addEventListener('resize', closeRm);   // 창 크기가 바뀌면 ≡에서 떨어진 채 남지 않게
+// 대기로 돌려놓기 — 대화방 ≡ 메뉴(11-18, 옛 머리 칩)와 오른쪽 클릭 메뉴(10-11 유성 「오른쪽 클릭해서 대기로 돌려놓기」)가 같은 길. 돌려놓은 대화 = 대기 맨 위(§4.18)
 function release(id){
   var r = null;
   S.mine = S.mine.filter(function(x){ if (x.id === id) { r = x; return false; } return true; });
@@ -1670,7 +1717,8 @@ function setDone(r, on){
       if (S.mine.indexOf(cur) < 0) { cur.owner = me.emp; cur.pin = 0; cur.pinName = ''; S.mine.unshift(cur); }   // 맡으면 대기 고정은 풀린다(26 규칙)
       holdDrop(id, 'pin'); ho = holdSet(id, 'own', me.emp);
     }
-    renderFlip(); if (R.id === id && R.loaded) drawThread(seenAll(), false);
+    renderFlip(); if (R.id === id && R.loaded) drawThread(seenAll(), !!on);   // 완료 = 맨 아래를 보고 있었으면 완료 상자까지 내려감(대화방 ≡에서 누르면 상자가 화면 밖에 그려지던 것 — 11-19 리뷰)
+    if (R.id === id) setPst();   // 대기 방에서 완료 = 맡음 → ≡에 「대기로 돌려놓기」(11-18 감사 E)
     toastA(on ? '상담 완료로 표시했어요' : '상담 완료를 풀었어요');
     ask({ action:'s_done', auth: me, id: id, on: on, cid: cid() }).then(function(res){
       if (res && res.ok) { holdDone(id, 'done', hd); if (ho) holdDone(id, 'own', ho); return; }
@@ -1678,7 +1726,7 @@ function setDone(r, on){
       toastA((res && res.error) || (on ? '상담 완료로 표시하지 못했어요' : '상담 완료를 풀지 못했어요')); S.gver = ''; poll();
     }).catch(function(){ holdDrop(id, 'done', hd); if (ho) holdDrop(id, 'own', ho); toastA('연결이 안 돼요'); S.gver = ''; poll(); });
   };
-  var it = claimIt && $('list').querySelector('.it[data-id="' + CSS.escape(id) + '"]');
+  var it = claimIt && R.id !== id && $('list').querySelector('.it[data-id="' + CSS.escape(id) + '"]');   // 대화방 ≡에서 누르면 빨려 들기 없음(목록이 가려져 있고, 복제본이 대화방 위로 날아간다)
   if (it) flyTo(it, id, 'mine', go); else go();
 }
 // 이름 칸 — 그린 뒤 붙인다. Enter 저장(한글 조합 중 Enter는 무시), Esc 취소, 밖을 누르면 저장, ↩ = 원래 이름으로
