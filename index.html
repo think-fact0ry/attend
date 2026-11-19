@@ -498,7 +498,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .otpov .ofoot .lk-resend{border:0;background:none;font:inherit;font-size:var(--fs-sm);font-weight:700;color:var(--green-dark);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
 .otpov .ofoot .btn{width:100%}
 /* OTP 만료 모달 — cmodal 문법(§4.4)이되 otpov(855) 위로 */
-.otpov-exdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:858}
+.otpov-exdim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:858}
 .otpov-exdim.on{opacity:1;pointer-events:auto}
 #otpExModal{z-index:859}
 
@@ -522,7 +522,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .toast .tk svg{width:11px;height:11px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── v6 중앙 모달 (§4.4 — 취소 확인) ── */
-.mdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:640}
+.mdim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:640}
 .mdim.on{opacity:1;pointer-events:auto}
 .cmodal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 84px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:641;box-shadow:0 12px 40px rgba(0,0,0,.2)}
 .cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
@@ -533,7 +533,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 .btn.gray{background:var(--g100);color:var(--g600)}
 
 /* ── v6 미기록일 시트 (닫기 불가 — §4.3-1 단서: 핸들 없음+상단 26px) + 반려 시트 ── */
-.blockdim{position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .22s;z-index:620}
+.blockdim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s;z-index:620}
 .blockdim.on{opacity:1;pointer-events:auto}
 /* ⚠️height:auto 명시 필수(21차-3 실측) — 지우면 시트가 납작해진다.
    `#app`은 flex column + transform이라 fixed 자식의 containing block이 #app이고, Chrome은 이때
@@ -664,15 +664,15 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   /* 21차-6(유성 "픽셀단위로 아주 조금 다른 거 같긴해" — 9배 확대 실측으로 확정):
      딤 색을 **반투명 레이어로 얹으면** 곡선 가장자리 안티앨리어싱에서 *흰 배경색이 딤보다 넓게 커버*돼
      1px 밝은 선이 남는다. 그래서 미리 섞은 **단일 불투명색**으로 칠한다(레이어가 하나면 경계도 하나).
-     값 = #fff에 딤을 합성한 결과: .6→rgb(117,121,126) / .4→rgb(163,165,169). 딤 색을 바꾸면 이 값도 같이.
+     값 = #fff에 딤을 합성한 결과: 메뉴 푸른 회색 .6→rgb(117,121,126) / 시트와 확인 창 검정 .4→rgb(153,153,153)(11-19 막 색 원칙 docs/1 §4.3-9 — 옛 푸른 회색 .4는 163,165,169). 딤 색을 바꾸면 이 값도 같이.
      ⚠️본문이 이중으로 어두워지지 않는 이유 = `.scr`이 자기 배경을 갖고 이 배경을 덮기 때문(21차-4). 그 배경을 지우면 이중이 된다. */
-  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-color:rgb(163,165,169)}
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){background-color:rgb(153,153,153)}
   #app:has(> .dim.on){background-color:rgb(117,121,126)}
   /* 21차-7 A안(유성 지시): 경계 픽셀의 밝은 잔여를 **그 자리에서 덮는다** — 안쪽 1px을 딤 색으로 그리는 inset 그림자.
      겹치는 레이어 구조상 밝은 잔여 자체는 못 없애므로(21차-6 수학), 남은 방법은 그 1px을 가리는 것뿐.
      ⚠️유성 우려 "오히려 더 이상해질 것 같은데" — 테두리처럼 보이면 **이 두 줄만 지우면 원복**(다른 데 영향 0).
      바깥 그림자(0 8px 20px)를 같이 적어야 한다 — box-shadow는 덮어쓰기라 빠뜨리면 앱이 붕 뜬 느낌을 잃는다. */
-  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){box-shadow:inset 0 0 0 1px rgb(163,165,169),var(--mock-sh)}
+  #app:has(> .blockdim.on, > .mdim.on, > .otpov-exdim.on){box-shadow:inset 0 0 0 1px rgb(153,153,153),var(--mock-sh)}
   #app:has(> .dim.on){box-shadow:inset 0 0 0 1px rgb(117,121,126),var(--mock-sh)}
   /* 21차-5(유성 적발: "scr background fff 이거 끄니까 사라진다"): 흰 조각의 실제 정체 =
      **화면 레이어(.scr)의 흰 배경이 모서리 밖으로 새는 것**. `#app{overflow:clip}`이 자를 때 Chrome이
@@ -681,7 +681,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
   #app > .scr{border-radius:var(--mock-r) var(--mock-r) 0 0;corner-shape:superellipse(2.3)}
   /* §3.8 ⑤ 폰 바깥 어둡게 — 시트와 확인 창(.4) 몫(2026-11-18). 메뉴(.6)는 19차 #outDim 요소 그대로.
      막 켜는 JS는 그대로 두고 CSS가 막 상태를 직접 본다(켜는 함수가 여럿이라 하나만 빠뜨려도 바깥이 안 어두워진다). ⚠️iframe 안 막(inbox, booking)은 :has()가 문서를 못 넘어 못 본다 */
-  body::before{content:"";position:fixed;inset:0;background:rgba(25,31,40,.4);opacity:0;pointer-events:none;transition:opacity .22s}
+  body::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s}
   body:has(#app > .blockdim.on, #app > .mdim.on)::before{opacity:1}
   body:has(#app > .doneov.on, #app > .otpov.on, #app > .pinov.on)::before{opacity:0}   /* 흰 전면 화면(완료 800, 잠금 850, 본인 확인 855)이 막(620~640)을 덮으면 바깥도 밝게 — 유휴 잠금 때 확인 창이 열려 있던 경우 */
   body:has(#app > .otpov-exdim.on)::before{opacity:1}   /* 858 = 흰 전면 화면 위 — 순서 = 위 층이 뒤 줄 */
