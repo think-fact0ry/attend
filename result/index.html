@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>검사 결과 발송</title>
+<!--
+  검사 결과 발송 (2026-11-24 — 07 검사 결과지 메일 + 알림톡, 유성 11-22 a1 「화면 = 행정 어플 메뉴」, 11-24 「go」)
+  · 무엇 = 현아쌤이 아이를 찾고(이름) → 단계(사전검사, 사후검사) → 원드라이브 결과지 파일 → 보호자 메일 주소 두 번 → 보내기.
+    07이 파일을 받아 22 웹앱이 메일 한 통(10초 반송 감시) → 나갔으면 07이 알림톡 + 숨긴 장부 + 서류철 R, X 빈 칸에 o.
+  · 정본 = 생각공작소 레포 prototype/07_검사결과지_메일알림톡_계획_프리뷰.html 3판, docs/6_백로그_원장_검사결과지발송.md.
+    서버 = scripts/07_아동서류화일관리/결과지발송.js(rs_find, rs_child, rs_send, rs_res, rs_fixnotice — 07 월 계획안 웹앱 doPost가 열쇠 검사 앞에서 넘김).
+  · 근태 앱(attend/index.html)의 「검사 결과 발송」 화면 안 창(iframe)으로만 산다 — 예약(booking/)과 같은 틀(창 신호는 부모를 거침, 따로 열리면 앱으로 돌려보냄).
+  · 신원 = 문의 채팅과 같은 서명(att_inq — 19가 등록 PC에서만 준다, 한유성 = 보기 서명 = 보기만). 07이 같은 키(INQ_KEY)로 확인한다.
+    07에 INQ_KEY가 없거나 07이 아직 이 동작을 모르는 판이면(옛 배포 = {error:'key'}) 꺼짐 → 앱에 off를 알려 메뉴 칸을 숨긴다. 10분마다 다시 묻는다.
+  · 읽기(찾기, 아이) = POST + 헤지(가끔 구글 HTML, 수십 초 — 메모리 gas-webapp-reply-can-be-google-html).
+    보내기 = 화면이 작업 번호를 만든다. 같은 번호는 「응답을 놓쳤을 때」만 다시 쓴다(시한, 구글 HTML, run, rs_res none, unknown, retry) —
+    07은 거절(typo, busy, addr, files, tpl, off, bounce, error)도 그 번호에 1시간 기억하므로 사람이 다시 누르는 보내기는 늘 새 번호.
+    unknown, retry = 메일은 나갔을 수 있는데 07이 장부, 알림톡, R/X를 아직 못 함 → 화면이 같은 번호로 10초 간격 세 번 저절로 다시 부른다(22가 같은 결과를 줘 두 통 안 감).
+  · 감시 = 생각공작소 scripts/19_근태관리/tests/결과발송.test.js(진짜 크롬 + 가짜 07).
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --g50:#f9fafb; --g100:#f2f4f6; --g200:#e5e8eb; --g300:#d1d6db;
+  --g400:#b0b8c1; --g500:#8b95a1; --g600:#6b7684; --g700:#4e5968;
+  --g800:#333d4b; --g900:#191f28;
+  --green50:#f8fbf9; --green100:#f0f8f3; --green200:#d5efde; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
+  --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
+  --p-disabled:#b7e0c8; --danger:#D25357;
+  --fs-h3:20px;
+  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
+  --ease:cubic-bezier(.22,.7,.25,1);
+  --toast-bg:var(--g800); --toast-fg:#F9FBFA; --toast-r:23px; --toast-ck:18px; /* §5.5 토스트 — docs/1 §3.1 정본 사본(이 파일은 토큰동기 마커 밖, 정본 바꿀 땐 같이) */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#fff}
+body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-body);
+  line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased;user-select:none}
+button,input,select{font-family:inherit}
+#app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+
+/* 머리 = 예약 .hd 그대로. 순서 = [←] 검사 결과 발송 [− ≡], −는 PC 프로그램 안에서만 */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff}
+.hd .rt{display:flex;gap:2px}
+.hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;line-height:normal}
+.hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;padding:0;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
+.hd .ic:active{transform:scale(.82)}
+.hd .ic svg{width:22px;height:22px}
+svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#hostMin{display:none}
+#appMenu{position:relative}
+.mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
+.mdot.on{display:block}
+
+/* 띠 = 시험 중, 꺼짐, 보기 전용(주황 약함 — 빨강 덮기 금지 §4.5) */
+.band{display:none;margin:4px 18px 6px;background:var(--warn-weak-bg);color:var(--warn-weak-fg);border-radius:12px;padding:9px 12px;font-size:var(--fs-sm);font-weight:600;flex:none}
+.band.on{display:block}
+
+/* 두 겹 = 찾기 / 아이 한 명(같은 창 안에서 바꿔 낌 — ←가 아이에서 찾기로, 찾기에서 앱으로) */
+.vw{display:none;flex:1;min-height:0;flex-direction:column}
+.vw.on{display:flex}
+
+/* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6, 예약 .sw) */
+.sw{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.sw::before,.sw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
+.sw::before{top:0;background:var(--sf-top)}
+.sw::after{bottom:0;background:var(--sf-bot)}
+.sw.more::after,.sw.moreTop::before{opacity:1}
+.list{flex:1;overflow-y:auto;padding:4px 16px 18px;scrollbar-width:none;display:flex;flex-direction:column;gap:10px}
+.list::-webkit-scrollbar{width:0}
+
+/* 큰 채움 입력(§4.1) = g100 바탕, 포커스 = 초록 테두리 — 예약 .inp */
+.inp{width:100%;border:1.5px solid transparent;background:var(--g100);border-radius:14px;padding:13px 14px;font-size:var(--fs-body);color:var(--g900);outline:none;user-select:text;appearance:none;-webkit-appearance:none;caret-color:var(--green600)}
+.inp:focus{border-color:var(--green600);background:#fff}
+.inp::placeholder{color:var(--g500)}
+.inp:disabled{color:var(--g600)}
+.srch{padding:6px 16px 8px;flex:none}
+
+/* 찾기 줄 = 흰 카드 + 1px g200 + radius 16(예약 .cd), 줄 누름 = §5.3 2겹 그림자 */
+.row{display:block;width:100%;text-align:left;border:1px solid var(--g200);border-radius:16px;padding:12px 14px;background:#fff;cursor:pointer;flex:none;transition:box-shadow .12s;font:inherit;color:inherit}
+.row > *{transition:transform .12s}
+.row:active{box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.12)}
+.row:active > *{transform:scale(.97)}
+.c1{display:flex;align-items:center;gap:6px;min-width:0}
+.nm{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tag{font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}
+.tag.end{background:none;color:var(--g600);box-shadow:inset 0 0 0 1px var(--g200)}
+.c1 .sent{margin-left:auto;font-size:11.5px;color:var(--green700);font-weight:600;white-space:nowrap;flex:none;padding-left:8px}
+.sub{font-size:var(--fs-sm);color:var(--g600);margin-top:2px}
+.row.end .nm{color:var(--g700)}
+.empty{text-align:center;color:var(--g600);font-size:14px;padding:48px 16px}
+.empty b{display:block;color:var(--g900);font-size:15px;margin-bottom:4px}
+.more-n{text-align:center;font-size:var(--fs-sm);color:var(--g600);padding:4px 0 8px}
+
+/* 뼈대(§5.4) = 예약 .sk-b 그대로 */
+.sk-b{display:block;background:var(--g100);border-radius:8px;background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite;pointer-events:none}
+@keyframes sksh{0%{background-position:150% 0}70%,100%{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.sk-b{animation:none}}
+
+/* 아이 한 명 */
+.kh{padding:4px 2px 0;flex:none}
+.kh .nm{font-size:var(--fs-h3)}
+.seg{display:flex;margin:4px 0 0;background:var(--g100);border-radius:12px;padding:3px;flex:none}
+.seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:9px;font-size:14px;font-weight:500;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:#fff;color:var(--g900);font-weight:600;box-shadow:0 1px 3px rgba(25,31,40,.08)}
+.seg button small{font-size:11px;font-weight:600;color:var(--green700)}
+.seg button:disabled{cursor:default}
+.sec{flex:none;margin-top:6px}
+.st{font-size:var(--fs-sm);font-weight:600;color:var(--g700);margin:0 2px 6px}
+/* 라벨↔값 줄(§4.8) */
+.kv{margin:0;padding:0}
+.kv div{display:flex;gap:10px;font-size:var(--fs-sm);line-height:1.55;padding:2px 2px}
+.kv dt{width:64px;flex:none;color:var(--g600)}
+.kv dd{margin:0;color:var(--g900);min-width:0;overflow-wrap:anywhere}
+/* 파일 줄 = 고르기(누르면 켜고 끔, 같은 종류 여럿이면 하나만) */
+.fg{margin-top:8px}
+.fg:first-child{margin-top:0}
+.fg .gl{font-size:var(--fs-caption);font-weight:600;color:var(--g600);margin:0 2px 4px}
+.fr{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--g200);border-radius:14px;padding:10px 12px;background:#fff;cursor:pointer;font:inherit;color:inherit;margin-top:6px;transition:border-color .12s}
+.fr:first-of-type{margin-top:0}
+.fr .ck{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--g300);display:flex;align-items:center;justify-content:center;transition:background .12s,box-shadow .12s}
+.fr .ck svg{width:13px;height:13px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.fr.on{border-color:var(--green600)}
+.fr.on .ck{background:var(--green600);box-shadow:none}
+.fr.on .ck svg{opacity:1}
+.fr .fn{min-width:0;flex:1}
+.fr .fn b{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--g900);overflow-wrap:anywhere}
+.fr .fn span{display:block;font-size:var(--fs-caption);color:var(--g600)}
+.fr .fn span.ok{color:var(--green700);font-weight:600}
+.fr:disabled{cursor:default;background:var(--g50)}
+.fr:disabled .fn b{color:var(--g600)}
+.fr:disabled .fn span.why{color:var(--warn-weak-fg);font-weight:600}
+.none{font-size:var(--fs-sm);color:var(--g600);background:var(--g50);border-radius:12px;padding:10px 12px}
+/* 메일 주소 = 아이디 @ 도메인(§4.1-10, 22 /recommend/mail/ 콤보 결 — 칸은 행정 어플 큰 채움) + 한 번 더 */
+.email-row{display:flex;align-items:center;gap:6px}
+.email-row .inp{min-width:0}
+.email-row #mId{flex:1 1 0}
+.email-row .at{flex:none;font-size:var(--fs-body);font-weight:600;color:var(--g500)}
+.dom{position:relative;flex:1.25 1 0;min-width:0}
+.dom .inp{padding-right:36px}
+.dom-tg{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:32px;height:36px;border:none;background:none;color:var(--g500);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:transform .2s;padding:0}
+.dom-tg svg{width:18px;height:18px}
+.dom.open .dom-tg{transform:translateY(-50%) rotate(180deg)}
+.sel-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.14);padding:6px;z-index:10}
+.sel-list.open{display:block}
+.sel-item{padding:11px 12px;border-radius:10px;font-size:var(--fs-body);font-weight:500;color:var(--g700);cursor:pointer}
+.sel-item:hover,.sel-item:active{color:var(--green800);font-weight:700}
+.fld2{margin-top:8px}
+.fe{display:none;margin:6px 2px 0;font-size:var(--fs-sm);color:var(--warn-weak-fg);font-weight:600}
+.fe.on{display:block}
+.inp.bad{border-color:var(--warn)}
+/* 결과(머무는 상자 — §4.6 결과 골격을 화면 안 상자로) */
+.res{display:none;border-radius:16px;padding:14px 14px 12px;flex:none}
+.res.on{display:block}
+.res.ok{background:var(--green100)}
+.res.warn{background:var(--warn-weak-bg)}
+.res .rt1{display:flex;align-items:center;gap:8px;font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;color:var(--g900)}
+.res .rt1 i{width:22px;height:22px;border-radius:50%;background:var(--green600);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.res .rt1 i svg{width:12px;height:12px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.res.warn .rt1 i{display:none}
+.res ul{margin:6px 0 0;padding:0;list-style:none}
+.res li{font-size:var(--fs-sm);color:var(--g700);line-height:1.55;padding:1px 0}
+.res .rb{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.b{flex:1;border:0;border-radius:12px;padding:11px 10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;min-height:44px}
+.b:active{transform:scale(.97)}
+.b.pri{background:var(--green600);color:#fff}
+.b.weak{background:#fff;color:var(--g700)}
+.b:disabled{cursor:default;transform:none;opacity:.6}
+/* 아래 버튼 = 화면 맨 아래(§4.1-5 칸이 적은 한 화면 폼), 덜 찼으면 연초록 + 누르면 흔들고 빠진 칸(§4.1-5 게이팅) */
+.cta{flex:none;padding:10px 16px 16px;background:#fff}
+.mb{width:100%;border:0;border-radius:15px;padding:15px;font:inherit;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s;position:relative}
+.mb:active{transform:scale(.97)}
+.mb.go{background:var(--green600);color:#fff}
+.mb.go:active{background:var(--green700)}
+.mb.go.gate{background:var(--p-disabled)}
+.mb.no{background:var(--g100);color:var(--g600)}
+.mb .dots{display:none;gap:4px;justify-content:center;align-items:center;position:absolute;inset:0}
+.mb.busy .lb{visibility:hidden}
+.mb.busy .dots{display:flex}
+.mb.busy{cursor:default}
+.dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;animation:dot 1s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.7}}
+.wait{display:none;text-align:center;font-size:var(--fs-caption);color:var(--g600);margin-top:8px}
+.wait.on{display:block}
+@keyframes shakeX{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(1px)}}
+.shake{animation:shakeX .28s cubic-bezier(.36,.07,.19,.97)}
+
+/* 토스트 = 예약 .atoast 그대로(버튼 위) */
+.atoast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%) translateY(8px);background:var(--toast-bg);color:var(--toast-fg);font-size:14.5px;padding:12px 19px;border-radius:var(--toast-r);opacity:0;transition:opacity .25s,transform .25s;white-space:normal;pointer-events:none;z-index:40;max-width:calc(100% - 32px);width:max-content;text-align:center;font-weight:600;line-height:1.5}
+.atoast.on{opacity:1;transform:translateX(-50%)}
+
+/* 딤 + 가운데 확인 창(§4.4 — 예약 .cmodal 값 그대로) */
+.mdim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+.mdim.on{opacity:1;pointer-events:auto}
+.cmodal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 64px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:33;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4;overflow-wrap:anywhere}
+.cmodal .ms2{font-size:var(--fs-sm);color:var(--g700);margin-top:8px;overflow-wrap:anywhere}
+.cmodal .ms2 b{color:var(--g900)}
+.cmodal .mbtns{display:flex;gap:8px;margin-top:16px}
+.cmodal .mbtns .mb{padding:14px 6px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hd">
+    <button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div class="t">검사 결과 발송</div>
+    <div class="rt">
+      <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button class="ic" id="appMenu" title="메뉴" aria-label="메뉴"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="mdot" id="menuDot"></span></button>
+    </div>
+  </div>
+  <div class="band" id="band" role="status"></div>
+
+  <!-- 찾기 — 이름 일부(띄어쓰기 무시), 다니는 아이 먼저 -->
+  <section class="vw on" id="vFind">
+    <div class="srch"><input class="inp" id="q" type="text" placeholder="아이 이름" autocomplete="off" readonly maxlength="10" aria-label="아이 이름"></div>
+    <div class="sw" id="fsw"><div class="list" id="flist"></div></div>
+  </section>
+
+  <!-- 아이 한 명 — 단계, 보낸 기록, 파일, 카톡 받을 번호, 메일 주소 -->
+  <section class="vw" id="vKid">
+    <div class="sw" id="ksw"><div class="list" id="kbody">
+      <div class="kh"><div class="c1"><span class="nm" id="kNm"></span><span id="kTags" style="display:contents"></span></div><div class="sub" id="kSub"></div></div>
+      <div class="seg" id="kSeg"><button type="button" data-s="사전">사전검사<small></small></button><button type="button" data-s="사후">사후검사<small></small></button></div>
+      <div class="res" id="res" role="status"></div>
+      <div class="sec" id="secLog"><div class="st">보낸 기록</div><dl class="kv" id="kLog"></dl></div>
+      <div class="sec"><div class="st">보낼 파일</div><div id="kFiles"></div></div>
+      <div class="sec"><div class="st">카톡 받을 번호</div><div class="none" id="kPhone"></div></div>
+      <div class="sec" id="secMail">
+        <div class="st">보호자 메일 주소</div>
+        <div class="email-row">
+          <input class="inp" id="mId" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="아이디" readonly autocomplete="off" aria-label="메일 아이디">
+          <span class="at">@</span>
+          <div class="dom" id="domWrap">
+            <input class="inp" id="mDom" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" value="naver.com" autocomplete="off" aria-label="메일 도메인">
+            <button type="button" class="dom-tg" id="domTg" aria-label="도메인 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="sel-list" id="domList"><div class="sel-item">naver.com</div><div class="sel-item">gmail.com</div><div class="sel-item">hanmail.net</div><div class="sel-item">daum.net</div><div class="sel-item">kakao.com</div><div class="sel-item">nate.com</div></div>
+          </div>
+        </div>
+        <div class="fld2"><input class="inp" id="mAgain" type="text" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="메일 주소 한 번 더" readonly autocomplete="off" aria-label="메일 주소 한 번 더"></div>
+        <div class="fe" id="mErr"></div>
+      </div>
+    </div></div>
+    <div class="cta">
+      <button class="mb go gate" id="sendGo"><span class="lb" id="sendL">보내기</span><span class="dots"><i></i><i></i><i></i></span></button>
+      <div class="wait" id="wait">메일을 보내고 돌아오는지 보고 있어요. 30초쯤 걸려요</div>
+    </div>
+  </section>
+
+  <div class="atoast" id="atoast" role="status"></div>
+  <div class="mdim" id="dim"></div>
+  <div class="cmodal" id="cfm" role="alertdialog" aria-labelledby="cfmT"><div class="mt2" id="cfmT"></div><div class="ms2" id="cfmS"></div><div class="mbtns"><button type="button" class="mb no" id="cfmNo"><span class="lb" id="cfmNoL">닫기</span></button><button type="button" class="mb go" id="cfmGo"><span class="lb" id="cfmGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div></div>
+</div>
+
+<script>
+/* ══════════ 설정 ══════════ */
+var GAS07 = 'https://script.google.com/macros/s/AKfycbxvWu1xR9udwKiTkZ-nk-Hvx9KPlFKyIelVCdmnVYEilmLADfZnnO2Nq4XmdpwolmG9Yg/exec';   // 07 서류철 웹앱(월 계획안 화면과 같은 배포 — 주소는 열쇠가 아니다)
+var REQ_TIMEOUT_MS = 20000;      // 읽기 시한(알약 07-31 사고: 시한 없는 fetch가 조회를 영구히 멈췄다)
+var SEND_TIMEOUT_MS = 130000;    // 보내기 시한 — 07 최악 = 22 첫 부름 + 22 결과 묻기 12×5초 + 원드라이브 받기 + 알림톡(100~120초). 넘으면 같은 번호로 결과를 묻는다
+var RES_POLL_MS = 5000;          // 응답을 놓친 보내기 = 5초마다 rs_res
+var RES_POLL_FOR_MS = 210000;    // 3분 30초 동안(07 run이 길 수 있다)
+var AUTO_AGAIN = 3;              // unknown, retry = 같은 번호로 저절로 세 번
+var AGAIN_MS = 10000;            //  … 10초 간격
+var OFF_RETRY_MS = 10 * 60000;   // 꺼짐 = 10분마다 다시 물음
+var FAIL_RETRY_MS = 60000;       // 못 물음(구글 HTML, 네트워크) = 1분 뒤 다시
+var CENTER = { '미추': '미추', '서구': '서구', '행복': '행복마음', '연수': '연수' };
+var KIND = { result: { '사전': '사전검사 결과지', '사후': '사후검사 결과지' }, pat: '부모양육태도검사' };
+var COL = { '사전': 'R', '사후': 'X' };   // 서류철 칸(07 RS_COL — 사전검사, PAT 발송 / 사후검사발송)
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function b6Text(b){ var s = String(b || ''); return /^\d{6}$/.test(s) ? s.slice(0, 2) + '.' + s.slice(2, 4) + '.' + s.slice(4) : s; }
+function newJob(){ return 'rs' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+
+/* ══════════ 앱 안 창으로만 산다(예약과 같은 틀) ══════════ */
+var EMBED = (function(){ try { return window.parent !== window && !!window.frameElement && parent.location.origin === location.origin; } catch (e) { return false; } })();
+var HOSTED = EMBED && (function(){ try { return !!(parent.chrome && parent.chrome.webview); } catch (e) { return false; } })();
+function toApp(o){ if (!EMBED) return; try { o.tf = 'rs'; parent.postMessage(o, location.origin); } catch (e) { } }
+// 앱 유휴 잠금의 손길(att_seen) — 이 안 창의 입력은 부모 문서로 안 올라간다(예약과 같은 이유). 10초에 한 번만 쓴다
+if (EMBED) ['pointerdown', 'keydown'].forEach(function(ev){ document.addEventListener(ev, function(){
+  try { if (localStorage.getItem('att_locked')) return; var n = Date.now(); if (n - (+localStorage.getItem('att_seen') || 0) > 10000) localStorage.setItem('att_seen', String(n)); } catch (e) { }
+}, true); });
+if (!EMBED) {
+  document.documentElement.style.visibility = 'hidden';
+  var bounced = 0; try { bounced = +sessionStorage.getItem('rs_bounce') || 0; } catch (e) { }
+  if (Date.now() - bounced < 8000) {
+    $('app').style.display = 'none'; document.documentElement.style.visibility = '';
+    var bn = document.createElement('div'); bn.style.cssText = 'padding:60px 24px;text-align:center;color:var(--g600);font-size:15px';
+    bn.textContent = '검사 결과 발송은 근태 앱 메뉴에서 열 수 있어요'; document.body.appendChild(bn);
+  } else {
+    try { sessionStorage.setItem('rs_bounce', String(Date.now())); } catch (e) { }
+    location.replace('../');
+  }
+}
+
+/* ══════════ 신원 = 문의 채팅 서명(att_inq) — 요청마다 새로 읽는다 ══════════ */
+function readId(){
+  try { var s = JSON.parse(localStorage.getItem('att_inq') || 'null'); if (s && s.sig) return s; } catch (e) { }
+  return null;
+}
+function isViewer(){ var id = readId(); return !!id && id.role === 'viewer'; }
+
+/* ══════════ 07 부르기 ══════════
+   POST(text/plain) {action, a: 서명, …} — 07 doPost가 rs_로 시작하는 동작을 결과지발송.js로 넘긴다. 응답은 글자로 받아 직접 해석(가끔 구글 HTML) */
+function call(body, ms){
+  var id = readId();
+  if (!id) { var e0 = new Error('NO_ID'); e0.noid = true; return Promise.reject(e0); }
+  var b = {}; Object.keys(body).forEach(function(k){ b[k] = body[k]; }); b.a = id;
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var opt = { method: 'POST', body: JSON.stringify(b), cache: 'no-store' }; if (ctl) opt.signal = ctl.signal;
+  var t = setTimeout(function(){ if (ctl) ctl.abort(); }, ms || REQ_TIMEOUT_MS);
+  return fetch(GAS07, opt).then(function(r){ return r.text(); }).then(function(s){
+    clearTimeout(t);
+    var out; try { out = JSON.parse(s); } catch (e) { var err = new Error('BAD_REPLY'); err.bad = true; throw err; }
+    return out;
+  }, function(e){ clearTimeout(t); throw e; });
+}
+// 읽기 — hedge 밀리초 안에 안 오면 같은 요청을 하나 더(먼저 온 쪽). 둘 다 실패해야 실패
+function callRead(body, hedge){
+  return new Promise(function(res, rej){
+    var done = false, fails = 0, n = 0;
+    function go(){ n++; call(body).then(function(r){ if (!done) { done = true; res(r); } }, function(e){ if (e && e.noid) { if (!done) { done = true; rej(e); } return; } if (++fails >= n && n >= 2 && !done) { done = true; rej(e); } else if (n < 2) go(); }); }
+    go();
+    setTimeout(function(){ if (!done && n < 2) go(); }, hedge || 4000);
+  });
+}
+
+/* ══════════ 상태 ══════════
+   on = 07이 서명을 받음(찾기 응답이 ok) / mode = live·test·off(07 RS_LIVE, 속성 RS_OFF) / q·seq = 찾기 글과 순번(늦게 온 옛 답은 버림)
+   kid = 고른 아이(찾기 줄), stage = 사전·사후, det = rs_child 응답, pick = 고른 파일 {result: id, pat: id}, sending = 보내는 중인 작업 */
+var S = { on: null, mode: '', q: '', seq: 0, rows: null, more: false, finding: false, kid: null, stage: '사전', det: null, detSeq: 0, pick: {}, sending: null, lastJob: '', tryAt: 0, pollT: null };
+
+/* ══════════ 켜짐 묻기 — 빈 찾기(07이 아이를 안 읽고 mode만 돌려줌) ══════════
+   ok = 켜짐 → 앱에 on(메뉴 칸 보임). JSON인데 ok가 아니면(auth = INQ_KEY 없음, key = 07 옛 배포가 이 동작을 모름) = 꺼짐 → off.
+   JSON이 아니거나 못 닿음 = 꺼짐으로 치지 않고 1분 뒤 다시 */
+function ping(){
+  S.tryAt = Date.now();
+  callRead({ action: 'rs_find', q: '' }).then(function(r){
+    if (r && r.ok) { S.mode = r.mode || ''; goOn(); return; }
+    if (offReply(r)) goOff();   // server(07 안에서 난 오류) = 꺼짐 아님 — 다음 묻기에서 다시(11-24 리뷰: 오류 한 번에 메뉴 칸이 10분 사라짐)
+  }, function(e){ if (e && e.noid) goOff(); });
+}
+// 꺼짐 = 07이 서명을 안 받음(auth — INQ_KEY 없음) 또는 이 동작을 모름(key = 07 옛 배포, action)
+function offReply(r){ return !!r && (r.error === 'auth' || r.error === 'key' || r.error === 'action'); }
+function goOn(){ if (S.on !== true) { S.on = true; toApp({ type: 'on' }); } paintBand(); }
+function goOff(){ if (S.on !== false) { S.on = false; toApp({ type: 'off' }); } paintBand(); }
+function tick(){
+  clearTimeout(S.pollT);
+  S.pollT = setTimeout(tick, 30000);
+  if (document.hidden) return;
+  var ms = S.on === false ? OFF_RETRY_MS : S.on === true ? 30 * 60000 : FAIL_RETRY_MS;   // 켜진 뒤엔 30분에 한 번만(시험 → 켜짐, RS_OFF를 따라가려고)
+  if (Date.now() - S.tryAt >= ms - 500) ping();
+}
+
+/* ══════════ 띠 ══════════ */
+function paintBand(){
+  var t = '';
+  if (S.on === false) t = '지금은 검사 결과를 보낼 수 없어요. 잠시 뒤 다시 확인할게요';
+  else if (isViewer()) t = '보기 전용이에요. 보내기는 센터 PC에서 할 수 있어요';
+  else if (S.mode === 'off') t = '지금은 보내기가 꺼져 있어요. 대표님께 알려 주세요';
+  else if (S.mode === 'test') t = '시험 중이에요. 대표님 메일로만 보내져요';
+  $('band').textContent = t; $('band').classList.toggle('on', !!t);
+}
+
+/* ══════════ 찾기 ══════════ */
+var findT = null;
+$('q').addEventListener('focus', function(){ this.removeAttribute('readonly'); });   // 자동완성 막기(§4.1-6)
+$('q').addEventListener('input', function(){ clearTimeout(findT); findT = setTimeout(find, 350); });
+$('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') { clearTimeout(findT); find(); } });
+function find(){
+  var q = $('q').value.replace(/\s/g, '');
+  if (q === S.q && S.rows) return;
+  S.q = q; var my = ++S.seq;
+  if (!q) { S.rows = null; S.finding = false; paintFind(); return; }
+  S.finding = true; paintFind();
+  callRead({ action: 'rs_find', q: q }).then(function(r){
+    if (my !== S.seq) return;
+    S.finding = false;
+    if (!r || !r.ok) { if (offReply(r)) goOff(); S.rows = []; S.err = true; S.q = ''; paintFind(); return; }
+    S.err = false; S.mode = r.mode || S.mode; goOn();
+    S.rows = r.kids || []; S.more = !!r.more; paintFind();
+  }, function(){ if (my !== S.seq) return; S.finding = false; S.rows = []; S.err = true; S.q = ''; paintFind(); });
+}
+function tagsOf(k){
+  return '<span class="tag">' + esc(k.svc) + '</span><span class="tag">' + esc(CENTER[k.center] || k.center) + '</span>' + (k.ended ? '<span class="tag end">종결</span>' : '');
+}
+function subOf(k){ return [b6Text(k.b6), k.teacher ? k.teacher + ' 선생님' : ''].filter(Boolean).join(', '); }
+function paintFind(){
+  var el = $('flist');
+  if (S.finding && !S.rows) { var one = '<div class="row" style="pointer-events:none"><span class="sk-b" style="width:40%;height:22px"></span><span class="sk-b" style="width:70%;height:16px;margin-top:8px"></span></div>'; el.innerHTML = one + one; return; }
+  if (!S.rows) { el.innerHTML = '<div class="empty"><b>아이 이름을 적어 주세요</b>이름 일부만 적어도 찾아요</div>'; return; }
+  if (S.err) { el.innerHTML = '<div class="empty"><b>아직 못 찾았어요</b>잠시 뒤 다시 적어 주세요</div>'; return; }
+  if (!S.rows.length) { el.innerHTML = '<div class="empty"><b>서류철에 없는 이름이에요</b>오감, 아청 아이만 찾을 수 있어요</div>'; return; }
+  el.innerHTML = S.rows.map(function(k, i){
+    var sent = [k.sent && k.sent['사전'] ? '사전 ' + k.sent['사전'] : '', k.sent && k.sent['사후'] ? '사후 ' + k.sent['사후'] : ''].filter(Boolean).join(', ');
+    return '<button type="button" class="row' + (k.ended ? ' end' : '') + '" data-i="' + i + '"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + tagsOf(k)
+      + (sent ? '<span class="sent">' + esc(sent) + '</span>' : '') + '</div><div class="sub">' + esc(subOf(k)) + '</div></button>';
+  }).join('') + (S.more ? '<div class="more-n">30명까지 보여요. 이름을 더 적어 주세요</div>' : '');
+}
+$('flist').addEventListener('click', function(e){
+  var b = e.target.closest('.row[data-i]'); if (!b || !S.rows) return;
+  var k = S.rows[+b.getAttribute('data-i')]; if (k) openKid(k);
+});
+
+/* ══════════ 아이 한 명 ══════════ */
+function show(v){ $('vFind').classList.toggle('on', v === 'find'); $('vKid').classList.toggle('on', v === 'kid'); }
+function openKid(k){
+  S.kid = k; S.det = null; S.pick = {}; clearRes();
+  S.stage = k.sent && k.sent['사전'] && !k.sent['사후'] ? '사후' : '사전';   // 사전을 보낸 아이 = 사후부터
+  $('kNm').textContent = k.label; $('kTags').innerHTML = tagsOf(k); $('kSub').textContent = subOf(k);
+  $('mId').value = ''; $('mDom').value = 'naver.com'; $('mAgain').value = ''; mailErr('');
+  show('kid'); $('kbody').scrollTop = 0;
+  loadKid(false);
+}
+function loadKid(fresh){
+  var k = S.kid; if (!k) return;
+  var my = ++S.detSeq; S.det = null; paintKid();
+  callRead({ action: 'rs_child', tab: k.tab, svc: k.svc, label: k.label, b6: k.b6, stage: S.stage, fresh: !!fresh }, 8000).then(function(r){
+    if (my !== S.detSeq) return;
+    if (!r || !r.ok) {
+      if (r && r.why === 'kid') { S.det = { gone: true }; paintKid(); return; }
+      if (offReply(r)) goOff();
+      S.det = { err: true }; paintKid(); return;
+    }
+    S.mode = r.mode || S.mode; goOn();
+    S.det = r; S.pick = defaultPick(r);
+    if (r.kid && r.kid.sent) k.sent = r.kid.sent;   // 단계 버튼의 「11/24 보냄」
+    fillMail(r);
+    paintKid();
+  }, function(){ if (my !== S.detSeq) return; S.det = { err: true }; paintKid(); });
+}
+// 이미 메일로 나간 파일(보낸 기록의 ids) — 기본으로 안 고른다(사전 두 파일이 다른 날 나갈 때 같은 파일 두 번 X). 눌러서 다시 고를 수는 있다
+function sentIds(r){
+  var out = {};
+  (r.sends || []).forEach(function(s){ if (/^보냄|^시험$/.test(String(s.mail || ''))) String(s.ids || '').split(',').forEach(function(id){ if (id) out[id] = s.at; }); });
+  return out;
+}
+function defaultPick(r){
+  var p = {}, sent = sentIds(r);
+  ['result', 'pat'].forEach(function(kind){
+    var f = ((r.files || {})[kind] || []).filter(function(x){ return !x.locked; });
+    if (f.length && !sent[f[0].id]) p[kind] = f[0].id;   // 새 것 먼저(07이 정렬)
+  });
+  return p;
+}
+// 메일 칸 — 시험 중이면 대표님 메일, 아니면 지난번 이 아이에게 나간 주소(두 칸 다). 사람이 이미 적었으면 안 덮음
+function fillMail(r){
+  if ($('mId').value || $('mAgain').value) return;
+  var a = r.mode === 'test' && r.testTo ? r.testTo : (r.lastTo || '');
+  var m = /^([^@\s]+)@([^@\s]+)$/.exec(a); if (!m) return;
+  $('mId').value = m[1]; $('mDom').value = m[2]; $('mAgain').value = a;
+}
+function fileRow(kind, f, sent){
+  var on = S.pick[kind] === f.id, dis = !!f.locked || !canSend();
+  var info = f.locked ? '<span class="why">같은 이름 아이가 있어요. 파일 이름 끝에 생년월일 6자리를 붙여 주세요</span>'
+    : sent[f.id] ? '<span class="ok">' + esc(sent[f.id]) + ' 보냄</span>' : '<span>' + esc([f.upd ? f.upd + ' 저장' : '', f.kb ? f.kb + 'KB' : ''].filter(Boolean).join(', ')) + '</span>';
+  return '<button type="button" class="fr' + (on ? ' on' : '') + '" data-k="' + kind + '" data-id="' + esc(f.id) + '"' + (f.locked ? ' disabled' : '') + (dis && !f.locked ? ' aria-disabled="true"' : '')
+    + '><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="fn"><b>' + esc(f.name) + '</b>' + info + '</span></button>';
+}
+function paintKid(){
+  var d = S.det, st = S.stage, k = S.kid || {};
+  document.querySelectorAll('#kSeg button').forEach(function(b){
+    var s = b.getAttribute('data-s');
+    b.classList.toggle('on', s === st);
+    b.querySelector('small').textContent = k.sent && k.sent[s] ? k.sent[s] + ' 보냄' : '';
+    b.disabled = !!S.sending;
+  });
+  var files = $('kFiles'), log = $('kLog'), ph = $('kPhone');
+  if (!d) {
+    var sk = function(w, h){ return '<span class="sk-b" style="width:' + w + ';height:' + h + 'px;margin-top:6px"></span>'; };
+    files.innerHTML = sk('100%', 56) + (st === '사전' ? sk('100%', 56) : ''); ph.innerHTML = sk('50%', 16).replace('margin-top:6px', ''); $('secLog').style.display = 'none';
+    paintSend(); return;
+  }
+  if (d.gone) { files.innerHTML = '<div class="none">서류철에서 이 아이를 다시 못 찾았어요. 뒤로 가서 다시 찾아 주세요</div>'; ph.textContent = ''; $('secLog').style.display = 'none'; paintSend(); return; }
+  if (d.err) { files.innerHTML = '<div class="none">아직 못 불러왔어요. <button type="button" class="b weak" id="reKid" style="flex:none;min-height:0;padding:4px 10px;margin-left:4px">다시 불러오기</button></div>'; ph.textContent = ''; $('secLog').style.display = 'none'; paintSend(); return; }
+  // 보낸 기록(이 단계)
+  var sends = d.sends || [];
+  $('secLog').style.display = sends.length ? '' : 'none';
+  log.innerHTML = sends.slice().reverse().map(function(s){
+    return '<div><dt>' + esc(s.at) + '</dt><dd>' + esc(s.to) + '<br><span style="color:var(--g600)">' + esc(logWord(s)) + '</span></dd></div>';
+  }).join('');
+  // 파일
+  var sent = sentIds(d), fs = d.files || {}, h = '';
+  if (d.fileErr) h += '<div class="none">결과지 폴더를 못 읽었어요. <button type="button" class="b weak" id="reKidF" style="flex:none;min-height:0;padding:4px 10px;margin-left:4px">다시 불러오기</button></div>';
+  else {
+    var groups = st === '사전' ? ['result', 'pat'] : ['result'];
+    h += groups.map(function(kind){
+      var list = fs[kind] || [], nm = kind === 'pat' ? KIND.pat : KIND.result[st];
+      return '<div class="fg"><div class="gl">' + esc(nm) + '</div>' + (list.length ? list.map(function(f){ return fileRow(kind, f, sent); }).join('') : '<div class="none">아직 파일이 없어요</div>') + '</div>';
+    }).join('');
+  }
+  files.innerHTML = h;
+  // 카톡 받을 번호
+  if (d.mode === 'test') ph.textContent = '시험 중이라 카톡은 안 가요';
+  else if (d.phone) ph.textContent = d.phone;
+  else ph.textContent = '보호자 번호를 못 찾아서 카톡은 안 가요. 서류철 시트 보호자전화 탭에 번호를 적으면 카톡도 같이 가요';
+  paintSend();
+}
+function logWord(s){
+  var m = String(s.mail || ''), t = String(s.talk || ''), out = [];
+  if (/^보냄/.test(m)) out.push('메일 보냄'); else if (m === '시험') out.push('시험 메일'); else if (/반송/.test(m)) out.push('메일이 돌아옴'); else if (m) out.push(m);
+  if (t === '보냄') out.push('카톡 보냄'); else if (/^번호 없음/.test(t)) out.push('번호가 없어 카톡 안 감'); else if (/^못 보냄/.test(t)) out.push('카톡 못 보냄');
+  if (/주소 확인 보냄/.test(t)) out.push('주소 확인 카톡 보냄');
+  return out.join(', ');
+}
+$('kSeg').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-s]'); if (!b || S.sending) return;
+  var s = b.getAttribute('data-s'); if (s === S.stage) return;
+  S.stage = s; S.pick = {}; clearRes(); loadKid(false);
+});
+$('kFiles').addEventListener('click', function(e){
+  if (e.target.closest('#reKidF')) { loadKid(true); return; }
+  var b = e.target.closest('.fr'); if (!b || b.disabled || !canSend()) return;
+  var kind = b.getAttribute('data-k'), id = b.getAttribute('data-id');
+  S.pick[kind] = S.pick[kind] === id ? '' : id;   // 같은 종류 여럿 = 하나만(누른 것으로 바꿈), 다시 누르면 뺌
+  paintKid();
+});
+$('kbody').addEventListener('click', function(e){ if (e.target.closest('#reKid')) loadKid(true); });
+
+/* ══════════ 메일 주소 ══════════ */
+['mId', 'mAgain'].forEach(function(id){ $(id).addEventListener('focus', function(){ this.removeAttribute('readonly'); }); });
+// 아이디 칸에 주소를 통째로 붙여 넣으면(abc@naver.com) 아이디와 도메인으로 나눈다(§4.1-9 화면 밖에서 읽어 온 값 그대로 받기)
+$('mId').addEventListener('input', function(){
+  var v = this.value.replace(/\s/g, ''), i = v.indexOf('@');
+  if (i >= 0) { var d = v.slice(i + 1).replace(/@/g, ''); v = v.slice(0, i); if (d) $('mDom').value = d.toLowerCase(); }
+  this.value = v; mailErr(''); paintSend();
+});
+$('mAgain').addEventListener('input', function(){ this.value = this.value.replace(/\s/g, ''); mailErr(''); paintSend(); });
+$('mDom').addEventListener('input', function(){ this.value = this.value.replace(/[@\s]/g, ''); mailErr(''); paintSend(); });
+(function(){   // 도메인 콤보(§4.1-10)
+  var wrap = $('domWrap'), list = $('domList');
+  function open(o){ list.classList.toggle('open', o); wrap.classList.toggle('open', o); }
+  $('domTg').onclick = function(e){ e.stopPropagation(); if (!canSend()) return; open(!list.classList.contains('open')); };
+  [].slice.call(list.querySelectorAll('.sel-item')).forEach(function(it){ it.onclick = function(){ $('mDom').value = it.textContent; open(false); mailErr(''); paintSend(); }; });
+  $('mDom').addEventListener('focus', function(){ open(false); });
+  document.addEventListener('click', function(e){ if (!wrap.contains(e.target)) open(false); });
+})();
+function addr(){ return ($('mId').value.trim() + '@' + $('mDom').value.trim()).toLowerCase(); }
+function addrOk(a){ return a.length <= 100 && /^[^\s@<>(),;:"\\]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$/.test(a); }   // 07, 22와 같은 꼴
+function mailErr(t, field){
+  $('mErr').textContent = t || ''; $('mErr').classList.toggle('on', !!t);
+  ['mId', 'mDom', 'mAgain'].forEach(function(id){ $(id).classList.toggle('bad', !!t && (!field || field === id)); });
+}
+
+/* ══════════ 보내기 버튼 ══════════ */
+function canSend(){ return S.on === true && S.mode !== 'off' && !isViewer() && !S.sending; }
+function picked(){
+  var d = S.det, out = []; if (!d || !d.files) return out;
+  ['result', 'pat'].forEach(function(kind){ if (S.pick[kind] && (S.stage === '사전' || kind === 'result')) out.push({ kind: kind, id: S.pick[kind] }); });
+  return out;
+}
+function sendLabel(){
+  var p = picked(), st = S.stage;
+  if (st === '사전' && p.length === 1) return (p[0].kind === 'pat' ? KIND.pat : KIND.result['사전']) + '만 보내기';
+  return '보내기';
+}
+// 빠진 것 하나(없으면 '') — 누르면 흔들고 이 말을 토스트로
+function missing(){
+  if (S.on !== true) return '지금은 보낼 수 없어요';
+  if (isViewer()) return '보기 전용이에요';
+  if (S.mode === 'off') return '지금은 보내기가 꺼져 있어요';
+  if (!S.det || S.det.err || S.det.gone) return '아이 정보를 불러온 뒤에 보낼 수 있어요';
+  if (!picked().length) return '보낼 파일을 골라 주세요';
+  var a = addr();
+  if (!$('mId').value.trim() || !addrOk(a)) return '메일 주소를 확인해 주세요';
+  if ($('mAgain').value.trim().toLowerCase() !== a) return '메일 주소를 한 번 더 똑같이 적어 주세요';
+  return '';
+}
+function paintSend(){
+  var b = $('sendGo');
+  $('sendL').textContent = sendLabel();
+  b.classList.toggle('gate', !!missing() && !S.sending);
+  b.classList.toggle('busy', !!S.sending);
+  $('wait').classList.toggle('on', !!S.sending);
+  ['mId', 'mDom', 'mAgain'].forEach(function(id){ $(id).disabled = !!S.sending || isViewer() || S.mode === 'off'; });
+}
+$('sendGo').addEventListener('click', function(){
+  if (S.sending) return;
+  var why = missing();
+  if (why) {
+    var b = this; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); toast(why);
+    if (/메일 주소를 확인/.test(why)) mailErr(why, $('mId').value.trim() ? 'mDom' : 'mId');
+    else if (/한 번 더/.test(why)) mailErr(why, 'mAgain');
+    return;
+  }
+  send(false);
+});
+
+/* ══════════ 보내기 — 작업 번호 하나 = 메일 한 통 ══════════
+   사람이 누르는 보내기는 늘 새 번호. 응답을 놓친 때만 같은 번호로 묻거나(rs_res) 다시 부른다(rs_send — 22가 같은 결과를 줌) */
+function send(force, job){
+  var k = S.kid, d = S.det; if (!k || !d) return;
+  var o = { job: job || newJob(), kid: k, stage: S.stage, files: picked().map(function(f){ return f.id; }), to: addr(), force: !!force, again: 0, t0: Date.now() };
+  S.sending = o; S.lastJob = o.job; clearRes(); paintKid();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  fire(o);
+}
+function body(o){ return { action: 'rs_send', job: o.job, tab: o.kid.tab, svc: o.kid.svc, label: o.kid.label, b6: o.kid.b6, stage: o.stage, files: o.files, to: o.to, force: o.force }; }
+function fire(o){
+  o.fires = (o.fires || 0) + 1;   // 2번째부터 = 같은 번호로 다시 부름(앞 부름이 메일을 보냈을 수 있다)
+  call(body(o), SEND_TIMEOUT_MS).then(function(r){
+    if (S.sending !== o) return;
+    if (r && r.why === 'run') { askLater(o); return; }   // 같은 번호가 아직 도는 중(앞 부름) = 결과를 묻는다
+    done(o, r);
+  }, function(e){
+    if (S.sending !== o) return;
+    if (e && e.noid) { finish(o); goOff(); return; }
+    askLater(o);   // 시한, 구글 HTML, 못 닿음 = 07은 하고 있을 수 있다
+  });
+}
+// 응답을 놓친 보내기 — 5초마다 rs_res. none이 두 번 이어지면(07이 못 받음, 캐시가 지워짐) 같은 번호로 다시 부른다
+function askLater(o){
+  var none = 0;
+  (function again(){
+    if (S.sending !== o) return;
+    if (Date.now() - o.t0 > RES_POLL_FOR_MS) { stuck(o); return; }
+    setTimeout(function(){
+      if (S.sending !== o) return;
+      call({ action: 'rs_res', job: o.job }).then(function(x){
+        if (S.sending !== o) return;
+        if (x && x.state === 'done') { done(o, x.res); return; }
+        if (x && x.state === 'none' && ++none >= 2) { none = 0; fire(o); return; }
+        if (x && x.state === 'run') none = 0;
+        again();
+      }, function(){ again(); });
+    }, RES_POLL_MS);
+  })();
+}
+function finish(o){ if (S.sending === o) S.sending = null; paintKid(); }
+// 결과를 끝내 못 받음 = 머무는 상자 + 「결과 다시 확인」(같은 번호로 묻고, 모르면 같은 번호로 다시 부름 — 두 통 안 감)
+function stuck(o){
+  finish(o);
+  res('warn', '결과를 아직 못 받았어요', ['메일이 나갔는지 아직 몰라요. 아래 버튼으로 다시 확인해 주세요'], [{ id: 'again', label: '결과 다시 확인', pri: true }], o);
+}
+function done(o, r){
+  r = r || {};
+  var why = r.why || '';
+  if (!r.ok && (why === 'unknown' || why === 'retry')) {   // 메일은 나갔을 수 있다 — 장부, 알림톡, R/X를 마치게 같은 번호로 저절로
+    if (o.again < AUTO_AGAIN) { o.again++; setTimeout(function(){ if (S.sending === o) fire(o); }, AGAIN_MS); return; }
+    stuck(o); return;
+  }
+  finish(o);
+  if (r.ok) { okBox(o, r); loadKid(false); refreshRow(o); return; }
+  if (offReply(r)) { goOff(); res('warn', '지금은 보낼 수 없어요', ['잠시 뒤 다시 열어 주세요']); return; }   // 서명 거절(auth) = 꺼짐
+  // 같은 번호로 다시 부른 뒤의 거절, 07 안 오류 = 앞 부름이 메일을 보냈을 수 있다 → 「안 갔어요」로 단정하지 않고 보낸 기록을 다시 불러 보여 줌(11-24 리뷰)
+  if (r.error || (o.fires > 1 && !/^(bounce|typo|addr|test_to|viewer)$/.test(why))) {
+    res('warn', '메일이 나갔는지 확인하지 못했어요', ['아래 보낸 기록에 오늘 줄이 없으면 다시 보내 주세요']); loadKid(false); refreshRow(o); return;
+  }
+  if (why === 'bounce') { bounceBox(o, r); loadKid(false); refreshRow(o); return; }
+  if (why === 'typo') { typoAsk(o, r.typo); return; }
+  if (why === 'addr') { mailErr('메일 주소를 다시 확인해 주세요', 'mId'); toast('메일 주소를 다시 확인해 주세요'); return; }
+  if (why === 'test_to') { mailErr('시험 중이라 대표님 메일로만 보낼 수 있어요', 'mId'); return; }
+  if (why === 'files' || why === 'files_gone' || why === 'locked') { toast('파일이 바뀌었어요. 목록을 다시 불러왔어요'); loadKid(true); return; }
+  if (why === 'kid') { res('warn', '서류철에서 이 아이를 다시 못 찾았어요', ['뒤로 가서 다시 찾아 주세요']); return; }
+  if (why === 'busy') { res('warn', '다른 화면에서 이 아이를 보내고 있어요', ['잠시 뒤 보낸 기록을 다시 확인해 주세요'], [{ id: 'reload', label: '다시 불러오기' }]); return; }
+  if (why === 'day' || why === 'quota') { res('warn', '오늘 보낼 수 있는 메일을 다 썼어요', ['내일 다시 보내 주세요']); return; }
+  if (why === 'viewer') { res('warn', '보기 전용이라 보낼 수 없어요', ['보내기는 센터 PC에서 할 수 있어요']); return; }
+  if (why === 'tpl') { res('warn', '알림톡을 지금 쓸 수 없어서 보내지 않았어요', ['메일도 안 갔어요. 대표님께 알려 주세요']); return; }
+  if (why === 'off' || why === 'key' || why === 'bad') { res('warn', '지금은 보낼 수 없어요', ['메일은 안 갔어요. 대표님께 알려 주세요']); return; }
+  if (why === 'job') { res('warn', '보내지 못했어요', ['보내기를 다시 눌러 주세요']); return; }   // 22 = 같은 번호에 다른 내용(새 번호로)
+  res('warn', '보내지 못했어요', ['메일은 안 갔어요. 보내기를 다시 눌러 주세요']);
+}
+function refreshRow(o){   // 찾기 줄의 「사전 11/24」도 다시(다음에 찾을 때)
+  S.rows = null; S.q = '';
+}
+function okBox(o, r){
+  var lines = [], col = COL[o.stage];
+  if (r.mode === 'test') { res('ok', '시험 메일을 보냈어요', ['시험이라 카톡과 서류철 칸은 그대로예요']); return; }
+  var t = String(r.talk || '');
+  if (t === '보냄') lines.push('카톡도 보냈어요');
+  else if (/^번호 없음/.test(t)) lines.push('보호자 번호가 없어 카톡은 안 갔어요');
+  else if (/^못 보냄/.test(t)) lines.push('카톡은 못 보냈어요. 대표님께 알려 주세요');
+  var x = String(r.rx || '');
+  if (x === '적음') lines.push('서류철 ' + col + '칸에 o를 적었어요');
+  else if (/^안 씀/.test(x)) lines.push('두 파일이 다 나가면 서류철 ' + col + '칸에 o가 적혀요');
+  else if (/^못 씀/.test(x)) lines.push('서류철 ' + col + '칸은 못 적었어요. 직접 o를 적어 주세요');
+  if (r.watch) lines.push('돌아오는지는 끝까지 못 봤어요. 돌아오면 보호자께 주소 확인 카톡이 가요');
+  res('ok', '메일을 보냈어요', lines);
+}
+function bounceBox(o, r){
+  var lines = [String(r.to || o.to) + ' 주소로 전달되지 않았어요'];
+  if (r.reason) lines.push(String(r.reason));
+  if (r.mode === 'test') lines.push('시험이라 카톡은 안 갔어요');
+  else lines.push('카톡은 안 갔어요');
+  var btns = [{ id: 'retype', label: '주소 다시 적기', pri: !r.notice }];
+  if (r.notice) btns.push({ id: 'fix', label: '보호자께 주소 확인 카톡', pri: true });
+  res('warn', '메일이 돌아왔어요', lines, btns, o);
+}
+
+/* ══════════ 결과 상자(머무름) ══════════ */
+var resCtx = null;
+function clearRes(){ resCtx = null; $('res').className = 'res'; $('res').innerHTML = ''; }
+function res(kind, title, lines, btns, o){
+  resCtx = { o: o || null };
+  var el = $('res');
+  el.className = 'res on ' + kind;
+  el.innerHTML = '<div class="rt1"><i><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></i>' + esc(title) + '</div>'
+    + (lines && lines.length ? '<ul>' + lines.map(function(l){ return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '')
+    + (btns && btns.length ? '<div class="rb">' + btns.map(function(b){ return '<button type="button" class="b ' + (b.pri ? 'pri' : 'weak') + '" data-r="' + b.id + '"><span class="lb">' + esc(b.label) + '</span></button>'; }).join('') + '</div>' : '');
+  $('kbody').scrollTop = 0;
+}
+$('res').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-r]'); if (!b || b.disabled || !resCtx) return;
+  var a = b.getAttribute('data-r'), o = resCtx.o;
+  if (a === 'retype') { clearRes(); $('mAgain').value = ''; paintSend(); $('mId').focus(); $('mId').select(); return; }
+  if (a === 'reload') { clearRes(); loadKid(true); return; }
+  if (a === 'again' && o) {   // 같은 번호 — 07에 묻고(rs_res), 모르면 다시 부름
+    clearRes(); o.t0 = Date.now(); o.again = 0; S.sending = o; paintKid();
+    call({ action: 'rs_res', job: o.job }).then(function(x){
+      if (S.sending !== o) return;
+      if (x && x.state === 'done') done(o, x.res); else if (x && x.state === 'run') askLater(o); else fire(o);
+    }, function(){ if (S.sending === o) askLater(o); });
+    return;
+  }
+  if (a === 'fix' && o) {
+    if (!canSend()) return;
+    b.disabled = true; b.classList.add('busy');
+    call({ action: 'rs_fixnotice', job: o.job }, 45000).then(function(x){
+      b.classList.remove('busy');
+      if (x && x.ok) { b.querySelector('.lb').textContent = '주소 확인 카톡 보냄'; toast(x.dup ? '이미 보낸 카톡이에요' : '보호자께 주소 확인 카톡을 보냈어요'); loadKid(false); return; }
+      b.disabled = false;
+      toast(x && x.why === 'phone' ? '보호자 번호가 없어 카톡을 못 보내요' : '카톡을 보내지 못했어요. 다시 눌러 주세요');
+    }, function(){ b.classList.remove('busy'); b.disabled = false; toast('결과를 못 받았어요. 보낸 기록을 확인해 주세요'); loadKid(false); });
+  }
+});
+
+/* ══════════ 오타 확인(22가 흔한 도메인 오타를 알려 줌) — 「적은 대로」, 「고쳐서 보내기」 둘 다 새 번호 ══════════ */
+var cfmCtx = null, cfmAt = 0;
+function typoAsk(o, typo){
+  cfmCtx = { o: o, typo: String(typo || '') }; cfmAt = Date.now();
+  $('cfmT').textContent = '메일 주소를 확인해 주세요';
+  $('cfmS').innerHTML = '적은 주소 <b>' + esc(o.to) + '</b><br>혹시 <b>' + esc(typo) + '</b> 아닌가요?';
+  $('cfmNoL').textContent = '적은 대로'; $('cfmGoL').textContent = '고쳐서 보내기';
+  $('dim').classList.add('on'); $('cfm').classList.add('on');
+}
+function closeCfm(){ if (!cfmCtx) return false; cfmCtx = null; $('cfm').classList.remove('on'); $('dim').classList.remove('on'); return true; }
+$('cfmNo').addEventListener('click', function(){
+  if (!cfmCtx || Date.now() - cfmAt < 400) return;   // 뜨자마자 떨어진 누름(직전 누름의 잔상)은 고른 게 아니다
+  closeCfm(); send(true);   // 적은 대로 = force, 새 번호
+});
+$('cfmGo').addEventListener('click', function(){
+  if (!cfmCtx || Date.now() - cfmAt < 400) return;
+  var m = /^([^@\s]+)@([^@\s]+)$/.exec(cfmCtx.typo); closeCfm();
+  if (!m) return;
+  $('mId').value = m[1]; $('mDom').value = m[2]; $('mAgain').value = m[1] + '@' + m[2]; paintSend();
+  send(false);   // 고친 주소 = 새 번호(옛 번호는 07이 typo로 기억)
+});
+$('dim').addEventListener('click', function(){ if (Date.now() - cfmAt > 400) closeCfm(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeCfm(); });
+
+/* ══════════ 토스트 ══════════ */
+function toast(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2600); }
+
+/* ══════════ ← 뒤로 = 아이 → 찾기 → 앱(보내는 중엔 안 떠남), 창 −, 이동 그립(예약과 같은 문법) ══════════ */
+function back(){
+  if (closeCfm()) return true;
+  if ($('vKid').classList.contains('on')) {
+    if (S.sending) { toast('보내는 중이에요. 결과가 나오면 여기에 보여요'); return true; }
+    S.kid = null; S.det = null; ++S.detSeq; clearRes(); show('find'); find(); paintFind(); return true;
+  }
+  return false;
+}
+$('appBack').addEventListener('click', function(){ if (!back()) toApp({ type: 'back' }); });
+$('appMenu').addEventListener('click', function(){ toApp({ type: 'menu' }); });
+if (HOSTED) {
+  $('hostMin').style.display = 'flex';
+  $('hostMin').addEventListener('click', function(){ toApp({ type: 'close' }); });
+  (function(){
+    var st = document.createElement('style'); document.documentElement.appendChild(st);
+    var on = false;
+    function setCur(v){ if (v === on) return; on = v; st.textContent = v ? '*{cursor:move !important}' : ''; }
+    document.addEventListener('mousemove', function(e){ setCur(e.clientY <= 12); }, true);
+    document.addEventListener('mouseleave', function(){ setCur(false); }, true);
+    document.addEventListener('mousedown', function(e){
+      if (e.button !== 0 || e.clientY > 12) return;
+      e.preventDefault(); e.stopPropagation();
+      toApp({ type: 'edge' });
+    }, true);
+  })();
+}
+window.addEventListener('message', function(e){
+  if (!EMBED || e.source !== parent || e.origin !== location.origin) return;
+  var d = e.data || {}; if (d.tf !== 'rs') return;
+  if (d.type === 'vis' && d.on) { paintBand(); tick(); if ($('vFind').classList.contains('on') && !$('q').value && !matchMedia('(any-pointer:coarse)').matches) setTimeout(function(){ try { $('q').focus(); } catch (x) { } }, 60); }
+  if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱 다른 메뉴 아이콘과 같은 값(문의 숫자)
+  if (d.type === 'hwback') { if (!back()) toApp({ type: 'back' }); }   // 폰 뒤로가기 = 확인 창, 아이 화면부터
+});
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) tick(); });
+// 스크롤 흐림(넘칠 때만)
+[['flist', 'fsw'], ['kbody', 'ksw']].forEach(function(p){
+  var sc = $(p[0]), host = $(p[1]);
+  var f = function(){ var h = sc.clientHeight, over = h > 0 && sc.scrollHeight > h + 1;
+    host.classList.toggle('more', over && sc.scrollTop + h < sc.scrollHeight - 1);
+    host.classList.toggle('moreTop', over && sc.scrollTop > 1); };
+  sc.addEventListener('scroll', f); if (typeof ResizeObserver !== 'undefined') new ResizeObserver(f).observe(sc);
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(f).observe(sc, { childList: true, subtree: true });
+});
+
+if (EMBED) { paintFind(); paintBand(); ping(); tick(); }
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 // 근태 서비스워커 — 설치 가능(앱) 조건 충족 + 오프라인 폴백. tablet/sw.js 패턴.
 // 전략: network-first(항상 최신), 실패 시 캐시 폴백. 배포마다 CACHE 버전 올릴 것.
-var CACHE = 'tf-attend-v154'; // 11-19 막 색 원칙(docs/1 §4.3-9, 유성 「원칙에」): 시트와 확인 창 막 푸른 회색 .4 → 검정 .4(본 화면, 문의 채팅, 예약) + ⑦ 섞은 색 153,153,153 + 바깥 어둡게 같은 색. 메뉴 .6 그대로. 알약 무변경
+var CACHE = 'tf-attend-v155'; // 11-24 행정 앱 「검사 결과 발송」 메뉴(07 검사 결과지 메일 + 알림톡): 문의 채팅과 같은 자격 + 07이 서명을 받을 때만 메뉴 칸(07 속성 INQ_KEY 전엔 안 보임), 화면 = result/ 안 창. 알약 무변경 = PILL_VER 그대로
+// 옛 줄: 'tf-attend-v154'; // 11-19 막 색 원칙(docs/1 §4.3-9, 유성 「원칙에」): 시트와 확인 창 막 푸른 회색 .4 → 검정 .4(본 화면, 문의 채팅, 예약) + ⑦ 섞은 색 153,153,153 + 바깥 어둡게 같은 색. 메뉴 .6 그대로. 알약 무변경
 // 옛 줄: 'tf-attend-v153'; // 11-18 PC 폰 목업: 시트와 확인 창(.4)이 뜰 때도 폰 바깥을 같은 색으로 어둡게(docs/1 §3.8 ⑤, 메뉴는 그대로). 알약 무변경 = PILL_VER 그대로 / v150 = 11-18 받은함 결과 모름 뒤 목록도 서버 것으로(닫힌 방에서 결과를 모르면 내 글 미리보기가 「바뀐 것 없음」 동안 남던 것 — 감사 D 리뷰). 알약 무변경 = PILL_VER 그대로
 // 옛 줄: 'tf-attend-v152'; // 11-19 받은함 대화방 머리 ≡ 메뉴(문의채팅 감사 E — 유성 「상단바 우측에 햄버거 아이콘」 → 「e도」): 옛 칩 「대기로 돌려놓기」 대신 ≡ 아래 작은 메뉴(돌려놓기 노랑 원, 상담 완료 초록 원), 대화방 완료 줄 = 연회색 둥근 상자, 폰에서도 완료. v151 = 다른 세션 가지(wip/mock-outdim-1118) 몫으로 비워 둠. 알약 무변경 = PILL_VER 그대로
 // 옛 줄: 'tf-attend-v150'; // 11-18 받은함 결과 모름 뒤 목록도 서버 것으로(닫힌 방에서 결과를 모르면 내 글 미리보기가 「바뀐 것 없음」 동안 남던 것 — 감사 D 리뷰). 알약 무변경 = PILL_VER 그대로
@@ -23,6 +24,7 @@ var SHELL = [
   './widget/', './widget/index.html',   // 데스크톱 위젯(exe가 로드) — 캐시에 있어야 오프라인에도 알약이 뜬다
   './inbox/', './inbox/index.html',     // 문의 받은함(앱 창 안 — 알약 「문의 N」이 연다, 10-09)
   './booking/', './booking/index.html', // 예약(앱 창 안 — 메뉴 「예약」, 11-07)
+  './result/', './result/index.html',   // 검사 결과 발송(앱 창 안 — 메뉴 「검사 결과 발송」, 11-24)
 
   '/attend/favicon-32x32.png',
   '/attend/android-icon-192x192.png',
@@ -69,7 +71,7 @@ self.addEventListener('fetch', function(e){
       //   그리고 폴백은 **그 창이 원래 열려던 것**이어야 한다. 구판은 알약 창에도 앱 본체(./index.html)를 줘서
       //   120×34 창에 앱이 통째로 뜨고, 상태 메시지가 영영 안 와 알약이 하얗게 굳었다(2026-08-05 검수).
       var pth = new URL(req.url).pathname;
-      var home = /\/widget\//.test(pth) ? './widget/index.html' : /\/inbox\//.test(pth) ? './inbox/index.html' : /\/booking\//.test(pth) ? './booking/index.html' : './index.html';
+      var home = /\/widget\//.test(pth) ? './widget/index.html' : /\/inbox\//.test(pth) ? './inbox/index.html' : /\/booking\//.test(pth) ? './booking/index.html' : /\/result\//.test(pth) ? './result/index.html' : './index.html';
       return caches.match(req, { ignoreSearch: true }).then(function(r){
         return r || caches.match(home, { ignoreSearch: true });
       });
