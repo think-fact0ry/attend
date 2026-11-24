@@ -507,7 +507,7 @@ function logWord(s){
   var m = String(s.mail || ''), t = String(s.talk || ''), out = [];
   if (/^보냄/.test(m)) out.push('메일 보냄'); else if (m === '시험') out.push('시험 메일'); else if (/반송/.test(m)) out.push('메일이 돌아옴'); else if (m) out.push(m);
   if (t === '보냄') out.push('카톡 보냄'); else if (/^번호 없음/.test(t)) out.push('번호가 없어 카톡 안 감'); else if (/^못 보냄/.test(t)) out.push('카톡 못 보냄');
-  if (/주소 확인 보냄/.test(t)) out.push('주소 확인 카톡 보냄');
+  if (/주소 확인 보냄/.test(t)) out.push('다시 받기 카톡 보냄');   // 장부 값 「주소 확인 보냄」은 07이 쓰는 그대로(틀 2 = 「메일 다시 받기」 — 유성 11-24 밤 둘째)
   return out.join(', ');
 }
 $('kSeg').addEventListener('click', function(e){
@@ -681,7 +681,7 @@ function okBox(o, r){
   if (x === '적음') lines.push('서류철 ' + col + '칸에 o를 적었어요');
   else if (/^안 씀/.test(x)) lines.push('두 파일이 다 나가면 서류철 ' + col + '칸에 o가 적혀요');
   else if (/^못 씀/.test(x)) lines.push('서류철 ' + col + '칸은 못 적었어요. 직접 o를 적어 주세요');
-  if (r.watch) lines.push('돌아오는지는 끝까지 못 봤어요. 돌아오면 보호자께 주소 확인 카톡이 가요');
+  if (r.watch) lines.push('돌아오는지는 끝까지 못 봤어요. 돌아오면 보호자께 다시 받기 카톡이 가요');
   res('ok', '메일을 보냈어요', lines);
 }
 function bounceBox(o, r){
@@ -690,7 +690,7 @@ function bounceBox(o, r){
   if (r.mode === 'test') lines.push('시험이라 카톡은 안 갔어요');
   else lines.push('카톡은 안 갔어요');
   var btns = [{ id: 'retype', label: '주소 다시 적기', pri: !r.notice }];
-  if (r.notice) btns.push({ id: 'fix', label: '보호자께 주소 확인 카톡', pri: true });
+  if (r.notice) btns.push({ id: 'fix', label: '보호자께 다시 받기 카톡', pri: true });
   res('warn', '메일이 돌아왔어요', lines, btns, o);
 }
 
@@ -724,7 +724,7 @@ $('res').addEventListener('click', function(e){
     b.disabled = true; b.classList.add('busy');
     call({ action: 'rs_fixnotice', job: o.job }, 45000).then(function(x){
       b.classList.remove('busy');
-      if (x && x.ok) { b.querySelector('.lb').textContent = '주소 확인 카톡 보냄'; toast(x.dup ? '이미 보낸 카톡이에요' : '보호자께 주소 확인 카톡을 보냈어요'); loadKid(false); return; }
+      if (x && x.ok) { b.querySelector('.lb').textContent = '다시 받기 카톡 보냄'; toast(x.dup ? '이미 보낸 카톡이에요' : '보호자께 다시 받기 카톡을 보냈어요'); loadKid(false); return; }
       b.disabled = false;
       toast(x && x.why === 'phone' ? '보호자 번호가 없어 카톡을 못 보내요' : '카톡을 보내지 못했어요. 다시 눌러 주세요');
     }, function(){ b.classList.remove('busy'); b.disabled = false; toast('결과를 못 받았어요. 보낸 기록을 확인해 주세요'); loadKid(false); });
