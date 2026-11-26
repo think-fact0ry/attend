@@ -5,21 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>검사 결과 발송</title>
 <!--
-  검사 결과 발송 (2026-11-24 첫 판 — 07 검사 결과지, 유성 11-22 a1 「화면 = 행정 어플 메뉴」 / 11-25 v157 = 메일을 뺀 판, 유성 「굳이 메일로 가야해? 월 계획안 처럼 알림톡으로」 → 「권장대로 이어서 진행」 / v158 = 한유성 계정도 보내기, 링크 끄기, 유성 「한유성 아이디에서도 할 수 있어야지」)
-  · 무엇 = 현아쌤이 아이를 찾고(이름) → 단계(사전검사, 사후검사) → 원드라이브 결과지 파일 → 보내기.
-    07이 파일 사본을 원드라이브 07_결과지_보낸본에 두고 숨긴 장부에 한 줄(열쇠) → 알림톡(버튼 = kr /result/?k=열쇠, 보호자가 아이 생년월일로 엶)
-    → 10분쯤 뒤 07 폴링이 배달을 확인해 닿았으면 서류철 R(사전, 두 파일 다), X(사후) 빈 칸에 o.
-  · 보낸 기록 = 줄마다 카톡, 닿음, 열어 봄, 잠김, 끔 + 「링크 끄기」(rs_off — 잘못 붙인 파일, 틀린 번호). 시험 중(07 RS_LIVE false) = 카톡 0, 서류철 0, 줄에 보호자 화면 링크.
-  · 판 = 요청마다 v:2. v 없는 옛 화면(v156 메일 판)엔 07이 꺼짐을 돌려준다(옛 화면이 새 서버로 메일 칸을 보내지 않게).
-  · 정본 = 생각공작소 레포 prototype/07_검사결과지_메일알림톡_계획_프리뷰.html 10판~, docs/6_백로그_원장_검사결과지발송.md.
-    서버 = scripts/07_아동서류화일관리/결과지발송.js(rs_find, rs_child, rs_send, rs_res, rs_off — 07 월 계획안 웹앱 doPost가 열쇠 검사 앞에서 넘김).
+  검사 결과 발송 v159 (2026-11-26 — 시안 6판대로 다시 지음. 유성 11-25 「워크플로우와 와이어프레임을 나와 같이 고민하고 결정해야지」 → 흐름 B 「권장대로」 → 시안 1~6판 → 「go」)
+  · 무엇 = 첫 화면에 「보낼 결과지」 카드(결과지 폴더에 저장됐는데 아직 안 보낸 아동 단계) + 「확인할 파일」(같은 이름 아동, 서류철에 없는 이름) + 「최근 보낸 결과지」(30일).
+    카드 오른쪽 칸(84×100)을 눌러 고르고 아래 바 「N명 결과지 보내기」 → 아동마다 07이 사본 + 장부 한 줄(열쇠) + 알림톡(버튼 = kr /result/?k=열쇠, 보호자가 아이 생년월일로 엶).
+    카드를 누르면 아래 시트(파일 고르기, 앞 판, 보낸 판, 휴대폰 번호). 보낸 결과지 → 시트(보호자가 받음, 열어 봄, 지난 링크 닫기, 다시 보내기). 확인할 파일 → 「이 아동인가요」(07이 파일 이름 끝에 생년을 붙임).
+  · 서버 = 생각공작소 scripts/07_아동서류화일관리/결과지발송.js — rs_list(목록, q = 검색), rs_phones, rs_file(열기), rs_fix, rs_send, rs_res, rs_off. 요청마다 v:3(07 RS_SCREEN_V3 — 옛 07이면 rs_list = action = 꺼짐).
+  · 정본 = 생각공작소 prototype/07_검사결과지_화면시안/app.html(6판), prototype/07_검사결과지_짓기계획_프리뷰.html(실물이 바꾼 규칙 둘), docs/6_백로그_원장_검사결과지발송.md.
   · 근태 앱(attend/index.html)의 「검사 결과 발송」 화면 안 창(iframe)으로만 산다 — 예약(booking/)과 같은 틀(창 신호는 부모를 거침, 따로 열리면 앱으로 돌려보냄).
-  · 신원 = 문의 채팅과 같은 서명(att_inq — 19가 등록 PC에서만 준다, 한유성 = 보기 서명 = 보기만). 07이 같은 키(INQ_KEY)로 확인한다.
-    07에 INQ_KEY가 없거나 07이 아직 이 동작을 모르는 판이면(옛 배포 = {error:'key'}) 꺼짐 → 앱에 off를 알려 메뉴 칸을 숨긴다. 10분마다 다시 묻는다.
-  · 읽기(찾기, 아이) = POST + 헤지(가끔 구글 HTML, 수십 초 — 메모리 gas-webapp-reply-can-be-google-html).
-    보내기 = 화면이 작업 번호를 만든다. 같은 번호는 「응답을 놓쳤을 때」만 다시 쓴다(시한, 구글 HTML, run, rs_res none, retry) —
-    07은 거절(busy, files, tpl, phone, b6, copy, off, error)도 그 번호에 1시간 기억하므로 사람이 다시 누르는 보내기는 늘 새 번호.
-    retry = 07이 장부를 못 씀(사본은 올렸을 수 있음, 알림톡 0) → 화면이 같은 번호로 10초 간격 세 번 저절로 다시 부른다(07이 같은 번호 장부 줄을 보면 그 결과를 줘 두 통 안 감).
+  · 신원 = 문의 채팅과 같은 서명(att_inq — 19가 등록 PC + 한유성 폰에서만 줌). 07이 같은 키(INQ_KEY)로 확인. 07이 서명을 안 받으면(auth, 옛 배포) 꺼짐 → 앱에 off(메뉴 칸 숨김), 10분마다 다시.
+  · 보내기 = 아동마다 작업 번호 하나(한 번에 셋까지 동시). 같은 번호는 「응답을 놓쳤을 때」만(시한, 구글 HTML, run, rs_res none, retry) — 07은 거절도 그 번호에 1시간 기억 → 사람이 다시 누르면 늘 새 번호.
+  · 목록 새로 = 화면이 보이는 동안 45초마다 + 앱으로 돌아올 때(새 결과지가 저장되면 저절로 — 유성 11-26 2판). 누르는 중, 시트 연 중, 보내는 중엔 기다렸다가 제자리에.
   · 감시 = 생각공작소 scripts/19_근태관리/tests/결과발송.test.js(진짜 크롬 + 가짜 07).
 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
@@ -30,9 +25,8 @@
   --g800:#333d4b; --g900:#191f28;
   --green50:#f8fbf9; --green100:#f0f8f3; --green200:#d5efde; --green600:#3a8a5f; --green700:#166841; --green800:#01492a;
   --red:#f04452; --warn:#f5a623; --warn-weak-bg:#fef4e2; --warn-weak-fg:#8a5a00;
-  --p-disabled:#b7e0c8; --danger:#D25357;
-  --fs-h3:20px;
-  --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
+  --p-disabled:#b7e0c8; --danger:#D25357; --danger-weak-bg:#fdecee; --danger-weak-fg:#c0392b; --dark:#525966; --dark-disabled:#c8ccd0;
+  --fs-h3:20px; --fs-title:17px; --fs-body:15px; --fs-sm:13.5px; --fs-caption:12px;
   --sf-bot:linear-gradient(to bottom,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
   --sf-top:linear-gradient(to top,rgba(22,104,65,0) 0%,rgba(22,104,65,.055) 100%);
   --ease:cubic-bezier(.22,.7,.25,1);
@@ -40,33 +34,37 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#fff}
-body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-body);
-  line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased;user-select:none}
-button,input,select{font-family:inherit}
+body{color:var(--g900);font-family:'Pretendard Variable',Pretendard,'Malgun Gothic',sans-serif;font-size:var(--fs-body);line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased;user-select:none}
+button,input{font-family:inherit}
 #app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* 머리 = 예약 .hd 그대로. 순서 = [←] 검사 결과 발송 [− ≡], −는 PC 프로그램 안에서만 */
-.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff}
-.hd .rt{display:flex;gap:2px}
+/* 머리 = [← 검사 결과 발송] [− ≡] (−는 PC 프로그램 안에서만) */
+.hd{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:18px 24px 6px;min-height:52px;flex:none;background:#fff;position:relative;z-index:20}
+.hd .lt{display:flex;align-items:center;gap:2px;min-width:0;flex:1}
+.hd .rt{display:flex;gap:2px;flex:none}
 .hd .t{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;line-height:normal}
 .hd .ic{width:38px;height:38px;border-radius:12px;background:none;border:0;display:flex;align-items:center;justify-content:center;color:var(--g900);cursor:pointer;flex:none;padding:0;transition:transform .16s cubic-bezier(.3,1.6,.5,1)}
 .hd .ic:active{transform:scale(.82)}
 .hd .ic svg{width:22px;height:22px}
-svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hd .back{margin-left:-10px}
 #hostMin{display:none}
 #appMenu{position:relative}
 .mdot{position:absolute;top:7px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff;display:none;pointer-events:none}
 .mdot.on{display:block}
-
-/* 띠 = 시험 중, 꺼짐(주황 약함 — 빨강 덮기 금지 §4.5). 한유성 서명도 보내기 됨(유성 11-25) */
+/* 띠 = 시험 중, 꺼짐(주황 약함 — 빨강 덮기 금지 §4.5) */
 .band{display:none;margin:4px 18px 6px;background:var(--warn-weak-bg);color:var(--warn-weak-fg);border-radius:12px;padding:9px 12px;font-size:var(--fs-sm);font-weight:600;flex:none}
 .band.on{display:block}
-
-/* 두 겹 = 찾기 / 아이 한 명(같은 창 안에서 바꿔 낌 — ←가 아이에서 찾기로, 찾기에서 앱으로) */
-.vw{display:none;flex:1;min-height:0;flex-direction:column}
-.vw.on{display:flex}
-
-/* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6, 예약 .sw) */
+/* 검색 칸(§4.1 큰 채움) + 지우기 X(§4.1-4 — 15px g300 원, 글자가 있을 때만) */
+.sq{padding:2px 16px 8px;flex:none;background:#fff}
+.sq .inw{position:relative}
+.sq input{width:100%;border:1.5px solid transparent;background:var(--g100);border-radius:14px;padding:11px 40px 11px 14px;font-size:var(--fs-body);outline:none;color:var(--g900);user-select:text;caret-color:var(--green600);appearance:none;-webkit-appearance:none}
+.sq input:focus{border-color:var(--green600);background:#fff}
+.sq input::placeholder{color:var(--g500)}
+.sq .clr{display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:15px;height:15px;border:none;border-radius:50%;background:var(--g300);color:#fff;padding:0;cursor:pointer;align-items:center;justify-content:center}
+.sq .inw.has-val .clr{display:flex}
+.sq .clr svg{width:7px;height:7px;display:block}
+/* 스크롤 = 막대 없이 넘칠 때만 위아래 초록 그라디언트(§4.13-6) */
 .sw{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
 .sw::before,.sw::after{content:"";position:absolute;left:0;right:0;height:22px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
 .sw::before{top:0;background:var(--sf-top)}
@@ -74,205 +72,233 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .sw.more::after,.sw.moreTop::before{opacity:1}
 .list{flex:1;overflow-y:auto;padding:4px 16px 18px;scrollbar-width:none;display:flex;flex-direction:column;gap:10px}
 .list::-webkit-scrollbar{width:0}
-
-/* 큰 채움 입력(§4.1) = g100 바탕, 포커스 = 초록 테두리 — 예약 .inp */
-.inp{width:100%;border:1.5px solid transparent;background:var(--g100);border-radius:14px;padding:13px 14px;font-size:var(--fs-body);color:var(--g900);outline:none;user-select:text;appearance:none;-webkit-appearance:none;caret-color:var(--green600)}
-.inp:focus{border-color:var(--green600);background:#fff}
-.inp::placeholder{color:var(--g500)}
-.inp:disabled{color:var(--g600)}
-.srch{padding:6px 16px 8px;flex:none}
-
-/* 찾기 줄 = 흰 카드 + 1px g200 + radius 16(예약 .cd), 줄 누름 = §5.3 2겹 그림자 */
+/* 묶음 머리 */
+.gh{display:flex;align-items:baseline;gap:6px;margin:12px 2px -2px;font-size:14px;font-weight:700;color:var(--g800)}
+.gh:first-child{margin-top:4px}
+.gh .cnt{margin-left:auto;font-size:13px;font-weight:600;color:var(--g600)}
+/* 보낼 결과지 카드 = /contact .mode-card(흰 바탕, 테두리 없음, 그림자, radius 16, 눌림 .96) */
+.kc{display:flex;gap:10px;align-items:stretch;width:100%;text-align:left;background:#fff;border:1.5px solid transparent;border-radius:16px;padding:14px 14px 13px 16px;box-shadow:0 2px 8px rgba(0,0,0,.07);cursor:pointer;flex:none;transition:transform .08s;position:relative}
+.kc:active:not(.hold){transform:scale(.96)}
+.kc:has(.rc:active){transform:none}
+.kc.new{animation:rowin .5s var(--ease)}
+@keyframes rowin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.kc .lf{flex:1;min-width:0;display:flex;flex-direction:column}
+/* 고르는 칸 = 카드 오른쪽 칸 전체(84px 폭 — 동그라미 26px의 3배 넘게, 유성 11-26 「눌리는 범위를 좀 더 크게」). 그 칸을 누르는 동안 카드는 안 눌림 */
+.kc .rc{flex:none;min-width:84px;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px;cursor:pointer;margin:-14px -14px -13px 0;padding:14px 14px 13px 14px}
+.kc.hold .rc{cursor:default}
+.c1{display:flex;align-items:center;gap:6px;min-width:0}
+.nm{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sub{font-size:var(--fs-sm);color:var(--g600);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l3{font-size:var(--fs-caption);color:var(--g600);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l3 .miss{color:var(--g300)}   /* 기다림 = g300(유성 11-26 「흐린글자 2번하되, var(--g300)」 — 이번만, 흰 바탕 대비 1.46 일부러 흐리게) */
+.l3.warn{color:var(--warn-weak-fg);font-weight:600;white-space:normal}
+.l3.bad{color:var(--danger-weak-fg);font-weight:600}   /* 확인할 파일 까닭 = §4.5-2 빨강 허용, 12px 글자라 --danger-weak-fg(5.44, 유성 11-26 「권장대로」) */
+/* 센터 뱃지 = §4.18 받은함 뱃지 크기 + 센터 색 쌍(prototype/디자인원칙_센터뱃지색_프리뷰.html 권장) */
+.cb{display:inline-flex;align-items:center;font-size:11px;font-weight:600;line-height:1.6;border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}
+.cb.미추{background:#d6e3d1;color:#346d1b}.cb.서구{background:#d4e0f6;color:#1155cc}.cb.행복{background:#f7dbbe;color:#80511f}.cb.연수{background:#eaddd3;color:#8b4513}
+.et{display:inline-flex;align-items:center;font-size:11px;font-weight:600;line-height:1.6;border-radius:6px;padding:0 6px;white-space:nowrap;flex:none;background:var(--g100);color:var(--g600)}
+.mtag{display:inline-block;font-size:11px;font-weight:700;line-height:1.5;border-radius:6px;padding:0 6px;background:var(--warn-weak-bg);color:var(--warn-weak-fg);margin-right:5px;vertical-align:baseline}
+.mtag.g{background:var(--g100);color:var(--g600);font-weight:600}
+.stg1{font-size:13px;font-weight:700;color:var(--g700);white-space:nowrap;line-height:1.4}
+/* 고르기 동그라미 + 「발송 중」(§4.22 weak + §5.2 출렁이는 점) */
+.kpk{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--g300);display:flex;align-items:center;justify-content:center;transition:background .12s,box-shadow .12s,transform .12s}
+.kpk i{display:flex;opacity:0}.kpk svg{width:14px;height:14px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.kpk.on{background:var(--green600);box-shadow:none}.kpk.on i{opacity:1}
+.kc .rc:active .kpk{transform:scale(.88)}
+.kq{font-size:12px;font-weight:700;color:var(--g600);display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.ld{display:inline-flex;gap:3px;align-items:center;margin-left:2px}
+.ld i{width:4px;height:4px;border-radius:50%;background:currentColor;animation:ldb 1s infinite ease-in-out}
+.ld i:nth-child(2){animation-delay:.16s}.ld i:nth-child(3){animation-delay:.32s}
+@keyframes ldb{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-3px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.ld i{animation:none;opacity:.7}}
+/* 보낸 뒤 = 06 Apply.html .card-chk 그대로(카드 전체 흰 50% 덮개 + 가운데 34px 초록 원 팝 + 흰 체크 그리기) → 0.8초 뒤 접힘 */
+.kc .card-chk{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.5);border-radius:inherit;pointer-events:none}
+.kc .card-chk b{width:34px;height:34px;border-radius:50%;background:var(--green600);display:flex;align-items:center;justify-content:center;transform:scale(0);animation:cardcpop .3s cubic-bezier(.34,1.56,.64,1) forwards}
+.kc .card-chk svg{width:18px;height:18px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:22;stroke-dashoffset:22;animation:cardcdraw .25s .12s ease forwards}
+@keyframes cardcpop{to{transform:scale(1)}}
+@keyframes cardcdraw{to{stroke-dashoffset:0}}
+/* 확인할 파일 = 얇은 테두리 카드 */
 .row{display:block;width:100%;text-align:left;border:1px solid var(--g200);border-radius:16px;padding:12px 14px;background:#fff;cursor:pointer;flex:none;transition:box-shadow .12s;font:inherit;color:inherit}
 .row > *{transition:transform .12s}
 .row:active{box-shadow:0 1px 4px rgba(25,31,40,.06),0 6px 18px rgba(25,31,40,.12)}
 .row:active > *{transform:scale(.97)}
-.c1{display:flex;align-items:center;gap:6px;min-width:0}
-.nm{font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.tag{font-size:11px;font-weight:600;color:var(--g700);background:var(--g100);border-radius:6px;padding:0 6px;white-space:nowrap;flex:none}
-.tag.end{background:none;color:var(--g600);box-shadow:inset 0 0 0 1px var(--g200)}
-.c1 .sent{margin-left:auto;font-size:11.5px;color:var(--green700);font-weight:600;white-space:nowrap;flex:none;padding-left:8px}
-.sub{font-size:var(--fs-sm);color:var(--g600);margin-top:2px}
-.row.end .nm{color:var(--g700)}
-.empty{text-align:center;color:var(--g600);font-size:14px;padding:48px 16px}
-.empty b{display:block;color:var(--g900);font-size:15px;margin-bottom:4px}
-.more-n{text-align:center;font-size:var(--fs-sm);color:var(--g600);padding:4px 0 8px}
-
-/* 뼈대(§5.4) = 예약 .sk-b 그대로 */
+.fname{font-size:var(--fs-sm);font-weight:700;color:var(--g900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 최근 보낸 결과지 = 한 상자 안 줄 목록 */
+.sent{background:var(--g50);border-radius:16px;padding:2px 0;flex:none}
+.sr{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;text-align:left;padding:11px 14px;cursor:pointer;font:inherit;color:inherit;position:relative;transition:background .12s}
+.sr + .sr::before{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:var(--g200)}
+.sr:active{background:var(--g100)}
+.sr .lf{flex:1;min-width:0}
+.sr .nm{font-size:var(--fs-body);font-weight:700}
+.sr .st{flex:none;font-size:12.5px;font-weight:600;color:var(--g600)}
+.sr .st.ok{color:var(--green700)}
+.sr .st.wt{color:var(--g500)}
+.sr .st.warn{color:var(--warn-weak-fg)}
+.sr.hl{animation:hl 1.6s var(--ease)}
+@keyframes hl{0%{background:var(--green100)}100%{background:transparent}}
+.foot{font-size:var(--fs-caption);color:var(--g600);text-align:center;margin-top:2px}
+.empty{text-align:center;color:var(--g600);font-size:14px;padding:22px 16px 18px;border:1px dashed var(--g200);border-radius:16px}
+.empty b{display:block;color:var(--g900);font-size:15px;margin-bottom:2px}
+.empty .b2{margin-top:10px}
+/* 뼈대(§5.4) */
 .sk-b{display:block;background:var(--g100);border-radius:8px;background-image:linear-gradient(100deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 70%);background-size:300% 100%;background-repeat:no-repeat;animation:sksh 1.5s ease-in-out infinite;pointer-events:none}
 @keyframes sksh{0%{background-position:150% 0}70%,100%{background-position:-50% 0}}
 @media (prefers-reduced-motion:reduce){.sk-b{animation:none}}
-
-/* 아이 한 명 */
-.kh{padding:4px 2px 0;flex:none}
-.kh .nm{font-size:var(--fs-h3)}
-.seg{display:flex;margin:4px 0 0;background:var(--g100);border-radius:12px;padding:3px;flex:none}
-.seg button{flex:1;border:0;background:none;padding:8px 0;border-radius:9px;font-size:14px;font-weight:500;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-.seg button.on{background:#fff;color:var(--g900);font-weight:600;box-shadow:0 1px 3px rgba(25,31,40,.08)}
-.seg button small{font-size:11px;font-weight:600;color:var(--green700)}
-.seg button:disabled{cursor:default}
-.sec{flex:none;margin-top:6px}
-.st{font-size:var(--fs-sm);font-weight:600;color:var(--g700);margin:0 2px 6px}
-/* 라벨↔값 줄(§4.8) */
+.kc.skc{cursor:default;pointer-events:none}
+/* 아래 바(고르고 한 번에 보내기) — 빈 채 누르면 흔들림(§4.9) */
+.selbar{flex:none;padding:8px 16px 14px;background:#fff;box-shadow:0 -1px 0 var(--g100)}
+.mb{width:100%;border:0;border-radius:15px;padding:15px;font:inherit;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s;display:flex;align-items:center;justify-content:center;gap:3px}
+.mb:active{transform:scale(.97)}
+.mb.dk{background:var(--dark);color:#fff}
+.mb.dk.gate{background:var(--dark-disabled)}
+.mb.wk{background:var(--g100);color:var(--dark)}
+.mb.busy{background:var(--g100);color:var(--dark);cursor:default;transform:none}
+.mb.no{background:var(--g100);color:var(--g600)}
+.mb.dg{background:var(--danger);color:#fff}
+.mb .ld i{width:5px;height:5px}
+.btns{display:flex;gap:8px}
+@keyframes shakeX{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(1px)}}
+.shake{animation:shakeX .28s cubic-bezier(.36,.07,.19,.97)}
+/* 바텀시트 = §4.3 떠 있는 판 + 끌어내려 닫기 */
+.mdim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+.mdim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:8px;right:8px;bottom:8px;background:#fff;border-radius:24px;padding:0 18px 16px;transform:translateY(110%);transition:transform .28s var(--ease);z-index:31;max-height:88%;display:flex;flex-direction:column;will-change:transform}
+.sheet.on{transform:none}
+.sheet.drag{transition:none}
+.sgrab{padding-top:10px;cursor:grab;touch-action:none;flex:none}
+.sheet.drag .sgrab{cursor:grabbing}
+.handle{width:40px;height:4px;border-radius:2px;background:var(--g200);margin:0 auto 12px}
+.sbd{overflow-y:auto;scrollbar-width:none;min-height:0;display:flex;flex-direction:column;gap:8px}
+.sbd::-webkit-scrollbar{width:0}
+.shd .nm{font-size:var(--fs-h3)}
+.shd .sub{margin-top:0}
+.sft{margin-top:12px;flex:none}
 .kv{margin:0;padding:0}
 .kv div{display:flex;gap:10px;font-size:var(--fs-sm);line-height:1.55;padding:2px 2px}
-.kv dt{width:64px;flex:none;color:var(--g600)}
+.kv dt{width:84px;flex:none;color:var(--g600)}
+.kv.tlv{background:var(--g50);border-radius:12px;padding:6px 8px}
+.kv.tlv dt{width:auto;min-width:84px;white-space:nowrap}
 .kv dd{margin:0;color:var(--g900);min-width:0;overflow-wrap:anywhere}
-/* 파일 줄 = 고르기(누르면 켜고 끔, 같은 종류 여럿이면 하나만) */
-.fg{margin-top:8px}
-.fg:first-child{margin-top:0}
-.fg .gl{font-size:var(--fs-caption);font-weight:600;color:var(--g600);margin:0 2px 4px}
-.fr{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--g200);border-radius:14px;padding:10px 12px;background:#fff;cursor:pointer;font:inherit;color:inherit;margin-top:6px;transition:border-color .12s}
-.fr:first-of-type{margin-top:0}
+.kv dd.no{color:var(--g500)}
+.fr{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--g200);border-radius:14px;padding:10px 10px 10px 12px;background:#fff;cursor:pointer;font:inherit;color:inherit;transition:border-color .12s}
 .fr .ck{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--g300);display:flex;align-items:center;justify-content:center;transition:background .12s,box-shadow .12s}
 .fr .ck svg{width:13px;height:13px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
 .fr.on{border-color:var(--green600)}
 .fr.on .ck{background:var(--green600);box-shadow:none}
 .fr.on .ck svg{opacity:1}
 .fr .fn{min-width:0;flex:1}
-.fr .fn b{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--g900);overflow-wrap:anywhere}
-.fr .fn span{display:block;font-size:var(--fs-caption);color:var(--g600)}
-.fr .fn span.ok{color:var(--green700);font-weight:600}
-.fr:disabled{cursor:default;background:var(--g50)}
-.fr:disabled .fn b{color:var(--g600)}
-.fr:disabled .fn span.why{color:var(--warn-weak-fg);font-weight:600}
-.none{font-size:var(--fs-sm);color:var(--g600);background:var(--g50);border-radius:12px;padding:10px 12px}
-.none.warnl{background:var(--warn-weak-bg);color:var(--warn-weak-fg);font-weight:600;margin-bottom:8px}
-/* 보낸 기록 = 줄마다 카드(1px g200) — 첫 줄 = 날짜 + 카톡, 닿음 + 「링크 끄기」, 둘째 줄 = 열어 봄 / 잠김 / 끔, 시험 줄 = 보호자 화면 링크 + 복사 */
-.lg{display:flex;flex-direction:column;gap:6px}
-.lgr{border:1px solid var(--g200);border-radius:14px;padding:10px 12px}
-.lgr .l1{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--g900);font-weight:600;min-width:0}
-.lgr .l1 .d{color:var(--g600);font-weight:500;flex:none}
-.lgr .l1 .w{min-width:0;overflow-wrap:anywhere}
-.lgr .l2{font-size:var(--fs-caption);color:var(--g600);margin-top:2px}
-.lgr .l2.warn{color:var(--warn-weak-fg);font-weight:600}
-.lgr .lk{display:flex;align-items:center;gap:6px;margin-top:6px}
-.lgr .lk .u{flex:1;min-width:0;font-size:var(--fs-caption);color:var(--g700);background:var(--g50);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere;user-select:text}
-.lgr.off{background:var(--g50)}
-.lgr.off .l1{color:var(--g600)}
-.sb{flex:none;border:0;background:var(--g100);color:var(--g700);border-radius:10px;padding:6px 10px;font:inherit;font-size:var(--fs-caption);font-weight:700;cursor:pointer;transition:transform .12s}
-.sb:active{transform:scale(.95)}
-.sb:disabled{opacity:.6;cursor:default;transform:none}
-.lgr .l1 .sb{margin-left:auto}
-/* 결과(머무는 상자 — §4.6 결과 골격을 화면 안 상자로) */
-.res{display:none;border-radius:16px;padding:14px 14px 12px;flex:none}
-.res.on{display:block}
-.res.ok{background:var(--green100)}
-.res.warn{background:var(--warn-weak-bg)}
-.res .rt1{display:flex;align-items:center;gap:8px;font-size:var(--fs-title);font-weight:800;letter-spacing:-.3px;color:var(--g900)}
-.res .rt1 i{width:22px;height:22px;border-radius:50%;background:var(--green600);display:inline-flex;align-items:center;justify-content:center;flex:none}
-.res .rt1 i svg{width:12px;height:12px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.res.warn .rt1 i{display:none}
-.res ul{margin:6px 0 0;padding:0;list-style:none}
-.res li{font-size:var(--fs-sm);color:var(--g700);line-height:1.55;padding:1px 0}
-.res .rb{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.b{flex:1;border:0;border-radius:12px;padding:11px 10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;min-height:44px}
-.b:active{transform:scale(.97)}
-.b.pri{background:var(--green600);color:#fff}
-.b.weak{background:#fff;color:var(--g700)}
-.b:disabled{cursor:default;transform:none;opacity:.6}
-/* 아래 버튼 = 화면 맨 아래(§4.1-5 칸이 적은 한 화면 폼), 덜 찼으면 연초록 + 누르면 흔들고 빠진 칸(§4.1-5 게이팅) */
-.cta{flex:none;padding:10px 16px 16px;background:#fff}
-.mb{width:100%;border:0;border-radius:15px;padding:15px;font:inherit;font-size:var(--fs-body);font-weight:700;cursor:pointer;transition:transform .12s;position:relative}
-.mb:active{transform:scale(.97)}
-.mb.go{background:var(--green600);color:#fff}
-.mb.go:active{background:var(--green700)}
-.mb.go.gate{background:var(--p-disabled)}
-.mb.no{background:var(--g100);color:var(--g600)}
-.mb .dots{display:none;gap:4px;justify-content:center;align-items:center;position:absolute;inset:0}
-.mb.busy .lb{visibility:hidden}
-.mb.busy .dots{display:flex}
-.mb.busy{cursor:default}
-.dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5;animation:dot 1s infinite ease-in-out}
-.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
-@keyframes dot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
-@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.7}}
-.wait{display:none;text-align:center;font-size:var(--fs-caption);color:var(--g600);margin-top:8px}
-.wait.on{display:block}
-@keyframes shakeX{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(1px)}}
-.shake{animation:shakeX .28s cubic-bezier(.36,.07,.19,.97)}
-
-/* 토스트 = 예약 .atoast 그대로(버튼 위) */
-.atoast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%) translateY(8px);background:var(--toast-bg);color:var(--toast-fg);font-size:14.5px;padding:12px 19px;border-radius:var(--toast-r);opacity:0;transition:opacity .25s,transform .25s;white-space:normal;pointer-events:none;z-index:40;max-width:calc(100% - 32px);width:max-content;text-align:center;font-weight:600;line-height:1.5}
-.atoast.on{opacity:1;transform:translateX(-50%)}
-
-/* 딤 + 가운데 확인 창(§4.4 — 예약 .cmodal 값 그대로) */
-.mdim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
-.mdim.on{opacity:1;pointer-events:auto}
-.cmodal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 64px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:33;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.fr .fn b{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--g900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr .fn > span{display:block;font-size:var(--fs-caption);color:var(--g600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr .fn > span.ok{color:var(--green700);font-weight:600}
+.fr.none{cursor:default;background:var(--g50);border-style:dashed}
+.fr.none .fn b{color:var(--g600);font-weight:500}
+.fr.old{cursor:default;background:var(--g50)}
+.fr.old .fn b{color:var(--g600);font-weight:500}
+.fr.old .ck{box-shadow:none}
+.fr .rad{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--g300);transition:box-shadow .12s}
+.fr.on .rad{box-shadow:inset 0 0 0 6px var(--green600)}
+.fr .fn > .c1{display:flex;align-items:center;gap:6px;margin:0 0 1px}
+.fr .fn .c1 b{display:inline;font-size:var(--fs-body);font-weight:700}
+/* 열기 = 08 반출납 .cchip(흰 알약, 테두리 g200, 칩 그림자, 12px 700, 누름 .93) */
+.cchip{flex:none;background:#fff;border:1px solid var(--g200);border-radius:999px;box-shadow:0 1px 3px rgba(25,31,40,.08);font-family:inherit;font-size:var(--fs-caption);font-weight:700;color:var(--g700);padding:6px 12px;cursor:pointer;transition:transform .12s;display:inline-flex;align-items:center;gap:2px}
+.cchip:active{transform:scale(.93)}
+.note{font-size:var(--fs-caption);color:var(--g600);background:var(--g50);border-radius:10px;padding:8px 10px}
+.note.warn{background:var(--warn-weak-bg);color:var(--warn-weak-fg);font-weight:600}
+.note.bad{background:var(--danger-weak-bg);color:var(--danger-weak-fg);font-weight:600}
+.note .b2{margin-top:8px}
+.lk{display:flex;align-items:center;gap:6px}
+.lk .u{flex:1;min-width:0;font-size:var(--fs-caption);color:var(--g700);background:var(--g50);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere;user-select:text}
+.more1{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;border:0;background:none;font:inherit;font-size:var(--fs-caption);font-weight:600;color:var(--g600);padding:6px 0;cursor:pointer}
+.more1 svg{width:14px;height:14px}
+.fxlab{font-size:var(--fs-sm);font-weight:600;color:var(--g700);margin:2px 2px -2px}
+/* 확인 창(§4.4 — 끄기는 되돌릴 수 없어 오른쪽 버튼 --danger) */
+.cdim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:35}
+.cdim.on{opacity:1;pointer-events:auto}
+.cmodal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 64px);max-width:320px;background:#fff;border-radius:20px;padding:24px 22px 18px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:36;box-shadow:0 12px 40px rgba(0,0,0,.2)}
 .cmodal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
-.cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4;overflow-wrap:anywhere}
-.cmodal .ms2{font-size:var(--fs-sm);color:var(--g700);margin-top:8px;overflow-wrap:anywhere}
-.cmodal .ms2 b{color:var(--g900)}
+.cmodal .mt2{font-size:var(--fs-h3);font-weight:800;letter-spacing:-.3px;line-height:1.4}
+.cmodal .ms2{font-size:var(--fs-sm);color:var(--g700);margin-top:8px}
 .cmodal .mbtns{display:flex;gap:8px;margin-top:16px}
 .cmodal .mbtns .mb{padding:14px 6px}
+/* 토스트 §5.5 */
+.atoast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%) translateY(8px);background:var(--toast-bg);color:var(--toast-fg);font-size:14.5px;padding:12px 19px;border-radius:var(--toast-r);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:40;max-width:calc(100% - 32px);width:max-content;font-weight:600;line-height:1.5;display:flex;align-items:center;gap:8px}
+.atoast.on{opacity:1;transform:translateX(-50%)}
+.atoast i{width:var(--toast-ck);height:var(--toast-ck);border-radius:50%;background:var(--green600);display:none;align-items:center;justify-content:center;flex:none}
+.atoast.ok i{display:inline-flex}
+.atoast i svg{width:10px;height:10px;stroke:#fff;stroke-width:3.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+/* 열기 = 문의 채팅 첨부 크게 보기와 같은 막(PDF = 창 안 PDF 보기 — 프로그램 창은 blob 주소를 바깥 브라우저로 못 넘긴다) */
+.view{position:absolute;inset:0;z-index:45;background:rgba(17,20,24,.94);display:none;align-items:center;justify-content:center;padding:52px 12px 12px}
+.view.on{display:flex}
+.view .vb{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.view iframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
+.view .vx{position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:transform .12s}
+.view .vx svg{width:20px;height:20px}
+.view .vx:active{transform:scale(.86)}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="hd">
-    <button class="ic" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
-    <div class="t">검사 결과 발송</div>
+    <div class="lt"><button class="ic back" id="appBack" title="뒤로" aria-label="뒤로"><svg class="li" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button><div class="t">검사 결과 발송</div></div>
     <div class="rt">
       <button class="ic" id="hostMin" title="창 닫기" aria-label="창 닫기"><svg class="li" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       <button class="ic" id="appMenu" title="메뉴" aria-label="메뉴"><svg class="li" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="mdot" id="menuDot"></span></button>
     </div>
   </div>
   <div class="band" id="band" role="status"></div>
-
-  <!-- 찾기 — 이름 일부(띄어쓰기 무시), 다니는 아이 먼저 -->
-  <section class="vw on" id="vFind">
-    <div class="srch"><input class="inp" id="q" type="text" placeholder="아이 이름" autocomplete="off" readonly maxlength="10" aria-label="아이 이름"></div>
-    <div class="sw" id="fsw"><div class="list" id="flist"></div></div>
-  </section>
-
-  <!-- 아이 한 명 — 단계, 보낸 기록, 파일, 카톡 받을 번호 -->
-  <section class="vw" id="vKid">
-    <div class="sw" id="ksw"><div class="list" id="kbody">
-      <div class="kh"><div class="c1"><span class="nm" id="kNm"></span><span id="kTags" style="display:contents"></span></div><div class="sub" id="kSub"></div></div>
-      <div class="seg" id="kSeg"><button type="button" data-s="사전">사전검사<small></small></button><button type="button" data-s="사후">사후검사<small></small></button></div>
-      <div class="res" id="res" role="status"></div>
-      <div class="sec" id="secLog"><div class="st">보낸 기록</div><div class="lg" id="kLog"></div></div>
-      <div class="sec"><div class="st">보낼 파일</div><div id="kFiles"></div></div>
-      <div class="sec"><div class="st">카톡 받을 번호</div><div class="none" id="kPhone"></div></div>
-    </div></div>
-    <div class="cta">
-      <button class="mb go gate" id="sendGo"><span class="lb" id="sendL">보내기</span><span class="dots"><i></i><i></i><i></i></span></button>
-      <div class="wait" id="wait">결과지를 옮기고 카톡을 보내고 있어요</div>
-    </div>
-  </section>
-
-  <div class="atoast" id="atoast" role="status"></div>
-  <div class="mdim" id="dim"></div>
-  <div class="cmodal" id="cfm" role="alertdialog" aria-labelledby="cfmT"><div class="mt2" id="cfmT"></div><div class="ms2" id="cfmS"></div><div class="mbtns"><button type="button" class="mb no" id="cfmNo"><span class="lb" id="cfmNoL">닫기</span></button><button type="button" class="mb go" id="cfmGo"><span class="lb" id="cfmGoL"></span><span class="dots"><i></i><i></i><i></i></span></button></div></div>
+  <div class="sq"><div class="inw" id="qw"><input id="q" type="text" placeholder="아동 이름으로 결과지 찾기" autocomplete="off" readonly maxlength="10" aria-label="아동 이름"><button type="button" class="clr" id="qClr" tabindex="-1" aria-label="지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+  <div class="sw" id="lsw"><div class="list" id="lst"></div></div>
+  <div class="selbar" id="selbar"></div>
+  <div class="mdim" id="sdim"></div>
+  <div class="sheet" id="sheet"></div>
+  <div class="cdim" id="cdim"></div>
+  <div class="cmodal" id="cfm" role="alertdialog" aria-labelledby="cfmT"><div class="mt2" id="cfmT"></div><div class="ms2" id="cfmS"></div><div class="mbtns"><button type="button" class="mb no" id="cfmNo"></button><button type="button" class="mb dg" id="cfmGo"></button></div></div>
+  <div class="view" id="fView" role="dialog" aria-label="결과지 크게 보기"><button class="vx" aria-label="닫기"><svg class="li" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="vb"></div></div>
+  <div class="atoast" id="atoast" role="status"><i><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></i><span></span></div>
 </div>
 
 <script>
 /* ══════════ 설정 ══════════ */
 var GAS07 = 'https://script.google.com/macros/s/AKfycbxvWu1xR9udwKiTkZ-nk-Hvx9KPlFKyIelVCdmnVYEilmLADfZnnO2Nq4XmdpwolmG9Yg/exec';   // 07 서류철 웹앱(월 계획안 화면과 같은 배포 — 주소는 열쇠가 아니다)
+var SCREEN_V = 3;                // 화면 판 — 07 RS_SCREEN_V3. 요청마다 싣는다
 var REQ_TIMEOUT_MS = 20000;      // 읽기 시한(알약 07-31 사고: 시한 없는 fetch가 조회를 영구히 멈췄다)
-var SCREEN_V = 2;                // 화면 판 — 07 RS_SCREEN_V. 요청마다 싣는다(v 없는 옛 화면 = 07이 꺼짐)
-var SEND_TIMEOUT_MS = 90000;     // 보내기 시한 — 07 = 서류철 + 새 파일 목록 + 번호(대장) + 사본 올리기(파일 둘) + 틀 + 알림톡(어림 20~60초). 넘으면 같은 번호로 결과를 묻는다
-var RES_POLL_MS = 5000;          // 응답을 놓친 보내기 = 5초마다 rs_res
-var RES_POLL_FOR_MS = 180000;    // 3분 동안(07 run이 길 수 있다)
-var AUTO_AGAIN = 3;              // retry = 같은 번호로 저절로 세 번
-var AGAIN_MS = 10000;            //  … 10초 간격
-var OFF_RETRY_MS = 10 * 60000;   // 꺼짐 = 10분마다 다시 물음
-var FAIL_RETRY_MS = 60000;       // 못 물음(구글 HTML, 네트워크) = 1분 뒤 다시
-var CENTER = { '미추': '미추', '서구': '서구', '행복': '행복마음', '연수': '연수' };
-var KIND = { result: { '사전': '사전검사 결과지', '사후': '사후검사 결과지' }, pat: '부모양육태도검사' };
-var COL = { '사전': '사전검사, PAT 발송', '사후': '사후검사발송' };   // 서류철 칸 머리글(07 RS_COL R / X — 화면 글은 칸 글자 말고 머리글 말, 공지방 문체 §8-9)
+var LIST_TIMEOUT_MS = 30000;     // 목록 = 서류철(2분 기억) + 결과지 폴더(20초 기억) + 장부
+var SEND_TIMEOUT_MS = 90000;     // 보내기 시한 — 07 = 서류철 + 새 파일 목록 + 번호(대장) + 사본 올리기 + 틀 + 알림톡(어림 20~60초). 넘으면 같은 번호로 결과를 묻는다
+var RES_POLL_MS = 5000, RES_POLL_FOR_MS = 180000;   // 응답을 놓친 보내기 = 5초마다 rs_res, 3분
+var AUTO_AGAIN = 3, AGAIN_MS = 10000;               // retry = 같은 번호로 저절로 세 번, 10초 간격
+var OFF_RETRY_MS = 10 * 60000, FAIL_RETRY_MS = 60000;
+var POLL_MS = 45000;             // 목록 새로(보이는 동안)
+var HOLD_MS = 120000;            // 보낸 카드 = 서버 목록이 따라올 때까지 빼 둠(메모리 optimistic-ui-hold-until-server-catches-up)
+var CONC = 3;                    // 한 번에 보내는 아동 수(07 웹앱 동시 실행 — 장부 잠금은 짧음)
+var GUARD_MS = 600;              // 목록이 움직인 뒤 고르기를 안 받는 때(손가락 밑으로 온 다른 아동 — 시안 6판)
+var ORD_STAGE = { '사전': 0, '사후': 1 }, ORD_CTR = { '미추': 0, '서구': 1, '행복': 2, '연수': 3 }, ORD_SVC = { '오감': 0, '아청': 1 };   // 순서 = 사전사후 > 센터 > 서비스 > 제공인력 > 아동(유성 11-26)
+var CTR_WORD = { '미추': '미추', '서구': '서구', '행복': '행복', '연수': '연수' };
+// 확인 창 글 = 5판 1안(유성 11-26 「권장대로」), 왼쪽 = 「그대로 둘게요」(§2.1-6은 「닫기」인데 확인 동작도 닫기라 이번만 — 유성 「권장대로」)
+var OFFW = { btn: '지난 링크 닫기', t: '지난 링크를 닫을까요?', s: "보호자에게 보낸 앞선 결과지를 열리지 않게 막아요. 다시 볼 수 있게 하려면 '다시 보내기'를 눌러 주세요.", go: '닫을게요', no: '그대로 둘게요', toast: '지난 링크를 닫았어요' };
+// 보낸 상태 = 보호자 쪽 말(유성 11-26 「보호자가 받음 / 보호자가 열어 봄」)
+var ST_L = { '열어 봄': '보호자가 열어 봄', '받음': '보호자가 받음', '확인 중': '받았는지 확인 중', '못 받음': '보호자가 못 받음', '닫음': '지난 링크 닫음', '시험': '시험', '못 보냄': '카톡 못 보냄', '잠김': '링크 잠김' };
+var IC = {
+  ck: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+  down: '<svg class="li" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>'
+};
+var LD = '<span class="ld"><i></i><i></i><i></i></span>';
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
-function b6Text(b){ var s = String(b || ''); return /^\d{6}$/.test(s) ? s.slice(0, 2) + '.' + s.slice(2, 4) + '.' + s.slice(4) : s; }
+function b6Text(b){ var s = String(b || ''); return /^\d{6}$/.test(s) ? '20' + s.slice(0, 2) + '. ' + s.slice(2, 4) + '. ' + s.slice(4) : s; }
 function newJob(){ return 'rs' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+function cmpKo(a, b){ return String(a || '').localeCompare(String(b || ''), 'ko'); }
+function ordOf(m, k){ return m[k] == null ? 9 : m[k]; }
+function cmpKid(a, b){ return (ordOf(ORD_STAGE, a.stage) - ordOf(ORD_STAGE, b.stage)) || (ordOf(ORD_CTR, a.center) - ordOf(ORD_CTR, b.center)) || (ordOf(ORD_SVC, a.svc) - ordOf(ORD_SVC, b.svc)) || cmpKo(a.teacher, b.teacher) || cmpKo(a.name, b.name); }
+function kindName(kind, stage){ return kind === 'pat' ? '부모양육태도검사' : stage === '사후' ? '사후평가결과서' : '사정평가결과서'; }
+function idOf(x){ return x.key + '#' + x.stage; }
+function stL(x){ return ST_L[x] || x || ''; }
 
 /* ══════════ 앱 안 창으로만 산다(예약과 같은 틀) ══════════ */
 var EMBED = (function(){ try { return window.parent !== window && !!window.frameElement && parent.location.origin === location.origin; } catch (e) { return false; } })();
 var HOSTED = EMBED && (function(){ try { return !!(parent.chrome && parent.chrome.webview); } catch (e) { return false; } })();
 function toApp(o){ if (!EMBED) return; try { o.tf = 'rs'; parent.postMessage(o, location.origin); } catch (e) { } }
-// 앱 유휴 잠금의 손길(att_seen) — 이 안 창의 입력은 부모 문서로 안 올라간다(예약과 같은 이유). 10초에 한 번만 쓴다
+// 앱 유휴 잠금의 손길(att_seen) — 이 안 창의 입력은 부모 문서로 안 올라간다. 10초에 한 번만 쓴다
 if (EMBED) ['pointerdown', 'keydown'].forEach(function(ev){ document.addEventListener(ev, function(){
   try { if (localStorage.getItem('att_locked')) return; var n = Date.now(); if (n - (+localStorage.getItem('att_seen') || 0) > 10000) localStorage.setItem('att_seen', String(n)); } catch (e) { }
 }, true); });
@@ -296,7 +322,7 @@ function readId(){
 }
 
 /* ══════════ 07 부르기 ══════════
-   POST(text/plain) {action, a: 서명, …} — 07 doPost가 rs_로 시작하는 동작을 결과지발송.js로 넘긴다. 응답은 글자로 받아 직접 해석(가끔 구글 HTML) */
+   POST(text/plain) {action, a: 서명, v, …} — 응답은 글자로 받아 직접 해석(가끔 구글 HTML) */
 function call(body, ms){
   var id = readId();
   if (!id) { var e0 = new Error('NO_ID'); e0.noid = true; return Promise.reject(e0); }
@@ -311,295 +337,407 @@ function call(body, ms){
   }, function(e){ clearTimeout(t); throw e; });
 }
 // 읽기 — hedge 밀리초 안에 안 오면 같은 요청을 하나 더(먼저 온 쪽). 둘 다 실패해야 실패
-function callRead(body, hedge){
+function callRead(body, hedge, ms){
   return new Promise(function(res, rej){
     var done = false, fails = 0, n = 0;
-    function go(){ n++; call(body).then(function(r){ if (!done) { done = true; res(r); } }, function(e){ if (e && e.noid) { if (!done) { done = true; rej(e); } return; } if (++fails >= n && n >= 2 && !done) { done = true; rej(e); } else if (n < 2) go(); }); }
+    function go(){ n++; call(body, ms).then(function(r){ if (!done) { done = true; res(r); } }, function(e){ if (e && e.noid) { if (!done) { done = true; rej(e); } return; } if (++fails >= n && n >= 2 && !done) { done = true; rej(e); } else if (n < 2) go(); }); }
     go();
     setTimeout(function(){ if (!done && n < 2) go(); }, hedge || 4000);
   });
 }
 
 /* ══════════ 상태 ══════════
-   on = 07이 서명을 받음(찾기 응답이 ok) / mode = live·test·off(07 RS_LIVE, 속성 RS_OFF) / q·seq = 찾기 글과 순번(늦게 온 옛 답은 버림)
-   kid = 고른 아이(찾기 줄), stage = 사전·사후, det = rs_child 응답, pick = 고른 파일 {result: id, pat: id}, sending = 보내는 중인 작업 */
-var S = { on: null, mode: '', q: '', seq: 0, rows: null, more: false, finding: false, kid: null, stage: '사전', det: null, detSeq: 0, pick: {}, sending: null, lastJob: '', tryAt: 0, pollT: null };
+   on = 07이 서명을 받음 / mode = live·test·off / data = rs_list 응답(첫 화면) / search = 검색 응답
+   sel = 고른 카드 / jobs = 보내는 중(아동 단계 id → 작업) / fail = 못 보낸 까닭 / hold = 보낸 카드(서버가 따라올 때까지 뺌) + extra(그동안 보일 보낸 줄)
+   sheet = {t: 'kid'|'sent'|'chk', id, resend} / pick = 시트에서 고른 파일 {종류: id} */
+var S = { on: null, mode: '', tryAt: 0, pollT: null, vis: false, data: null, err: false, loading: false, loadSeq: 0, loadAt: 0, pend: null, q: '', search: null, sSeq: 0, sLoading: false,
+  sel: {}, jobs: {}, queue: [], fail: {}, stuck: {}, unsure: {}, again: false, hold: {}, extra: {}, phones: {}, phAsked: {}, sheet: null, pick: {}, vOpen: false, rvOpen: false, fxPick: -1,
+  cfm: null, cfmAt: 0, offing: false, fixing: false, shiftAt: 0, pressing: false, anim: 0, fin: {}, batch: null, seen: null };
 
-/* ══════════ 켜짐 묻기 — 빈 찾기(07이 아이를 안 읽고 mode만 돌려줌) ══════════
-   ok = 켜짐 → 앱에 on(메뉴 칸 보임). JSON인데 ok가 아니면(auth = INQ_KEY 없음, key = 07 옛 배포가 이 동작을 모름) = 꺼짐 → off.
-   JSON이 아니거나 못 닿음 = 꺼짐으로 치지 않고 1분 뒤 다시 */
+/* ══════════ 켜짐 묻기 — 빈 찾기(07이 아이를 안 읽고 mode만) ══════════ */
 function ping(){
   S.tryAt = Date.now();
   callRead({ action: 'rs_find', q: '' }).then(function(r){
-    if (r && r.ok) { S.mode = r.mode || ''; goOn(); return; }
-    if (offReply(r)) goOff();   // server(07 안에서 난 오류) = 꺼짐 아님 — 다음 묻기에서 다시(11-24 리뷰: 오류 한 번에 메뉴 칸이 10분 사라짐)
+    if (r && r.ok && +r.lv >= SCREEN_V) { S.mode = r.mode || S.mode; goOn(); return; }   // lv = 07이 이 화면 동작(rs_list)을 아는 판(옛 07 @52는 찾기만 ok — 켜짐, 꺼짐이 번갈지 않게)
+    if ((r && r.ok) || offReply(r)) goOff();
   }, function(e){ if (e && e.noid) goOff(); });
 }
-// 꺼짐 = 07이 서명을 안 받음(auth — INQ_KEY 없음) 또는 이 동작을 모름(key = 07 옛 배포, action)
+// 꺼짐 = 07이 서명을 안 받음(auth) 또는 이 동작을 모름(key = 07 옛 배포, action = 07이 v 3 전 판)
 function offReply(r){ return !!r && (r.error === 'auth' || r.error === 'key' || r.error === 'action'); }
 function goOn(){ if (S.on !== true) { S.on = true; toApp({ type: 'on' }); } paintBand(); }
 function goOff(){ if (S.on !== false) { S.on = false; toApp({ type: 'off' }); } paintBand(); }
 function tick(){
   clearTimeout(S.pollT);
-  S.pollT = setTimeout(tick, 30000);
+  S.pollT = setTimeout(tick, 15000);
   if (document.hidden) return;
-  var ms = S.on === false ? OFF_RETRY_MS : S.on === true ? 30 * 60000 : FAIL_RETRY_MS;   // 켜진 뒤엔 30분에 한 번만(시험 → 켜짐, RS_OFF를 따라가려고)
+  var ms = S.on === false ? OFF_RETRY_MS : S.on === true ? 30 * 60000 : FAIL_RETRY_MS;
   if (Date.now() - S.tryAt >= ms - 500) ping();
+  if (S.vis && S.on !== false && Date.now() - S.loadAt >= POLL_MS) load(true);
 }
-
-/* ══════════ 띠 ══════════ */
 function paintBand(){
   var t = '';
   if (S.on === false) t = '지금은 검사 결과를 보낼 수 없어요. 잠시 뒤 다시 확인할게요';
   else if (S.mode === 'off') t = '지금은 보내기가 꺼져 있어요';
-  else if (S.mode === 'test') t = '시험 중이에요. 카톡은 안 가고, 보낸 기록에 보호자 화면 링크가 나와요';
+  else if (S.mode === 'test') t = '시험 중이에요. 카톡은 안 가고, 보낸 결과지에 보호자 화면 링크가 나와요';
   $('band').textContent = t; $('band').classList.toggle('on', !!t);
 }
 
-/* ══════════ 찾기 ══════════ */
-var findT = null;
-$('q').addEventListener('focus', function(){ this.removeAttribute('readonly'); });   // 자동완성 막기(§4.1-6)
-$('q').addEventListener('input', function(){ clearTimeout(findT); findT = setTimeout(find, 350); });
-$('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') { clearTimeout(findT); find(); } });
-function find(){
-  var q = $('q').value.replace(/\s/g, '');
-  if (q === S.q && S.rows) return;
-  S.q = q; var my = ++S.seq;
-  if (!q) { S.rows = null; S.finding = false; paintFind(); return; }
-  S.finding = true; paintFind();
-  callRead({ action: 'rs_find', q: q }).then(function(r){
-    if (my !== S.seq) return;
-    S.finding = false;
-    if (!r || !r.ok) { if (offReply(r)) goOff(); S.rows = []; S.err = true; S.q = ''; paintFind(); return; }
-    S.err = false; S.mode = r.mode || S.mode; goOn();
-    S.rows = r.kids || []; S.more = !!r.more; paintFind();
-  }, function(){ if (my !== S.seq) return; S.finding = false; S.rows = []; S.err = true; S.q = ''; paintFind(); });
-}
-function tagsOf(k){
-  return '<span class="tag">' + esc(k.svc) + '</span><span class="tag">' + esc(CENTER[k.center] || k.center) + '</span>' + (k.ended ? '<span class="tag end">종결</span>' : '');
-}
-function subOf(k){ return [b6Text(k.b6), k.teacher ? k.teacher + ' 선생님' : ''].filter(Boolean).join(', '); }
-function paintFind(){
-  var el = $('flist');
-  if (S.finding && !S.rows) { var one = '<div class="row" style="pointer-events:none"><span class="sk-b" style="width:40%;height:22px"></span><span class="sk-b" style="width:70%;height:16px;margin-top:8px"></span></div>'; el.innerHTML = one + one; return; }
-  if (!S.rows) { el.innerHTML = '<div class="empty"><b>아이 이름을 적어 주세요</b>이름 일부만 적어도 찾아요</div>'; return; }
-  if (S.err) { el.innerHTML = '<div class="empty"><b>아직 못 찾았어요</b>잠시 뒤 다시 적어 주세요</div>'; return; }
-  if (!S.rows.length) { el.innerHTML = '<div class="empty"><b>서류철에 없는 이름이에요</b>오감, 아청 아이만 찾을 수 있어요</div>'; return; }
-  el.innerHTML = S.rows.map(function(k, i){
-    var sent = [k.sent && k.sent['사전'] ? '사전 ' + k.sent['사전'] : '', k.sent && k.sent['사후'] ? '사후 ' + k.sent['사후'] : ''].filter(Boolean).join(', ');
-    return '<button type="button" class="row' + (k.ended ? ' end' : '') + '" data-i="' + i + '"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + tagsOf(k)
-      + (sent ? '<span class="sent">' + esc(sent) + '</span>' : '') + '</div><div class="sub">' + esc(subOf(k)) + '</div></button>';
-  }).join('') + (S.more ? '<div class="more-n">30명까지 보여요. 이름을 더 적어 주세요</div>' : '');
-}
-$('flist').addEventListener('click', function(e){
-  var b = e.target.closest('.row[data-i]'); if (!b || !S.rows) return;
-  var k = S.rows[+b.getAttribute('data-i')]; if (k) openKid(k);
-});
-
-/* ══════════ 아이 한 명 ══════════ */
-function show(v){ $('vFind').classList.toggle('on', v === 'find'); $('vKid').classList.toggle('on', v === 'kid'); }
-function openKid(k){
-  S.kid = k; S.det = null; S.pick = {}; clearRes();
-  S.stage = k.sent && k.sent['사전'] && !k.sent['사후'] ? '사후' : '사전';   // 사전을 보낸 아이 = 사후부터
-  $('kNm').textContent = k.label; $('kTags').innerHTML = tagsOf(k); $('kSub').textContent = subOf(k);
-  show('kid'); $('kbody').scrollTop = 0;
-  loadKid(false);
-}
-function loadKid(fresh){
-  var k = S.kid; if (!k) return;
-  var my = ++S.detSeq; S.det = null; paintKid();
-  callRead({ action: 'rs_child', tab: k.tab, svc: k.svc, label: k.label, b6: k.b6, stage: S.stage, fresh: !!fresh }, 8000).then(function(r){
-    if (my !== S.detSeq) return;
-    if (!r || !r.ok) {
-      if (r && r.why === 'kid') { S.det = { gone: true }; paintKid(); return; }
-      if (offReply(r)) goOff();
-      S.det = { err: true }; paintKid(); return;
-    }
+/* ══════════ 목록 ══════════ */
+function load(silent){
+  if (S.loading) { S.again = true; return; }   // 도는 중 = 끝난 뒤 한 번 더(보낸 결과, 결과 모름 뒤 목록은 그 뒤의 것이어야 한다)
+  S.loading = true; S.loadAt = Date.now(); var my = ++S.loadSeq, t0 = Date.now();
+  if (!silent && !S.data) { S.err = false; paintList(); }
+  var after = function(){ if (S.again) { S.again = false; setTimeout(function(){ load(true); }, 0); } };
+  callRead({ action: 'rs_list' }, 8000, LIST_TIMEOUT_MS).then(function(r){
+    if (my !== S.loadSeq) return;
+    S.loading = false; S.loadAt = Date.now();
+    if (!r || !r.ok) { if (offReply(r)) goOff(); if (!S.data) { S.err = true; paintList(); } after(); return; }
     S.mode = r.mode || S.mode; goOn();
-    S.det = r; S.pick = defaultPick(r);
-    if (r.kid && r.kid.sent) k.sent = r.kid.sent;   // 단계 버튼의 「11/24 보냄」
-    paintKid();
-  }, function(){ if (my !== S.detSeq) return; S.det = { err: true }; paintKid(); });
-}
-// 이미 카톡으로 나간 파일(보낸 기록의 ids, 끈 줄 빼고) — 기본으로 안 고른다(사전 두 파일이 다른 날 나갈 때 같은 파일 두 번 X). 눌러서 다시 고를 수는 있다
-function sentIds(r){
-  var out = {};
-  (r.sends || []).forEach(function(s){
-    var t = String(s.talk || '');
-    if ((/^(보냄|보내는 중)/.test(t) || (t === '시험' && r.mode === 'test')) && !s.off) String(s.ids || '').split(',').forEach(function(id){ if (id) out[id] = s.at; });   // 켠 뒤 시험 줄 = 보낸 것 아님(11-25 리뷰)
+    sureUp(r, t0);
+    S.pend = r; applyPend(); after();
+  }, function(e){
+    if (my !== S.loadSeq) return;
+    S.loading = false; S.loadAt = Date.now();
+    if (e && e.noid) goOff();
+    if (!S.data) { S.err = true; paintList(); }
+    after();
   });
-  return out;
 }
-function defaultPick(r){
-  var p = {}, sent = sentIds(r);
-  ['result', 'pat'].forEach(function(kind){
-    var f = ((r.files || {})[kind] || []).filter(function(x){ return !x.locked; });
-    if (f.length && !sent[f[0].id]) p[kind] = f[0].id;   // 새 것 먼저(07이 정렬)
-  });
+// 결과 모름(같은 번호로 다시 부른 뒤 거절, 07 안 오류) = 그 뒤에 시작한 목록이 아직 「보낼 결과지」로 주면 07이 안 보낸 것 → 다시 보낼 수 있다.
+//  목록에서 빠졌으면 07이 보낸 것 = 카드도 빠진다. 그 전엔 그 카드 보내기를 막는다(11-26 리뷰: 시트가 열려 목록 반영이 미뤄진 사이 새 번호로 두 통)
+function sureUp(r, t0){
+  var ids = Object.keys(S.unsure); if (!ids.length) return;
+  var todo = {}; (r.todo || []).forEach(function(k){ todo[idOf(k)] = 1; });
+  ids.forEach(function(id){ if (S.unsure[id] <= t0 && todo[id]) { delete S.unsure[id]; S.fail[id] = '카톡은 안 갔어요. 다시 보내 주세요'; } });
+  if (S.sheet) paintSheet();
+}
+function blocked(id){ return S.stuck[id] ? 'stuck' : S.unsure[id] ? 'unsure' : ''; }
+function busyNow(){ return S.pressing || S.anim > 0 || !!S.sheet || !!S.cfm || $('fView').classList.contains('on'); }
+// 새 목록은 누르는 중, 시트 연 중, 모션 중엔 기다렸다가 제자리에(손가락 밑으로 다른 카드가 오지 않게)
+function applyPend(){
+  if (!S.pend) return;
+  if (S.data && busyNow()) { setTimeout(applyPend, 800); return; }
+  var r = S.pend; S.pend = null;
+  var before = S.data ? S.data.todo.map(idOf).concat(S.data.chk.map(function(c){ return c.id; })) : null;
+  S.data = { todo: r.todo || [], chk: r.chk || [], sent: r.sent || [], fileErr: r.fileErr || '' };
+  var now = Date.now();
+  Object.keys(S.hold).forEach(function(id){ if (now - S.hold[id] > HOLD_MS) { delete S.hold[id]; delete S.extra[id]; } });
+  // 서버 보낸 줄이 더 새면 내 줄을 버림
+  S.data.sent.forEach(function(s){ var x = S.extra[idOf(s)]; if (x && (s.atMs || 0) >= (x.since || 0)) delete S.extra[idOf(s)]; });   // 07 장부 때 = 보내기 시작 무렵(내 줄은 끝난 때) → 시작 1분 전부터의 줄이면 그쪽이 진짜
+  if (before) {
+    var seen = {}; before.forEach(function(id){ seen[id] = 1; });
+    var moved = false;
+    S.data.todo.forEach(function(k){ if (!seen[idOf(k)] && !S.hold[idOf(k)]) { k.isNew = true; moved = true; } });
+    S.data.chk.forEach(function(c){ if (!seen[c.id] && !S.hold[c.id]) { c.isNew = true; moved = true; } });
+    if (moved) S.shiftAt = Date.now();
+  }
+  // 없어진 카드는 고른 것에서도 뺌
+  var live = {}; todoList().forEach(function(k){ live[idOf(k)] = 1; });
+  Object.keys(S.sel).forEach(function(id){ if (!live[id]) delete S.sel[id]; });
+  paintList(); askPhones();
+}
+function shown(k){ var id = idOf(k); return !S.hold[id] || S.fin[id] != null; }   // 보낸 카드 = 빼 두되, 체크 덮개와 접히는 동안은 그대로 둔다
+function todoList(){ if (!S.data) return []; return S.data.todo.filter(shown).sort(cmpKid); }
+function chkList(){ if (!S.data) return []; return S.data.chk.filter(function(c){ return !S.hold[c.id]; }).sort(function(a, b){ return (ordOf(ORD_STAGE, a.stage) - ordOf(ORD_STAGE, b.stage)) || (ordOf(ORD_SVC, a.svc) - ordOf(ORD_SVC, b.svc)) || cmpKo(a.name, b.name); }); }
+function sentList(){
+  if (!S.data) return [];
+  var by = {}; S.data.sent.forEach(function(s){ by[idOf(s)] = s; });
+  Object.keys(S.extra).forEach(function(id){ by[id] = S.extra[id]; });
+  return Object.keys(by).map(function(id){ return by[id]; }).sort(cmpKid);
+}
+function findItem(id){
+  var pools = [S.search ? S.search.todo : [], S.search ? S.search.sent : [], S.data ? S.data.todo : [], S.data ? S.data.sent : []];
+  if (S.extra[id]) return S.extra[id];
+  for (var i = 0; i < pools.length; i++) for (var j = 0; j < pools[i].length; j++) if (idOf(pools[i][j]) === id) return pools[i][j];
+  return null;
+}
+function findChk(id){ var a = S.data ? S.data.chk : []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+
+/* ══════════ 보호자 번호 — 목록 뒤 한 번에(번호 찾기가 몇 초라 목록을 막지 않게) ══════════ */
+function askPhones(){
+  var want = [], keys = {};
+  todoList().concat(sentList()).forEach(function(k){ if (!S.phones[k.key] && !S.phAsked[k.key] && !keys[k.key]) { keys[k.key] = 1; want.push({ tab: k.tab, svc: k.svc, label: k.label, b6: k.b6 }); } });
+  if (!want.length) return;
+  Object.keys(keys).forEach(function(k){ S.phAsked[k] = Date.now(); });
+  call({ action: 'rs_phones', kids: want.slice(0, 80) }, 60000).then(function(r){
+    if (r && r.ok && r.phones) Object.keys(r.phones).forEach(function(k){ S.phones[k] = r.phones[k]; });
+    Object.keys(keys).forEach(function(k){ if (!S.phones[k]) delete S.phAsked[k]; });
+    if (S.sheet) paintSheet();
+  }, function(){ Object.keys(keys).forEach(function(k){ delete S.phAsked[k]; }); });
+}
+function phoneLine(k){
+  if (S.mode === 'test') return '시험 중이라 카톡은 안 가요';
+  var p = S.phones[k.key];
+  if (!p) return '';
+  if (p.p) return p.p;
+  return "번호를 못 찾았어요. 서류철 시트 '보호자전화' 탭에 적으면 보낼 수 있어요";
+}
+
+/* ══════════ 그리기 — 첫 화면 ══════════ */
+function cbHtml(k){ return '<span class="cb ' + esc(k.center) + '">' + esc((CTR_WORD[k.center] || k.center || '') + k.svc) + '</span>'; }
+function endChip(k){ return k.end ? '<span class="et">종료</span>' : ''; }   // 「종료」 하나(유성 11-26 3판 「1번」) — 까닭(계약 종료, 중도포기)은 시트에
+function isBusy(id){ return !!S.jobs[id]; }
+function fileLine(k){
+  var id = idOf(k);
+  if (S.stuck[id]) return '<div class="l3 warn">결과를 아직 못 받았어요. 눌러서 다시 확인해 주세요</div>';
+  if (S.fail[id]) return '<div class="l3 warn">' + esc(S.fail[id]) + '</div>';
+  var pre = k.re ? '<span class="mtag">수정됨</span>' : k.byMark ? '<span class="mtag g">서류철 ' + esc(k.mark || 'o') + '</span>' : '';
+  var names = [];
+  (k.files && k.files.result && k.files.result.length ? ['result'] : []).concat(k.files && k.files.pat && k.files.pat.length ? ['pat'] : []).forEach(function(kd){ names.push(esc(kindName(kd, k.stage))); });
+  if (k.wait) names.push('<span class="miss">' + esc(kindName(k.wait, k.stage)) + '</span>');
+  return '<div class="l3">' + pre + names.join(', ') + '</div>';
+}
+function card(k){
+  var id = idOf(k), busy = isBusy(id), fin = S.fin[id] != null, blk = blocked(id);   // fin = 0(시트가 닫히는 동안 — 보냄, 덮개 아직) / 1(체크 덮개)
+  // 결과를 모르는 카드(blk) = 고르기 없음(새 번호로 두 통 막기 — 카드를 눌러 시트에서 결과 확인)
+  var rc = fin ? '<span class="kq">보냄</span>' : busy ? '<span class="kq">발송 중' + LD + '</span>' : blk ? '<span class="kq">확인 필요</span>' : '<span class="kpk' + (S.sel[id] ? ' on' : '') + '" role="checkbox" aria-checked="' + (!!S.sel[id]) + '" aria-label="고르기"><i>' + IC.ck + '</i></span>';
+  return '<div class="kc' + (k.isNew ? ' new' : '') + (busy || fin ? ' hold' : '') + '" data-k="' + esc(id) + '"><div class="lf"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + cbHtml(k) + endChip(k) + '</div>'
+    + '<div class="sub">' + esc(b6Text(k.b6)) + (k.teacher ? ' / ' + esc(k.teacher) + ' 선생님' : '') + '</div>' + fileLine(k) + '</div>'
+    + '<div class="rc"' + (busy || fin || blk ? '' : ' data-kpick="' + esc(id) + '"') + '><span class="stg1">' + esc(k.stage) + '</span>' + rc + '</div>'
+    + (S.fin[id] === 1 ? '<span class="card-chk"><b>' + IC.ck + '</b></span>' : '') + '</div>';
+}
+function chkWhy(c){ return c.why === 'same' ? '같은 이름 아동이 서류철에 ' + (c.cands || []).length + '명이에요' : c.why === 'nob6' ? '서류철에 생년월일이 없어요' : '서류철에 없는 이름이에요'; }
+function chkRow(c){ return '<button type="button" class="row' + (c.isNew ? ' new' : '') + '" data-c="' + esc(c.id) + '"><div class="fname">' + esc(c.file) + '</div><div class="l3">' + esc(c.at ? c.at + ' 저장' : '') + '</div><div class="l3 bad">' + esc(chkWhy(c)) + '</div></button>'; }
+function stCls(st){ return st === '열어 봄' ? ' ok' : (st === '확인 중' || st === '시험') ? ' wt' : (st === '못 받음' || st === '못 보냄' || st === '잠김') ? ' warn' : ''; }
+function sentRows(list){
+  return '<div class="sent">' + list.map(function(s){
+    return '<button type="button" class="sr' + (s.hl ? ' hl' : '') + '" data-s="' + esc(idOf(s)) + '"><div class="lf"><div class="c1"><span class="nm">' + esc(s.label) + '</span>' + cbHtml(s) + endChip(s) + '</div><div class="l3">' + esc(s.at) + ' ' + esc(s.stage) + '</div></div><span class="st' + stCls(s.st) + '">' + esc(stL(s.st)) + '</span></button>';
+  }).join('') + '</div>';
+}
+function skelCards(){ var one = '<div class="kc skc"><div class="lf"><span class="sk-b" style="width:42%;height:22px"></span><span class="sk-b" style="width:64%;height:16px;margin-top:6px"></span><span class="sk-b" style="width:52%;height:14px;margin-top:6px"></span></div></div>'; return '<div class="gh">보낼 결과지</div>' + one + one + one; }
+function mainHtml(){
+  if (S.q) return searchHtml();
+  if (!S.data) return S.err ? '<div class="empty"><b>아직 못 불러왔어요</b>잠시 뒤 다시 불러와 주세요<div class="b2"><button type="button" class="cchip" data-act="reload">다시 불러오기</button></div></div>' : skelCards();
+  var td = todoList(), ck = chkList(), sn = sentList(), h = '';
+  if (S.data.fileErr) h += '<div class="note warn">결과지 폴더를 못 읽었어요. 잠시 뒤 다시 불러올게요</div>';
+  h += '<div class="gh">보낼 결과지<span class="cnt">' + td.length + '건</span></div>';
+  h += td.length ? td.map(card).join('') : '<div class="empty"><b>보낼 결과지가 없어요</b>결과지 PDF를 저장하면 이곳에 나와요</div>';
+  if (ck.length) h += '<div class="gh">확인할 파일<span class="cnt">' + ck.length + '건</span></div>' + ck.map(chkRow).join('');
+  if (sn.length) h += '<div class="gh">최근 보낸 결과지</div>' + sentRows(sn);
+  h += '<div class="foot">지난 결과지는 위 검색 칸에서 찾아 주세요</div>';
+  return h;
+}
+function searchHtml(){
+  var r = S.search;
+  if (!r) return '<div class="foot" style="margin-top:12px">찾고 있어요' + LD + '</div>';
+  if (r.err) return '<div class="empty"><b>아직 못 찾았어요</b>잠시 뒤 다시 적어 주세요</div>';
+  var td = (r.todo || []).filter(shown).sort(cmpKid), sn = (r.sent || []).slice().sort(cmpKid), h = '';
+  if (td.length) h += '<div class="gh">보낼 결과지</div>' + td.map(card).join('');
+  if (sn.length) h += '<div class="gh">지난 결과지</div>' + sentRows(sn);
+  if (!h) h = '<div class="empty"><b>찾는 아동이 없어요</b>서류철 아동 이름으로 찾아요</div>';
+  return h;
+}
+function paintList(){
+  var l = $('lst'), top = l.scrollTop;
+  l.innerHTML = mainHtml(); l.scrollTop = top;
+  paintSel(); fade();
+  if (S.data) { S.data.todo.forEach(function(k){ k.isNew = false; }); S.data.chk.forEach(function(c){ c.isNew = false; }); }
+}
+function selIds(){ return Object.keys(S.sel).filter(function(id){ return S.sel[id]; }); }
+function paintSel(){
+  var n = selIds().length;
+  $('selbar').innerHTML = '<button type="button" class="mb dk' + (n ? '' : ' gate') + '" data-act="sendsel">' + (n ? n + '명 결과지 보내기' : '보낼 아동을 골라 주세요') + '</button>';
+}
+function fade(){ var l = $('lst'), w = $('lsw'), h = l.clientHeight, over = h > 0 && l.scrollHeight > h + 1; w.classList.toggle('more', over && l.scrollTop + h < l.scrollHeight - 1); w.classList.toggle('moreTop', over && l.scrollTop > 1); }
+$('lst').addEventListener('scroll', fade);
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fade).observe($('lst'));
+
+/* ══════════ 검색 — 칸은 다시 만들지 않고 결과만(한글 조합이 끊기지 않게 — 유성 11-26 「ㄱㅣㅁ」) ══════════ */
+var qT = null;
+$('q').addEventListener('focus', function(){ this.removeAttribute('readonly'); });   // 자동완성 막기(§4.1-6)
+function onQ(composing){
+  var v = $('q').value.replace(/\s/g, '');
+  $('qw').classList.toggle('has-val', !!$('q').value);
+  clearTimeout(qT);
+  if (!v) { if (S.q) { S.q = ''; S.search = null; ++S.sSeq; paintList(); } return; }
+  if (composing) return;
+  qT = setTimeout(function(){ find(v); }, 350);
+}
+$('q').addEventListener('input', function(e){ onQ(e.isComposing); });
+$('q').addEventListener('compositionend', function(){ onQ(false); });
+$('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') { clearTimeout(qT); var v = $('q').value.replace(/\s/g, ''); if (v) find(v); } });
+$('qClr').addEventListener('pointerdown', function(e){ e.preventDefault(); });   // 칸 포커스를 안 뺏음(§4.1-4)
+$('qClr').addEventListener('click', function(){ $('q').value = ''; onQ(false); $('q').focus(); });
+function find(v, force){
+  if (!force && v === S.q && S.search && !S.search.err) return;
+  var first = !S.q; S.q = v; var my = ++S.sSeq;
+  if (first) { S.search = null; paintList(); }
+  callRead({ action: 'rs_list', q: v }, 8000, LIST_TIMEOUT_MS).then(function(r){
+    if (my !== S.sSeq) return;
+    if (!r || !r.ok) { if (offReply(r)) goOff(); if (force && S.search && !S.search.err) return; S.search = { err: true }; paintList(); return; }
+    S.mode = r.mode || S.mode; goOn();
+    (function put(){
+      if (my !== S.sSeq) return;
+      if (force && S.anim > 0) { setTimeout(put, 400); return; }   // 보낸 카드가 접히는 중엔 기다렸다가(다시 그리면 접히던 카드가 다시 펴진다)
+      S.search = r; paintList(); askPhonesFor((r.todo || []).concat(r.sent || []));
+    })();
+  }, function(){ if (my !== S.sSeq) return; if (force && S.search && !S.search.err) return; S.search = { err: true }; paintList(); });
+}
+function askPhonesFor(list){
+  var want = [], keys = {};
+  list.forEach(function(k){ if (!S.phones[k.key] && !S.phAsked[k.key] && !keys[k.key]) { keys[k.key] = 1; want.push({ tab: k.tab, svc: k.svc, label: k.label, b6: k.b6 }); } });
+  if (!want.length) return;
+  Object.keys(keys).forEach(function(k){ S.phAsked[k] = Date.now(); });
+  call({ action: 'rs_phones', kids: want.slice(0, 80) }, 60000).then(function(r){
+    if (r && r.ok && r.phones) Object.keys(r.phones).forEach(function(k){ S.phones[k] = r.phones[k]; });
+    Object.keys(keys).forEach(function(k){ if (!S.phones[k]) delete S.phAsked[k]; });
+    if (S.sheet) paintSheet();
+  }, function(){ Object.keys(keys).forEach(function(k){ delete S.phAsked[k]; }); });
+}
+
+/* ══════════ 시트 ══════════ */
+function openSheet(s){ S.sheet = s; S.vOpen = false; S.rvOpen = false; S.fxPick = -1; if (s.t !== 'chk') S.pick = defaultPick(s); paintSheet(); }
+function closeSheet(){ if (!S.sheet) return false; S.sheet = null; paintSheet(); return true; }
+// 고른 파일 기본 = 종류마다 가장 새 판(잠기지 않은 것 — 07이 새 것 먼저). 다시 보내기 = 지난 링크에 있던 종류만(Claude 정함 11-26)
+function filesOf(s){ var k = findItem(s.id); if (!k) return null; return s.resend ? (k.now || { result: [], pat: [] }) : (k.files || { result: [], pat: [] }); }
+function defaultPick(s){
+  var k = findItem(s.id), fs = filesOf(s), p = {};
+  if (!k || !fs) return p;
+  var kinds = s.resend ? Object.keys(k.pick || {}) : ['result', 'pat'];
+  kinds.forEach(function(kd){ var f = (fs[kd] || [])[0]; if (f && (kd === 'result' || k.stage === '사전')) p[kd] = f.id; });
   return p;
 }
-function fileRow(kind, f, sent){
-  var on = S.pick[kind] === f.id, dis = !!f.locked || !canSend();
-  var info = f.locked ? '<span class="why">같은 이름 아이가 있어요. 파일 이름 끝에 생년월일 6자리를 붙여 주세요</span>'
-    : sent[f.id] ? '<span class="ok">' + esc(sent[f.id]) + ' 보냄</span>' : '<span>' + esc([f.upd ? f.upd + ' 저장' : '', f.kb ? f.kb + 'KB' : ''].filter(Boolean).join(', ')) + '</span>';
-  return '<button type="button" class="fr' + (on ? ' on' : '') + '" data-k="' + kind + '" data-id="' + esc(f.id) + '"' + (f.locked ? ' disabled' : '') + (dis && !f.locked ? ' aria-disabled="true"' : '')
-    + '><span class="ck"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="fn"><b>' + esc(f.name) + '</b>' + info + '</span></button>';
+function pickedIds(){ var p = []; ['pat', 'result'].forEach(function(kd){ if (S.pick[kd]) p.push(S.pick[kd]); }); return p; }
+function paintSheet(){
+  var sh = $('sheet'), on = !!S.sheet, inner = '';
+  if (on) {
+    if (S.sheet.t === 'chk') { var c = findChk(S.sheet.id); inner = c ? chkSheet(c) : ''; }
+    else { var k = findItem(S.sheet.id); inner = k ? (S.sheet.t === 'sent' && !S.sheet.resend ? sentSheet(k) : kidSheet(k, S.sheet.resend)) : ''; }
+    if (!inner) { S.sheet = null; on = false; }
+  }
+  sh.innerHTML = inner;
+  sh.classList.toggle('on', on); $('sdim').classList.toggle('on', on);
+  if (on) wireDrag();
 }
-function paintKid(){
-  var d = S.det, st = S.stage, k = S.kid || {};
-  document.querySelectorAll('#kSeg button').forEach(function(b){
-    var s = b.getAttribute('data-s');
-    b.classList.toggle('on', s === st);
-    b.querySelector('small').textContent = k.sent && k.sent[s] ? k.sent[s] + ' 보냄' : '';
-    b.disabled = !!S.sending;
+function shead(k){ return '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + cbHtml(k) + '<span style="margin-left:auto"><span class="stg1">' + esc(k.stage) + '</span></span></div><div class="sub">' + esc(b6Text(k.b6)) + '</div></div></div>'; }
+function kvBase(k){
+  var ph = phoneLine(k);
+  return '<dl class="kv"><div><dt>제공인력</dt><dd>' + (k.teacher ? esc(k.teacher) + ' 선생님' : '<span class="no">모름</span>') + '</dd></div>'
+    + '<div><dt>휴대폰 번호</dt><dd' + (ph ? '>' + esc(ph) : ' class="no">' + LD) + '</dd></div>'
+    + (k.end ? '<div><dt>서비스 종료</dt><dd>' + (k.end === '중도포기' ? '중도포기' : '계약 종료') + '</dd></div>' : '')
+    + (k.mark ? '<div><dt>서류철 칸</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
+}
+function openBtn(attrs){ return '<button type="button" class="cchip" ' + attrs + '>열기</button>'; }
+function kidSheet(k, resend){
+  var id = idOf(k), busy = isBusy(id), fs = resend ? (k.now || {}) : (k.files || {}), h = shead(k) + '<div class="sbd">' + kvBase(k);
+  if (S.stuck[id]) h += '<div class="note warn">카톡이 나갔는지 아직 몰라요. 아래 버튼으로 다시 확인해 주세요</div>';
+  else if (S.fail[id]) h += '<div class="note warn">' + esc(S.fail[id]) + '</div>';
+  // 매크로는 같은 이름이면 「 (1)」을 붙여 새 파일로 저장 → 한 종류에 여럿. 종류마다 가장 새 것 + 그 앞 판은 접음
+  ['result', 'pat'].forEach(function(kd){
+    if (kd === 'pat' && k.stage !== '사전') return;
+    var list = fs[kd] || [];
+    if (!list.length) { if (!resend && k.wait === kd) h += '<div class="fr none"><span class="ck"></span><span class="fn"><b>' + esc(kindName(kd, k.stage)) + '</b><span>저장되면 이곳에 나와요</span></span></div>'; return; }
+    h += frow(kd, list[0], false);
+    if (list.length > 1) {
+      if (!S.vOpen) h += '<button type="button" class="more1" data-act="vopen">같은 검사 앞 판 ' + (list.length - 1) + '개 더 ' + IC.down + '</button>';
+      else list.slice(1).forEach(function(f){ h += frow(kd, f, true); });
+    }
   });
-  var files = $('kFiles'), log = $('kLog'), ph = $('kPhone');
-  if (!d) {
-    var sk = function(w, h){ return '<span class="sk-b" style="width:' + w + ';height:' + h + 'px;margin-top:6px"></span>'; };
-    files.innerHTML = sk('100%', 56) + (st === '사전' ? sk('100%', 56) : ''); ph.innerHTML = sk('50%', 16).replace('margin-top:6px', ''); $('secLog').style.display = 'none';
-    paintSend(); return;
+  if (!resend && k.re && k.sends && k.sends.length) h += reHist(k);
+  var lab = resend || k.re ? '다시 보내기' : '보내기';
+  var gate = !pickedIds().length || !canSend() || !!blocked(id);
+  if (S.stuck[id] && !busy) return h + '</div><div class="sft"><button type="button" class="mb dk" data-act="again">결과 다시 확인</button></div>';   // 새 번호로 보내기 대신 같은 번호로 묻기(두 통 막기)
+  h += '</div><div class="sft"><button type="button" class="mb ' + (busy ? 'busy' : 'dk' + (gate ? ' gate' : '')) + '" data-act="sheetsend">' + (busy ? (S.mode === 'test' ? '시험으로 보내고 있어요' : '결과지를 카톡으로 보내고 있어요') + LD : esc(lab)) + '</button></div>';
+  return h;
+}
+function frow(kd, f, prev){
+  var on = S.pick[kd] === f.id;
+  var sub = f.sent ? '<span class="ok">' + esc(f.sent) + ' 보냄</span>' : '<span>' + esc([f.upd ? f.upd + ' 저장' : '', prev ? '앞 판(안 보냄)' : ''].filter(Boolean).join(', ')) + '</span>';
+  return '<div class="fr' + (on ? ' on' : '') + '" data-f="' + esc(f.id) + '" data-kd="' + kd + '"><span class="ck">' + IC.ck + '</span><span class="fn"><b>' + esc(f.name) + '</b>' + sub + '</span>' + openBtn('data-open="' + esc(f.id) + '"') + '</div>';
+}
+// 보낸 뒤 다시 저장 = 보낸 판(사본)을 아래에. 마지막 보낸 것 + 그 앞은 접힘(유성 11-26 3판 여러 판 1번)
+function reHist(k){
+  var s = k.sends || [], h = '';
+  var line = function(x){ return (x.names || []).map(function(nm, i){ return '<div class="fr old"><span class="ck"></span><span class="fn"><b>' + esc(nm) + '</b><span>' + esc(x.at) + ' 보낸 결과지' + (x.st ? ', ' + esc(stL(x.st)) : '') + '</span></span>' + openBtn('data-ojob="' + esc(x.job) + '" data-oi="' + i + '"') + '</div>'; }).join(''); };
+  h += line(s[0]);
+  if (s.length > 1) {
+    if (!S.rvOpen) h += '<button type="button" class="more1" data-act="rvopen">전에 보낸 결과지 ' + (s.length - 1) + '개 더 ' + IC.down + '</button>';
+    else s.slice(1).forEach(function(x){ h += line(x); });
   }
-  if (d.gone) { files.innerHTML = '<div class="none">서류철에서 이 아이를 다시 못 찾았어요. 뒤로 가서 다시 찾아 주세요</div>'; ph.textContent = ''; $('secLog').style.display = 'none'; paintSend(); return; }
-  if (d.err) { files.innerHTML = '<div class="none">아직 못 불러왔어요. <button type="button" class="b weak" id="reKid" style="flex:none;min-height:0;padding:4px 10px;margin-left:4px">다시 불러오기</button></div>'; ph.textContent = ''; $('secLog').style.display = 'none'; paintSend(); return; }
-  // 보낸 기록(이 단계) — 새 것 위
-  var sends = d.sends || [];
-  $('secLog').style.display = sends.length ? '' : 'none';
-  log.innerHTML = sends.slice().reverse().map(logRow).join('');
-  // 파일
-  var sent = sentIds(d), fs = d.files || {}, h = '';
-  if (d.b6ok === false) h += '<div class="none warnl">서류철에 이 아이 생년월일이 없어서 보낼 수 없어요. 보호자가 생년월일로 결과지를 열어요</div>';
-  if (d.fileErr) h += '<div class="none">결과지 폴더를 못 읽었어요. <button type="button" class="b weak" id="reKidF" style="flex:none;min-height:0;padding:4px 10px;margin-left:4px">다시 불러오기</button></div>';
+  return h;
+}
+function tlWords(tl){
+  var got = (tl || []).some(function(x){ return /받음$/.test(x[0]); });
+  return (tl || []).filter(function(x){ return !(got && x[0] === '보냄'); }).map(function(x){ return [x[0] === '카톡 받음' ? '보호자가 받음' : x[0] === '문자 받음' ? '보호자가 받음(문자)' : x[0] === '열어 봄' ? '보호자가 열어 봄' : x[0], x[1]]; });
+}
+function sentSheet(s){
+  var h = shead(s) + '<div class="sbd">' + kvBase(s);
+  h += '<dl class="kv tlv">' + tlWords(s.tl).map(function(x){ return '<div><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl>';
+  if (s.st === '못 받음') h += '<div class="note warn">보호자 번호를 확인한 뒤 다시 보내 주세요</div>';
+  if (s.st === '잠김') h += '<div class="note warn">생년월일을 여러 번 틀려서 링크가 잠겼어요. 다시 보내면 새 링크가 가요</div>';
+  (s.files || []).forEach(function(nm, i){ h += '<div class="fr" style="cursor:default"><span class="fn"><b>' + esc(nm) + '</b><span>보낸 결과지</span></span>' + (s.job ? openBtn('data-ojob="' + esc(s.job) + '" data-oi="' + i + '"') : '') + '</div>'; });
+  if (s.link) h += '<div class="lk"><span class="u">' + esc(s.link) + '</span><button type="button" class="cchip" data-copy="' + esc(s.link) + '">복사</button></div>';
+  var canOff = !s.off && s.job && s.st !== '못 보냄' && canSend();
+  h += '</div><div class="sft btns">' + (canOff ? '<button type="button" class="mb wk" data-act="linkoff">' + esc(OFFW.btn) + '</button>' : '') + '<button type="button" class="mb dk' + (canSend() ? '' : ' gate') + '" data-act="resend">다시 보내기</button></div>';
+  return h;
+}
+// 확인할 파일 — 앱에서 바로 고치기(유성 11-26 「폴더까지 열어서 생년월일은 수정하라 할 필요는 없다」, 3판 1번 = 이 아동인가요)
+function chkSheet(c){
+  var h = '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="fname" style="font-size:var(--fs-body);white-space:normal;overflow-wrap:anywhere">' + esc(c.file) + '</div><div class="sub">' + esc(c.at ? c.at + ' 저장' : '') + '</div></div></div><div class="sbd" style="margin-top:6px">'
+    + '<div class="note bad">' + esc(chkWhy(c)) + '</div>';
+  var can = c.fix !== false && (c.cands || []).length && c.why !== 'nob6';
+  if (c.why === 'nob6') h += '<div class="note">서류철에 이 아동 생년월일을 적으면 보낼 결과지로 옮겨 가요</div>';
+  else if (c.fix === false) h += '<div class="note">파일 이름의 생년월일이 서류철과 달라요. 파일 이름을 확인해 주세요</div>';
+  else if (!(c.cands || []).length) h += '<div class="note">서류철에서 비슷한 이름을 못 찾았어요. 서류철 아동 칸 이름과 파일 이름이 같은지 확인해 주세요</div>';
   else {
-    var groups = st === '사전' ? ['result', 'pat'] : ['result'];
-    h += groups.map(function(kind){
-      var list = fs[kind] || [], nm = kind === 'pat' ? KIND.pat : KIND.result[st];
-      return '<div class="fg"><div class="gl">' + esc(nm) + '</div>' + (list.length ? list.map(function(f){ return fileRow(kind, f, sent); }).join('') : '<div class="none">아직 파일이 없어요</div>') + '</div>';
-    }).join('');
+    h += '<div class="fxlab">' + (c.why === 'none' ? '이름이 비슷한 아동이에요. 맞으면 골라 주세요' : '어느 아동의 결과지인가요?') + '</div>';
+    c.cands.slice().sort(cmpKid).forEach(function(x, i){
+      h += '<div class="fr' + (S.fxPick === i ? ' on' : '') + '" data-pick="' + i + '"><span class="rad"></span><span class="fn"><span class="c1"><b>' + esc(x.label) + '</b>' + cbHtml(x) + endChip(x) + '</span><span>' + esc(b6Text(x.b6)) + (x.teacher ? ' / ' + esc(x.teacher) + ' 선생님' : '') + (x.done ? ', 이미 보냄' : '') + '</span></span></div>';
+    });
+    h += '<div class="foot" style="text-align:left;margin:2px 2px 0">' + (c.why === 'none' ? '고르면 폴더의 파일 이름이 그 아동 이름과 생년월일로 바뀌어요' : '고르면 폴더의 파일 이름 끝에 생년월일이 붙어요') + '</div>';
   }
-  files.innerHTML = h;
-  // 카톡 받을 번호
-  if (d.mode === 'test') ph.textContent = '시험 중이라 카톡은 안 가요';
-  else if (d.phone) ph.textContent = d.phone;
-  else ph.textContent = "보호자 번호를 못 찾았어요. 서류철 시트 '보호자전화' 탭에 번호를 적으면 보낼 수 있어요";
-  paintSend();
+  h += '<div class="fr" style="cursor:default"><span class="fn"><b>' + esc(c.file) + '</b><span>' + esc(c.at ? c.at + ' 저장' : '') + '</span></span>' + (c.why === 'nob6' ? '' : openBtn('data-open="' + esc(c.id) + '"')) + '</div></div>';
+  if (can) h += '<div class="sft"><button type="button" class="mb ' + (S.fixing ? 'busy' : 'dk' + (S.fxPick === -1 ? ' gate' : '')) + '" data-act="fixgo">' + (S.fixing ? '파일 이름을 바꾸고 있어요' + LD : '이 아동으로 맞추기') + '</button></div>';
+  return h;
 }
-// 보낸 기록 한 줄 — 07 장부 값(알림톡, 배달, 처음 연 때, 연 횟수, 잠김, 끔)을 현아쌤 말로. 링크 = 시험 줄만(07이 시험 모드에서만 실어 줌)
-function logRow(s){
-  var t = String(s.talk || ''), dv = String(s.deliv || ''), w = [];
-  if (t === '시험') w.push('시험(카톡 안 감)');
-  else if (/^보내는 중/.test(t)) w.push('카톡 보내는 중');
-  else if (/^보냄/.test(t)) {
-    w.push('카톡 보냄');
-    if (dv === '닿음(카톡)') w.push('카톡으로 받음'); else if (dv === '닿음(문자)') w.push('문자로 받음');
-    else if (dv === '안 닿음') w.push('받지 못함'); else if (/^확인 중/.test(dv)) w.push('받았는지 확인 중');
-  } else if (/^못 보냄/.test(t)) w.push('카톡 못 보냄');
-  var l2 = '', warn = false;
-  if (s.off) l2 = '링크 끔';
-  else if (s.locked) { l2 = '생년월일을 여러 번 틀려서 링크가 잠겼어요. 다시 보내면 새 링크가 가요'; warn = true; }
-  else if (s.opened) l2 = s.opened + ' 보호자가 열어 봄' + (s.opens > 1 ? '(' + s.opens + '번)' : '');
-  else if (/^보냄|^시험/.test(t)) l2 = '아직 안 열어 봄';
-  if (!s.off && dv === '안 닿음') { l2 = '보호자 번호를 확인한 뒤 다시 보내 주세요'; warn = true; }
-  var canOff = !s.off && /^(보냄|보내는 중|시험)/.test(t) && canSend();
-  return '<div class="lgr' + (s.off ? ' off' : '') + '"><div class="l1"><span class="d">' + esc(s.at) + '</span><span class="w">' + esc(w.join(', ')) + '</span>'
-    + (canOff ? '<button type="button" class="sb" data-off="' + esc(s.job) + '">링크 끄기</button>' : '') + '</div>'
-    + (l2 ? '<div class="l2' + (warn ? ' warn' : '') + '">' + esc(l2) + '</div>' : '')
-    + (s.link && !s.off ? '<div class="lk"><span class="u">' + esc(s.link) + '</span><button type="button" class="sb" data-copy="' + esc(s.link) + '">복사</button></div>' : '')
-    + '</div>';
-}
-$('kSeg').addEventListener('click', function(e){
-  var b = e.target.closest('button[data-s]'); if (!b || S.sending) return;
-  var s = b.getAttribute('data-s'); if (s === S.stage) return;
-  S.stage = s; S.pick = {}; clearRes(); loadKid(false);
-});
-$('kFiles').addEventListener('click', function(e){
-  if (e.target.closest('#reKidF')) { loadKid(true); return; }
-  var b = e.target.closest('.fr'); if (!b || b.disabled || !canSend()) return;
-  var kind = b.getAttribute('data-k'), id = b.getAttribute('data-id');
-  S.pick[kind] = S.pick[kind] === id ? '' : id;   // 같은 종류 여럿 = 하나만(누른 것으로 바꿈), 다시 누르면 뺌
-  paintKid();
-});
-$('kbody').addEventListener('click', function(e){ if (e.target.closest('#reKid')) loadKid(true); });
-// 보낸 기록 — 「링크 끄기」(확인 창) / 「복사」(시험 링크)
-$('kLog').addEventListener('click', function(e){
-  var c = e.target.closest('button[data-copy]');
-  if (c) { copyText(c.getAttribute('data-copy')); return; }
-  var o = e.target.closest('button[data-off]');
-  if (o && !o.disabled && canSend()) offAsk(o.getAttribute('data-off'));
-});
-function copyText(t){
-  var ok = function(){ toast('링크를 복사했어요'); }, no = function(){ toast('복사하지 못했어요. 링크를 끌어서 골라 주세요'); };
-  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, function(){ fallback() ? ok() : no(); }); return; } } catch (e) { }
-  if (fallback()) ok(); else no();
-  function fallback(){ try { var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); var r = document.execCommand('copy'); ta.remove(); return r; } catch (x) { return false; } }
+function candsSorted(c){ return (c.cands || []).slice().sort(cmpKid); }
+// 끌어내려 닫기 — §4.3-5: 잡는 곳 = 위쪽(핸들 + 머리), 아래로만, 80px 또는 빠르면 닫힘, 누르는 동안 .97
+function wireDrag(){
+  var sh = $('sheet'), g = sh.querySelector('.sgrab'); if (!g) return;
+  var y0 = 0, t0 = 0, dy = 0, on = false;
+  g.addEventListener('pointerdown', function(e){ on = true; y0 = e.clientY; t0 = Date.now(); dy = 0; sh.classList.add('drag'); sh.style.transform = 'scale(.97)'; try { g.setPointerCapture(e.pointerId); } catch (x) { } });
+  g.addEventListener('pointermove', function(e){ if (!on) return; dy = Math.max(0, e.clientY - y0); sh.style.transform = 'translateY(' + dy + 'px) scale(' + (dy > 4 ? 1 : .97) + ')'; });
+  function up(){ if (!on) return; on = false; var v = dy / Math.max(1, Date.now() - t0); sh.classList.remove('drag'); sh.style.transform = ''; if (dy > 80 || (dy > 20 && v > .5)) closeSheet(); }
+  g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
 }
 
-/* ══════════ 보내기 버튼 ══════════ */
-function canSend(){ return S.on === true && S.mode !== 'off' && !S.sending; }
-function picked(){
-  var d = S.det, out = []; if (!d || !d.files) return out;
-  ['result', 'pat'].forEach(function(kind){ if (S.pick[kind] && (S.stage === '사전' || kind === 'result')) out.push({ kind: kind, id: S.pick[kind] }); });
-  return out;
+/* ══════════ 보내기 — 작업 번호 하나 = 장부 한 줄 = 알림톡 한 통(아동마다) ══════════ */
+function canSend(){ return S.on === true && S.mode !== 'off'; }
+function cantWhy(){ return S.on !== true ? '지금은 보낼 수 없어요' : S.mode === 'off' ? '지금은 보내기가 꺼져 있어요' : ''; }
+function startJob(k, files, kinds){
+  var id = idOf(k); if (S.jobs[id]) return null;
+  var o = { id: id, job: newJob(), k: k, files: files, kinds: kinds, again: 0, t0: Date.now(), fires: 0, state: 'q' };
+  S.jobs[id] = o; delete S.fail[id]; delete S.stuck[id]; delete S.unsure[id]; delete S.sel[id];
+  S.queue.push(o); pump();
+  return o;
 }
-function sendLabel(){
-  var p = picked(), st = S.stage;
-  if (st === '사전' && p.length === 1) return (p[0].kind === 'pat' ? KIND.pat : KIND.result['사전']) + '만 보내기';
-  return '보내기';
+function pump(){
+  var run = Object.keys(S.jobs).filter(function(id){ return S.jobs[id].state === 'run'; }).length;
+  while (run < CONC && S.queue.length) { var o = S.queue.shift(); if (S.jobs[o.id] !== o) continue; o.state = 'run'; o.t0 = Date.now(); fire(o); run++; }
 }
-// 빠진 것 하나(없으면 '') — 누르면 흔들고 이 말을 토스트로
-function missing(){
-  if (S.on !== true) return '지금은 보낼 수 없어요';
-  if (S.mode === 'off') return '지금은 보내기가 꺼져 있어요';
-  if (!S.det || S.det.err || S.det.gone) return '아이 정보를 불러온 뒤에 보낼 수 있어요';
-  if (S.det.b6ok === false) return '서류철에 생년월일이 없어서 보낼 수 없어요';
-  if (!picked().length) return '보낼 파일을 골라 주세요';
-  return '';
-}
-function paintSend(){
-  var b = $('sendGo');
-  $('sendL').textContent = sendLabel();
-  b.classList.toggle('gate', !!missing() && !S.sending);
-  b.classList.toggle('busy', !!S.sending);
-  $('wait').classList.toggle('on', !!S.sending);
-}
-$('sendGo').addEventListener('click', function(){
-  if (S.sending) return;
-  var why = missing();
-  if (why) { var b = this; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); toast(why); return; }
-  send();
-});
-
-/* ══════════ 보내기 — 작업 번호 하나 = 장부 한 줄 = 알림톡 한 통 ══════════
-   사람이 누르는 보내기는 늘 새 번호. 응답을 놓친 때만 같은 번호로 묻거나(rs_res) 다시 부른다(rs_send — 07이 같은 번호 장부 줄을 보면 그 결과를 줌) */
-function send(){
-  var k = S.kid, d = S.det; if (!k || !d) return;
-  var o = { job: newJob(), kid: k, stage: S.stage, files: picked().map(function(f){ return f.id; }), kinds: picked().map(function(f){ return f.kind; }), again: 0, t0: Date.now() };
-  S.sending = o; S.lastJob = o.job; clearRes(); paintKid();
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  fire(o);
-}
-function body(o){ return { action: 'rs_send', job: o.job, tab: o.kid.tab, svc: o.kid.svc, label: o.kid.label, b6: o.kid.b6, stage: o.stage, files: o.files }; }
+function body(o){ return { action: 'rs_send', job: o.job, tab: o.k.tab, svc: o.k.svc, label: o.k.label, b6: o.k.b6, stage: o.k.stage, files: o.files }; }
 function fire(o){
-  o.fires = (o.fires || 0) + 1;   // 2번째부터 = 같은 번호로 다시 부름(앞 부름이 장부를 썼을 수 있다)
+  o.fires++;
   call(body(o), SEND_TIMEOUT_MS).then(function(r){
-    if (S.sending !== o) return;
-    if (r && r.why === 'run') { askLater(o); return; }   // 같은 번호가 아직 도는 중(앞 부름) = 결과를 묻는다
+    if (S.jobs[o.id] !== o) return;
+    if (r && r.why === 'run') { askLater(o); return; }
     done(o, r);
   }, function(e){
-    if (S.sending !== o) return;
-    if (e && e.noid) { finish(o); goOff(); return; }
+    if (S.jobs[o.id] !== o) return;
+    if (e && e.noid) { end(o, '지금은 보낼 수 없어요'); goOff(); return; }
     askLater(o);   // 시한, 구글 HTML, 못 닿음 = 07은 하고 있을 수 있다
   });
 }
-// 응답을 놓친 보내기 — 5초마다 rs_res. none이 두 번 이어지면(07이 못 받음, 캐시가 지워짐) 같은 번호로 다시 부른다
+// 응답을 놓친 보내기 — 5초마다 rs_res. none이 두 번 이어지면 같은 번호로 다시 부른다
 function askLater(o){
   var none = 0;
   (function again(){
-    if (S.sending !== o) return;
+    if (S.jobs[o.id] !== o) return;
     if (Date.now() - o.t0 > RES_POLL_FOR_MS) { stuck(o); return; }
     setTimeout(function(){
-      if (S.sending !== o) return;
+      if (S.jobs[o.id] !== o) return;
       call({ action: 'rs_res', job: o.job }).then(function(x){
-        if (S.sending !== o) return;
+        if (S.jobs[o.id] !== o) return;
         if (x && x.state === 'done') { done(o, x.res); return; }
         if (x && x.state === 'none' && ++none >= 2) { none = 0; fire(o); return; }
         if (x && x.state === 'run') none = 0;
@@ -608,118 +746,229 @@ function askLater(o){
     }, RES_POLL_MS);
   })();
 }
-function finish(o){ if (S.sending === o) S.sending = null; paintKid(); }
-// 결과를 끝내 못 받음 = 머무는 상자 + 「결과 다시 확인」(같은 번호로 묻고, 모르면 같은 번호로 다시 부름 — 두 통 안 감)
-function stuck(o){
-  finish(o);
-  res('warn', '결과를 아직 못 받았어요', ['카톡이 나갔는지 아직 몰라요. 아래 버튼으로 다시 확인해 주세요'], [{ id: 'again', label: '결과 다시 확인', pri: true }], o);
-}
+function release(o){ if (S.jobs[o.id] === o) delete S.jobs[o.id]; pump(); }
+// 결과를 끝내 못 받음 = 카드에 「눌러서 다시 확인」(같은 번호로 묻고, 모르면 같은 번호로 다시 부름 — 두 통 안 감)
+function stuck(o){ release(o); S.stuck[o.id] = o; batchEnd(false); paintList(); if (S.sheet) paintSheet(); }
+function end(o, msg, reload){ release(o); S.fail[o.id] = msg; batchEnd(false); paintList(); if (S.sheet) paintSheet(); if (reload) load(true); }
 function done(o, r){
   r = r || {};
   var why = r.why || '';
-  if (!r.ok && (why === 'unknown' || why === 'retry')) {   // 07이 장부를 못 씀(알림톡 0) — 같은 번호로 저절로(사본은 같은 이름으로 덮음)
-    if (o.again < AUTO_AGAIN) { o.again++; setTimeout(function(){ if (S.sending === o) fire(o); }, AGAIN_MS); return; }
+  if (!r.ok && (why === 'unknown' || why === 'retry')) {   // 07이 장부를 못 씀(알림톡 0) — 같은 번호로 저절로
+    if (o.again < AUTO_AGAIN) { o.again++; setTimeout(function(){ if (S.jobs[o.id] === o) fire(o); }, AGAIN_MS); return; }
     stuck(o); return;
   }
-  finish(o);
-  if (r.ok) { okBox(o, r); loadKid(false); refreshRow(o); return; }
-  if (offReply(r)) { goOff(); res('warn', '지금은 보낼 수 없어요', ['잠시 뒤 다시 열어 주세요']); return; }   // 서명 거절(auth) = 꺼짐
-  // 같은 번호로 다시 부른 뒤의 거절, 07 안 오류 = 앞 부름이 카톡을 보냈을 수 있다 → 「안 갔어요」로 단정하지 않고 보낸 기록을 다시 불러 보여 줌(11-24 리뷰)
-  if (r.error || why === 'error' || why === 'stale' || (o.fires > 1 && !/^(viewer|b6|phone|tpl|files|files_gone|locked)$/.test(why))) {
-    res('warn', '카톡이 나갔는지 확인하지 못했어요', ['아래 보낸 기록에 오늘 줄이 없으면 다시 보내 주세요']); loadKid(false); refreshRow(o); return;
-  }
-  if (why === 'files' || why === 'files_gone' || why === 'locked') { toast('파일이 바뀌었어요. 목록을 다시 불러왔어요'); loadKid(true); return; }
-  if (why === 'phone') { res('warn', '보호자 번호가 없어서 보내지 않았어요', ["서류철 시트 '보호자전화' 탭에 번호를 적은 뒤 다시 보내 주세요"], [{ id: 'reload', label: '다시 불러오기' }]); return; }
-  if (why === 'b6') { res('warn', '서류철에 생년월일이 없어서 보내지 않았어요', ['보호자가 아이 생년월일로 결과지를 열어요. 서류철에 적은 뒤 다시 불러와 주세요'], [{ id: 'reload', label: '다시 불러오기' }]); return; }
-  if (why === 'copy') { res('warn', '결과지를 옮기지 못해서 보내지 않았어요', ['카톡은 안 갔어요. 보내기를 다시 눌러 주세요']); return; }
-  if (why === 'talk') { res('warn', '카톡을 보내지 못했어요', ['보호자 번호를 확인한 뒤 보내기를 다시 눌러 주세요']); loadKid(false); refreshRow(o); return; }
-  if (why === 'kid') { res('warn', '서류철에서 이 아이를 다시 못 찾았어요', ['뒤로 가서 다시 찾아 주세요']); return; }
-  if (why === 'busy') { res('warn', '다른 화면에서 이 아이를 보내고 있어요', ['잠시 뒤 보낸 기록을 다시 확인해 주세요'], [{ id: 'reload', label: '다시 불러오기' }]); return; }
-  if (why === 'viewer') { res('warn', '지금은 보낼 수 없어요', ['잠시 뒤 다시 해 주세요']); return; }   // 07 옛 판(@51)만 — 한유성 서명을 막던 때
-  if (why === 'tpl') { res('warn', '알림톡을 지금 쓸 수 없어서 보내지 않았어요', ['카톡으로 알려 주세요']); return; }
-  if (why === 'off' || why === 'key' || why === 'bad') { res('warn', '지금은 보낼 수 없어요', ['카톡은 안 갔어요']); return; }
-  if (why === 'job') { res('warn', '보내지 못했어요', ['보내기를 다시 눌러 주세요']); return; }
-  res('warn', '보내지 못했어요', ['카톡은 안 갔어요. 보내기를 다시 눌러 주세요']);
+  if (r.ok) { release(o); ok(o, r); batchEnd(true); return; }
+  if (offReply(r)) { goOff(); end(o, '지금은 보낼 수 없어요'); return; }
+  // 같은 번호로 다시 부른 뒤의 거절, 07 안 오류 = 앞 부름이 카톡을 보냈을 수 있다 → 「안 갔어요」로 단정하지 않음(11-24 리뷰)
+  if (r.error || why === 'error' || why === 'stale' || (o.fires > 1 && !/^(viewer|b6|phone|tpl|files|files_gone|locked|wait)$/.test(why))) { S.unsure[o.id] = Date.now(); end(o, '카톡이 나갔는지 확인하고 있어요', true); return; }
+  var M = {
+    files: ['파일이 바뀌었어요. 다시 골라 주세요', true], files_gone: ['파일이 바뀌었어요. 다시 골라 주세요', true], locked: ['같은 이름 아동 파일이라 못 보냈어요. 확인할 파일에서 맞춰 주세요', true],
+    phone: ["보호자 번호가 없어 안 보냈어요. 서류철 시트 '보호자전화' 탭에 번호를 적어 주세요"], b6: ['서류철에 생년월일이 없어 안 보냈어요'],
+    copy: ['결과지를 옮기지 못해 안 보냈어요. 다시 보내 주세요'], talk: ['카톡을 보내지 못했어요. 보호자 번호를 확인해 주세요', true],
+    kid: ['서류철에서 이 아동을 다시 못 찾았어요', true], busy: ['다른 화면에서 이 아동을 보내고 있어요', true], tpl: ['알림톡을 지금 쓸 수 없어 안 보냈어요. 카톡으로 알려 주세요'],
+    off: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], key: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], bad: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], job: ['보내지 못했어요. 다시 보내 주세요'],
+    wait: ['다른 발송이 진행 중이라 안 보냈어요. 잠시 뒤 다시 보내 주세요']   // 07이 잠금을 못 잡음(1일 월 계획안, 20일 반기 발송 중) = 장부, 알림톡 0
+  }[why] || ['보내지 못했어요. 카톡은 안 갔어요'];
+  end(o, M[0], !!M[1]);
 }
-function refreshRow(o){   // 찾기 줄의 「사전 11/24」도 다시(다음에 찾을 때)
-  S.rows = null; S.q = '';
+// 여럿 보내기 묶음 — 다 끝나면 못 보낸 수만 토스트(성공은 카드 모션이 말함)
+function batchStart(n){ S.batch = { left: n, fail: 0 }; }
+function batchEnd(ok){
+  if (!S.batch) return;
+  if (!ok) S.batch.fail++;
+  if (--S.batch.left > 0) return;
+  var f = S.batch.fail; S.batch = null;
+  if (f) toast(f + '명은 못 보냈어요. 카드에 까닭이 있어요');
 }
-// 보낸 결과 — 시험 = 링크(보호자 화면을 직접 열어 봄) / 켠 뒤 = 카톡 보냄 + 서류철 o는 닿은 뒤(10분쯤 뒤 07 폴링)
-function okBox(o, r){
-  var col = COL[o.stage];
-  if (r.mode === 'test') {
-    res('ok', '시험으로 보냈어요', ['카톡과 서류철 칸은 그대로예요. 아래 링크로 보호자 화면을 열어 볼 수 있어요'], r.link ? [{ id: 'copy', label: '링크 복사', pri: true }] : null, o, r.link);
-    return;
-  }
-  var lines = ['보호자가 받았는지는 10분쯤 뒤 보낸 기록에 나와요'];
-  if (o.stage === '사전' && o.kinds.length === 1) lines.push("사전검사 결과지와 부모양육태도검사가 둘 다 닿으면 서류철 '" + col + "' 칸에 o가 적혀요");
-  else lines.push("보호자가 받으면 서류철 '" + col + "' 칸에 o가 적혀요");
-  res('ok', '카톡을 보냈어요', lines);
+// 보낸 뒤 = 시트를 닫고 카드에 06 체크 덮개 → 0.8초 뒤 접힘 → 최근 보낸 결과지로
+function ok(o, r){
+  var k = o.k, id = o.id;
+  S.hold[id] = Date.now(); S.fin[id] = 0;   // 덮개 전에 다시 그려져도 카드가 사라지지 않게
+  var now = new Date(), md = (now.getMonth() + 1) + '/' + now.getDate(), hm = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+  var pick = {}; o.kinds.forEach(function(kd, i){ pick[kd] = o.files[i]; });
+  S.extra[id] = { key: k.key, tab: k.tab, svc: k.svc, label: k.label, name: k.name, b6: k.b6, center: k.center, teacher: k.teacher, end: k.end, stage: k.stage, mark: k.mark,
+    at: md, atMs: now.getTime(), since: o.t0 - 60000, st: r.mode === 'test' ? '시험' : '확인 중', tl: [[r.mode === 'test' ? '시험으로 보냄' : '보냄', md + ' ' + hm]], job: '', off: false, files: [], link: r.link || '', pick: pick, now: k.files || k.now, hl: true };
+  if (S.sheet && S.sheet.id === id) { S.sheet = null; paintSheet(); setTimeout(function(){ finishCard(id); }, 320); }
+  else finishCard(id);
+  setTimeout(function(){ load(true); if (S.q) find(S.q, true); }, 1500);   // 07 목록과 맞춤(보낸 사본 이름, 작업 번호 — 열기, 지난 링크 닫기에 씀)
+}
+function finishCard(id){
+  var el = document.querySelector('.kc[data-k="' + cssEsc(id) + '"]');
+  S.anim++;
+  if (!el) { delete S.fin[id]; S.anim--; paintList(); return; }
+  S.fin[id] = 1;
+  paintList();
+  setTimeout(function(){
+    el = document.querySelector('.kc[data-k="' + cssEsc(id) + '"]');   // 그사이 다른 카드가 보내져 다시 그렸으면 새 카드를 접는다
+    if (!el) { delete S.fin[id]; S.anim--; S.shiftAt = Date.now(); paintList(); return; }
+    var h = el.getBoundingClientRect().height, ms = 360;
+    el.style.height = h + 'px'; el.style.overflow = 'hidden'; void el.offsetHeight;
+    el.style.transition = 'height ' + ms + 'ms var(--ease), opacity ' + (ms - 60) + 'ms, margin ' + ms + 'ms var(--ease), padding ' + ms + 'ms var(--ease), box-shadow ' + ms + 'ms';
+    el.style.height = '0px'; el.style.opacity = '0'; el.style.paddingTop = '0px'; el.style.paddingBottom = '0px'; el.style.marginTop = '-10px'; el.style.boxShadow = 'none';
+    setTimeout(function(){ delete S.fin[id]; S.anim--; S.shiftAt = Date.now(); paintList(); setTimeout(function(){ var x = S.extra[id]; if (x) x.hl = false; }, 1700); }, ms + 20);
+  }, 800);
+}
+function cssEsc(s){ return String(s).replace(/["\\]/g, '\\$&'); }
+function sendSel(){
+  var ids = selIds();
+  if (!ids.length) { var gb = $('selbar').querySelector('.mb'); if (gb) { gb.classList.remove('shake'); void gb.offsetWidth; gb.classList.add('shake'); } toast('보낼 아동을 골라 주세요'); return; }   // 6판 — 흔들림(§4.9) + 토스트
+  var why = cantWhy(); if (why) { toast(why); return; }
+  var items = ids.map(findItem).filter(function(k){ return k && !blocked(idOf(k)); });
+  if (!items.length) { paintList(); return; }
+  batchStart(items.length);
+  items.forEach(function(k){
+    var p = { kinds: [], ids: [] };
+    ['pat', 'result'].forEach(function(kd){ var f = ((k.files || {})[kd] || [])[0]; if (f && (kd === 'result' || k.stage === '사전')) { p.kinds.push(kd); p.ids.push(f.id); } });
+    if (!p.ids.length || !startJob(k, p.ids, p.kinds)) batchEnd(false);
+  });
+  paintList();
+}
+function sheetSend(btn){
+  var s = S.sheet, k = s && findItem(s.id); if (!k) return;
+  if (isBusy(s.id)) return;
+  var why = cantWhy() || (blocked(s.id) === 'unsure' ? '보냈는지 확인하고 있어요. 잠시 뒤 다시 눌러 주세요' : '') || (!pickedIds().length ? '보낼 파일을 골라 주세요' : '');
+  if (why) { btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); toast(why); return; }
+  var kinds = [], ids = [];
+  ['pat', 'result'].forEach(function(kd){ if (S.pick[kd]) { kinds.push(kd); ids.push(S.pick[kd]); } });
+  // 다시 보내기(보낸 결과지에서) = 그 아동 단계 줄을 카드처럼 다룸
+  var item = s.resend ? Object.assign({}, k, { files: k.now }) : k;
+  batchStart(1);
+  if (!startJob(item, ids, kinds)) batchEnd(false);
+  paintSheet(); paintList();
+}
+// 결과 다시 확인(같은 번호)
+function againStuck(id){
+  var o = S.stuck[id]; if (!o) return;
+  delete S.stuck[id]; o.t0 = Date.now(); o.again = 0; o.state = 'run'; S.jobs[id] = o; batchStart(1);
+  paintSheet(); paintList();
+  call({ action: 'rs_res', job: o.job }).then(function(x){
+    if (S.jobs[id] !== o) return;
+    if (x && x.state === 'done') done(o, x.res); else if (x && x.state === 'run') askLater(o); else fire(o);
+  }, function(){ if (S.jobs[id] === o) askLater(o); });
 }
 
-/* ══════════ 결과 상자(머무름) ══════════ */
-var resCtx = null;
-function clearRes(){ resCtx = null; $('res').className = 'res'; $('res').innerHTML = ''; }
-function res(kind, title, lines, btns, o, link){
-  resCtx = { o: o || null, link: link || '' };
-  var el = $('res');
-  el.className = 'res on ' + kind;
-  el.innerHTML = '<div class="rt1"><i><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></i>' + esc(title) + '</div>'
-    + (lines && lines.length ? '<ul>' + lines.map(function(l){ return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '')
-    + (link ? '<div class="lgr" style="background:#fff;margin-top:8px;border:0"><div class="lk" style="margin-top:0"><span class="u">' + esc(link) + '</span></div></div>' : '')
-    + (btns && btns.length ? '<div class="rb">' + btns.map(function(b){ return '<button type="button" class="b ' + (b.pri ? 'pri' : 'weak') + '" data-r="' + b.id + '"><span class="lb">' + esc(b.label) + '</span></button>'; }).join('') + '</div>' : '');
-  $('kbody').scrollTop = 0;
+/* ══════════ 확인할 파일 고치기 ══════════ */
+function fixGo(btn){
+  var c = findChk(S.sheet.id); if (!c || S.fixing) return;
+  if (S.fxPick === -1) { btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); toast('아동을 먼저 골라 주세요'); return; }
+  var why = cantWhy(); if (why) { toast(why); return; }
+  var x = candsSorted(c)[S.fxPick];
+  S.fixing = true; paintSheet();
+  call({ action: 'rs_fix', id: c.id, to: { tab: x.tab, svc: x.svc, label: x.label, b6: x.b6 } }, 45000).then(function(r){
+    S.fixing = false;
+    if (r && r.ok) { S.hold[c.id] = Date.now(); S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(x.label + ' 결과지를 보낼 결과지로 옮겼어요', true); }, 300); load(true); return; }
+    var w = r && r.why;
+    paintSheet();
+    toast(w === 'exists' ? '같은 이름 파일이 폴더에 이미 있어요. 폴더에서 확인해 주세요' : w === 'gone' ? '파일이 바뀌었어요. 목록을 다시 불러올게요' : w === 'kid' ? '이 아동으로는 맞출 수 없어요' : offReply(r) ? '지금은 맞출 수 없어요' : '파일 이름을 못 바꿨어요. 다시 눌러 주세요');
+    if (w === 'gone' || w === 'kid') { S.sheet = null; paintSheet(); load(true); }
+  }, function(){ S.fixing = false; paintSheet(); toast('결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'); load(true); });
 }
-$('res').addEventListener('click', function(e){
-  var b = e.target.closest('button[data-r]'); if (!b || b.disabled || !resCtx) return;
-  var a = b.getAttribute('data-r'), o = resCtx.o;
-  if (a === 'copy') { copyText(resCtx.link); return; }
-  if (a === 'reload') { clearRes(); loadKid(true); return; }
-  if (a === 'again' && o) {   // 같은 번호 — 07에 묻고(rs_res), 모르면 다시 부름
-    clearRes(); o.t0 = Date.now(); o.again = 0; S.sending = o; paintKid();
-    call({ action: 'rs_res', job: o.job }).then(function(x){
-      if (S.sending !== o) return;
-      if (x && x.state === 'done') done(o, x.res); else if (x && x.state === 'run') askLater(o); else fire(o);
-    }, function(){ if (S.sending === o) askLater(o); });
-  }
-});
 
-/* ══════════ 링크 끄기 확인 창 — 잘못 붙인 파일, 틀린 번호를 알았을 때. 끄면 보호자가 그 링크로 못 연다(07 rs_off) ══════════ */
-var cfmCtx = null, cfmAt = 0, offing = false;
-function offAsk(job){
-  cfmCtx = { job: String(job || '') }; cfmAt = Date.now();
-  $('cfmT').textContent = '이 링크를 끌까요?';
-  $('cfmS').textContent = '끄면 보호자가 이 링크로 결과지를 볼 수 없어요. 고친 파일은 보내기로 다시 보내 주세요';
-  $('cfmNoL').textContent = '닫기'; $('cfmGoL').textContent = '끄기';
-  $('dim').classList.add('on'); $('cfm').classList.add('on');
+/* ══════════ 열기(앱 안 창) ══════════ */
+var FC = {};
+function openFile(q, btn){
+  var key = q.job ? 'j:' + q.job + ':' + q.i : 'f:' + q.id, c = FC[key];
+  if (c && c.url) { showView(c); return; }
+  if (c && c.p) return;
+  var was = btn ? btn.innerHTML : '';
+  if (btn) btn.innerHTML = '여는 중' + LD;
+  c = FC[key] = {};
+  var b = q.job ? { action: 'rs_file', job: q.job, i: q.i } : { action: 'rs_file', id: q.id };
+  c.p = call(b, 45000).then(function(r){
+    if (btn) btn.innerHTML = was;
+    if (!r || !r.ok || !r.b64) { delete FC[key]; toast(r && r.why === 'gone' ? '파일이 폴더에서 바뀌었어요. 목록을 다시 불러올게요' : '파일을 열지 못했어요'); if (r && r.why === 'gone') load(true); return; }
+    var bin = atob(r.b64), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    c.url = URL.createObjectURL(new Blob([u], { type: 'application/pdf' })); c.n = r.name; c.p = null;
+    showView(c);
+  }, function(){ if (btn) btn.innerHTML = was; delete FC[key]; toast('파일을 열지 못했어요'); });
 }
-function closeCfm(){ if (!cfmCtx || offing) return !!cfmCtx; cfmCtx = null; $('cfm').classList.remove('on'); $('dim').classList.remove('on'); return true; }
-$('cfmNo').addEventListener('click', function(){ if (Date.now() - cfmAt < 400) return; closeCfm(); });   // 뜨자마자 떨어진 누름(직전 누름의 잔상)은 고른 게 아니다
+function showView(c){ var v = $('fView'), b = v.querySelector('.vb'); b.innerHTML = ''; var fr = document.createElement('iframe'); fr.title = c.n || 'PDF'; fr.src = c.url; b.appendChild(fr); v.classList.add('on'); v.querySelector('.vx').focus(); }
+function closeView(){ var v = $('fView'); if (!v.classList.contains('on')) return false; v.classList.remove('on'); v.querySelector('.vb').innerHTML = ''; return true; }
+$('fView').addEventListener('click', function(e){ if (e.target === this || e.target.classList.contains('vb') || e.target.closest('.vx')) closeView(); });
+
+/* ══════════ 지난 링크 닫기 확인 창 ══════════ */
+function offAsk(){
+  var k = S.sheet && findItem(S.sheet.id); if (!k || !k.job) return;
+  S.cfm = { job: k.job, id: S.sheet.id }; S.cfmAt = Date.now();
+  $('cfmT').textContent = OFFW.t; $('cfmS').textContent = OFFW.s; $('cfmNo').textContent = OFFW.no; $('cfmGo').textContent = OFFW.go;
+  $('cdim').classList.add('on'); $('cfm').classList.add('on');
+}
+function closeCfm(){ if (!S.cfm || S.offing) return !!S.cfm; S.cfm = null; $('cfm').classList.remove('on'); $('cdim').classList.remove('on'); return true; }
+$('cfmNo').addEventListener('click', function(){ if (Date.now() - S.cfmAt < 400) return; closeCfm(); });   // 뜨자마자 떨어진 누름(직전 누름의 잔상)은 고른 게 아니다
+$('cdim').addEventListener('click', function(){ if (Date.now() - S.cfmAt > 400) closeCfm(); });
 $('cfmGo').addEventListener('click', function(){
-  if (!cfmCtx || offing || Date.now() - cfmAt < 400) return;
-  var job = cfmCtx.job, b = this;
-  offing = true; b.classList.add('busy');
-  call({ action: 'rs_off', job: job }).then(function(x){
-    offing = false; b.classList.remove('busy');
-    if (x && x.ok) { closeCfm(); toast(x.dup ? '이미 끈 링크예요' : '링크를 껐어요'); loadKid(false); refreshRow(); return; }
-    toast(offReply(x) ? '지금은 끌 수 없어요' : '끄지 못했어요. 다시 눌러 주세요');
-  }, function(){ offing = false; b.classList.remove('busy'); toast('결과를 못 받았어요. 보낸 기록을 확인해 주세요'); closeCfm(); loadKid(false); });
+  if (!S.cfm || S.offing || Date.now() - S.cfmAt < 400) return;
+  var c = S.cfm, b = this;
+  S.offing = true; b.innerHTML = OFFW.go + LD;
+  call({ action: 'rs_off', job: c.job }).then(function(x){
+    S.offing = false; b.textContent = OFFW.go;
+    if (x && x.ok) {
+      closeCfm(); toast(x.dup ? '이미 닫은 링크예요' : OFFW.toast, true);
+      var k = findItem(c.id); if (k) { k.off = true; k.st = '닫음'; var n = new Date(); k.tl = (k.tl || []).concat([['지난 링크 닫음', (n.getMonth() + 1) + '/' + n.getDate() + ' ' + ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2)]]); }
+      paintSheet(); paintList(); load(true); return;
+    }
+    toast(offReply(x) ? '지금은 닫을 수 없어요' : '닫지 못했어요. 다시 눌러 주세요');
+  }, function(){ S.offing = false; b.textContent = OFFW.go; closeCfm(); toast('결과를 못 받았어요. 보낸 결과지를 다시 확인해 주세요'); load(true); });
 });
-$('dim').addEventListener('click', function(){ if (Date.now() - cfmAt > 400) closeCfm(); });
-document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeCfm(); });
 
 /* ══════════ 토스트 ══════════ */
-function toast(t){ var a = $('atoast'); a.textContent = t; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(function(){ a.classList.remove('on'); }, 2600); }
+var tT = null;
+function toast(t, ok){ var a = $('atoast'); a.querySelector('span').textContent = t; a.classList.toggle('ok', !!ok); a.classList.add('on'); clearTimeout(tT); tT = setTimeout(function(){ a.classList.remove('on'); }, 2600); }
+function copyText(t){
+  var ok = function(){ toast('링크를 복사했어요', true); }, no = function(){ toast('복사하지 못했어요. 링크를 끌어서 골라 주세요'); };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, function(){ fallback() ? ok() : no(); }); return; } } catch (e) { }
+  if (fallback()) ok(); else no();
+  function fallback(){ try { var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); var r = document.execCommand('copy'); ta.remove(); return r; } catch (x) { return false; } }
+}
 
-/* ══════════ ← 뒤로 = 아이 → 찾기 → 앱(보내는 중엔 안 떠남), 창 −, 이동 그립(예약과 같은 문법) ══════════ */
+/* ══════════ 누름 ══════════ */
+document.addEventListener('pointerdown', function(){ S.pressing = true; }, true);
+document.addEventListener('pointerup', function(){ S.pressing = false; }, true);
+document.addEventListener('pointercancel', function(){ S.pressing = false; }, true);
+$('sdim').addEventListener('click', function(){ closeSheet(); });
+$('selbar').addEventListener('click', function(e){ if (e.target.closest('[data-act="sendsel"]')) sendSel(); });
+$('lst').addEventListener('click', function(e){
+  var t = e.target;
+  if (t.closest('[data-act="reload"]')) { S.err = false; paintList(); load(); return; }
+  // 고르기 — 목록이 방금 움직였으면(보낸 카드가 빠짐, 새 카드가 끼어듦) 0.6초는 안 받음
+  var kp = t.closest('[data-kpick]');
+  if (kp) { e.stopPropagation(); if (S.anim > 0 || Date.now() - S.shiftAt < GUARD_MS) return; var pid = kp.getAttribute('data-kpick'); if (S.sel[pid]) delete S.sel[pid]; else S.sel[pid] = true; paintList(); return; }
+  var k = t.closest('.kc[data-k]'); if (k && !k.classList.contains('skc')) { openSheet({ t: 'kid', id: k.getAttribute('data-k') }); return; }
+  var c = t.closest('[data-c]'); if (c) { openSheet({ t: 'chk', id: c.getAttribute('data-c') }); return; }
+  var s = t.closest('[data-s]'); if (s) { openSheet({ t: 'sent', id: s.getAttribute('data-s') }); return; }
+});
+$('sheet').addEventListener('click', function(e){
+  var t = e.target;
+  var op = t.closest('[data-open]'); if (op) { e.stopPropagation(); openFile({ id: op.getAttribute('data-open') }, op); return; }
+  var oj = t.closest('[data-ojob]'); if (oj) { e.stopPropagation(); openFile({ job: oj.getAttribute('data-ojob'), i: +oj.getAttribute('data-oi') }, oj); return; }
+  var cp = t.closest('[data-copy]'); if (cp) { copyText(cp.getAttribute('data-copy')); return; }
+  var pk = t.closest('[data-pick]'); if (pk) { if (S.fixing) return; S.fxPick = +pk.getAttribute('data-pick'); paintSheet(); return; }
+  var fr = t.closest('.fr[data-f]');
+  if (fr) { if (S.sheet && isBusy(S.sheet.id)) return; var kd = fr.getAttribute('data-kd'), id = fr.getAttribute('data-f'); S.pick[kd] = S.pick[kd] === id ? '' : id; paintSheet(); return; }   // 한 종류에 하나만(누른 것으로 바꿈), 다시 누르면 뺌
+  var a = t.closest('[data-act]'); if (!a) return;
+  var act = a.getAttribute('data-act');
+  if (act === 'vopen') { S.vOpen = true; paintSheet(); return; }
+  if (act === 'rvopen') { S.rvOpen = true; paintSheet(); return; }
+  if (act === 'sheetsend') { sheetSend(a); return; }
+  if (act === 'again') { againStuck(S.sheet.id); return; }
+  if (act === 'fixgo') { fixGo(a); return; }
+  if (act === 'linkoff') { offAsk(); return; }
+  if (act === 'resend') {
+    if (!canSend()) { a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); toast(cantWhy()); return; }
+    S.sheet = { t: 'sent', id: S.sheet.id, resend: true }; S.vOpen = false; S.pick = defaultPick(S.sheet); paintSheet(); return;
+  }
+});
+
+/* ══════════ ← 뒤로 = 확인 창 → 크게 보기 → 시트 → 검색 → 앱 ══════════ */
 function back(){
   if (closeCfm()) return true;
-  if ($('vKid').classList.contains('on')) {
-    if (S.sending) { toast('보내는 중이에요. 결과가 나오면 여기에 보여요'); return true; }
-    S.kid = null; S.det = null; ++S.detSeq; clearRes(); show('find'); find(); paintFind(); return true;
-  }
+  if (closeView()) return true;
+  if (S.sheet) { if (S.sheet.resend) { S.sheet = { t: 'sent', id: S.sheet.id }; paintSheet(); return true; } closeSheet(); return true; }
+  if ($('q').value) { $('q').value = ''; onQ(false); return true; }
   return false;
 }
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && back()) e.preventDefault(); });
 $('appBack').addEventListener('click', function(){ if (!back()) toApp({ type: 'back' }); });
 $('appMenu').addEventListener('click', function(){ toApp({ type: 'menu' }); });
 if (HOSTED) {
@@ -741,22 +990,13 @@ if (HOSTED) {
 window.addEventListener('message', function(e){
   if (!EMBED || e.source !== parent || e.origin !== location.origin) return;
   var d = e.data || {}; if (d.tf !== 'rs') return;
-  if (d.type === 'vis' && d.on) { paintBand(); tick(); if ($('vFind').classList.contains('on') && !$('q').value && !matchMedia('(any-pointer:coarse)').matches) setTimeout(function(){ try { $('q').focus(); } catch (x) { } }, 60); }
+  if (d.type === 'vis') { S.vis = !!d.on; if (d.on) { paintBand(); tick(); if (!S.loading && Date.now() - S.loadAt > 15000) load(!S.data ? false : true); } }
   if (d.type === 'dot') $('menuDot').classList.toggle('on', !!d.on);   // 메뉴 아이콘 점 = 앱 다른 메뉴 아이콘과 같은 값(문의 숫자)
-  if (d.type === 'hwback') { if (!back()) toApp({ type: 'back' }); }   // 폰 뒤로가기 = 확인 창, 아이 화면부터
+  if (d.type === 'hwback') { if (!back()) toApp({ type: 'back' }); }   // 폰 뒤로가기 = 확인 창, 시트부터
 });
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) tick(); });
-// 스크롤 흐림(넘칠 때만)
-[['flist', 'fsw'], ['kbody', 'ksw']].forEach(function(p){
-  var sc = $(p[0]), host = $(p[1]);
-  var f = function(){ var h = sc.clientHeight, over = h > 0 && sc.scrollHeight > h + 1;
-    host.classList.toggle('more', over && sc.scrollTop + h < sc.scrollHeight - 1);
-    host.classList.toggle('moreTop', over && sc.scrollTop > 1); };
-  sc.addEventListener('scroll', f); if (typeof ResizeObserver !== 'undefined') new ResizeObserver(f).observe(sc);
-  if (typeof MutationObserver !== 'undefined') new MutationObserver(f).observe(sc, { childList: true, subtree: true });
-});
 
-if (EMBED) { paintFind(); paintBand(); ping(); tick(); }
+if (EMBED) { paintList(); paintBand(); ping(); load(); tick(); }
 </script>
 </body>
 </html>
