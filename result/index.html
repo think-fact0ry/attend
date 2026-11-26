@@ -180,6 +180,9 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .kv.tlv dt{width:auto;min-width:84px;white-space:nowrap}
 .kv dd{margin:0;color:var(--g900);min-width:0;overflow-wrap:anywhere}
 .kv dd.no{color:var(--g500)}
+/* 이메일 주소 = 가린 주소 + 복사(온 주소, 11-26 — 행정이 메일 앱에 붙여 넣음). 복사가 안 되면 온 주소를 펼쳐 골라 쓸 수 있게 */
+.kv dd.ml{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv dd.ml .mt{min-width:0;overflow-wrap:anywhere;user-select:text}
 .fr{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--g200);border-radius:14px;padding:10px 10px 10px 12px;background:#fff;cursor:pointer;font:inherit;color:inherit;transition:border-color .12s}
 .fr .ck{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px var(--g300);display:flex;align-items:center;justify-content:center;transition:background .12s,box-shadow .12s}
 .fr .ck svg{width:13px;height:13px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
@@ -351,7 +354,7 @@ function callRead(body, hedge, ms){
    sel = 고른 카드 / jobs = 보내는 중(아동 단계 id → 작업) / fail = 못 보낸 까닭 / hold = 보낸 카드(서버가 따라올 때까지 뺌) + extra(그동안 보일 보낸 줄)
    sheet = {t: 'kid'|'sent'|'chk', id, resend} / pick = 시트에서 고른 파일 {종류: id} */
 var S = { on: null, mode: '', tryAt: 0, pollT: null, vis: false, data: null, err: false, loading: false, loadSeq: 0, loadAt: 0, pend: null, q: '', search: null, sSeq: 0, sLoading: false,
-  sel: {}, jobs: {}, queue: [], fail: {}, stuck: {}, unsure: {}, again: false, hold: {}, extra: {}, phones: {}, phAsked: {}, sheet: null, pick: {}, vOpen: false, rvOpen: false, fxPick: -1,
+  sel: {}, jobs: {}, queue: [], fail: {}, stuck: {}, unsure: {}, again: false, hold: {}, extra: {}, phones: {}, phAsked: {}, mailShow: {}, sheet: null, pick: {}, vOpen: false, rvOpen: false, fxPick: -1,
   cfm: null, cfmAt: 0, offing: false, fixing: false, shiftAt: 0, pressing: false, anim: 0, fin: {}, batch: null, seen: null };
 
 /* ══════════ 켜짐 묻기 — 빈 찾기(07이 아이를 안 읽고 mode만) ══════════ */
@@ -412,8 +415,9 @@ function sureUp(r, t0){
   if (S.sheet) paintSheet();
 }
 function blocked(id){ return S.stuck[id] ? 'stuck' : S.unsure[id] ? 'unsure' : ''; }
-function busyNow(){ return S.pressing || S.anim > 0 || !!S.sheet || !!S.cfm || $('fView').classList.contains('on'); }
-// 새 목록은 누르는 중, 시트 연 중, 모션 중엔 기다렸다가 제자리에(손가락 밑으로 다른 카드가 오지 않게)
+function busyNow(){ return S.pressing || S.anim > 0 || !!S.sheet || !!S.cfm || $('fView').classList.contains('on') || Object.keys(S.jobs).length > 0; }
+// 새 목록은 누르는 중, 시트 연 중, 모션 중, 보내는 중엔 기다렸다가 제자리에(손가락 밑으로 다른 카드가 오지 않게, 「발송 중」 카드 사이로 새 카드가 끼지 않게 — 11-26 점검).
+//  보내는 중이 끝나지 않는 일은 없다: 작업은 보냄, 실패, 꺼짐, 결과 모름(시한 130초 + 결과 묻기 3분 뒤 stuck) 어느 길이든 release로 빠진다
 function applyPend(){
   if (!S.pend) return;
   if (S.data && busyNow()) { setTimeout(applyPend, 800); return; }
@@ -610,10 +614,25 @@ function paintSheet(){
   if (on) wireDrag();
 }
 function shead(k){ return '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + cbHtml(k) + '<span style="margin-left:auto"><span class="stg1">' + esc(k.stage) + '</span></span></div><div class="sub">' + esc(b6Text(k.b6)) + '</div></div></div>'; }
+// 보호자 메일(07 rs_phones m, mw — 06 신청폼 AA). 가려 보이고 「복사」는 온 주소(시안 2판 「휴대폰 번호처럼 가려요」 + 06 「복사」 요청, 11-26).
+//  아직 모름 = 점 / 07이 메일을 모르는 옛 판(mw 없음) = 줄 없음 / err = 못 읽음 / two = 주소 둘(07이 안 고름) / '' = 없음
+function maskMail(m){ var i = m.indexOf('@'), id = m.slice(0, i); return (id.length > 2 ? id.slice(0, 2) : id.slice(0, 1)) + '****' + m.slice(i); }
+function mailRow(k){
+  var p = S.phones[k.key];
+  if (p && !('mw' in p)) return '';
+  var dd;
+  if (!p) dd = '<dd class="no">' + LD + '</dd>';
+  else if (p.mw === 'err') dd = '<dd class="no">못 읽었어요. 잠시 뒤 다시 열어 주세요</dd>';
+  else if (p.mw === 'two') dd = '<dd class="no">신청폼에 주소가 둘이라 비워 뒀어요</dd>';
+  else if (!p.m) dd = '<dd class="no">없음</dd>';
+  else dd = '<dd class="ml"><span class="mt">' + esc(S.mailShow[k.key] ? p.m : maskMail(p.m)) + '</span><button type="button" class="cchip" data-copy="' + esc(p.m) + '" data-cw="mail" data-ck="' + esc(k.key) + '">복사</button></dd>';
+  return '<div><dt>이메일 주소</dt>' + dd + '</div>';
+}
 function kvBase(k){
   var ph = phoneLine(k);
   return '<dl class="kv"><div><dt>제공인력</dt><dd>' + (k.teacher ? esc(k.teacher) + ' 선생님' : '<span class="no">모름</span>') + '</dd></div>'
     + '<div><dt>휴대폰 번호</dt><dd' + (ph ? '>' + esc(ph) : ' class="no">' + LD) + '</dd></div>'
+    + mailRow(k)
     + (k.end ? '<div><dt>서비스 종료</dt><dd>' + (k.end === '중도포기' ? '중도포기' : '계약 종료') + '</dd></div>' : '')
     + (k.mark ? '<div><dt>서류철 칸</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
 }
@@ -623,17 +642,22 @@ function kidSheet(k, resend){
   if (S.stuck[id]) h += '<div class="note warn">카톡이 나갔는지 아직 몰라요. 아래 버튼으로 다시 확인해 주세요</div>';
   else if (S.fail[id]) h += '<div class="note warn">' + esc(S.fail[id]) + '</div>';
   // 매크로는 같은 이름이면 「 (1)」을 붙여 새 파일로 저장 → 한 종류에 여럿. 종류마다 가장 새 것 + 그 앞 판은 접음
+  //  다시 저장한 아동(아래 「보낸 결과지」가 보임) = 접은 앞 판엔 안 보낸 판만(보낸 판이 두 번 안 뜨게 — 시안 6판 「앞 판(안 보냄)」, 11-26 점검)
+  //  기다리는 종류 줄은 맨 끝(시안 6판 = 파일 → 보낸 결과지 → 기다림)
+  var hist = !resend && k.re && k.sends && k.sends.length, waitH = '';
   ['result', 'pat'].forEach(function(kd){
     if (kd === 'pat' && k.stage !== '사전') return;
     var list = fs[kd] || [];
-    if (!list.length) { if (!resend && k.wait === kd) h += '<div class="fr none"><span class="ck"></span><span class="fn"><b>' + esc(kindName(kd, k.stage)) + '</b><span>저장되면 이곳에 나와요</span></span></div>'; return; }
+    if (!list.length) { if (!resend && k.wait === kd) waitH += '<div class="fr none"><span class="ck"></span><span class="fn"><b>' + esc(kindName(kd, k.stage)) + '</b><span>저장되면 이곳에 나와요</span></span></div>'; return; }
     h += frow(kd, list[0], false);
-    if (list.length > 1) {
-      if (!S.vOpen) h += '<button type="button" class="more1" data-act="vopen">같은 검사 앞 판 ' + (list.length - 1) + '개 더 ' + IC.down + '</button>';
-      else list.slice(1).forEach(function(f){ h += frow(kd, f, true); });
+    var prev = list.slice(1).filter(function(f){ return !(hist && f.sent); });
+    if (prev.length) {
+      if (!S.vOpen) h += '<button type="button" class="more1" data-act="vopen">같은 검사 앞 판 ' + prev.length + '개 더 ' + IC.down + '</button>';
+      else prev.forEach(function(f){ h += frow(kd, f, true); });
     }
   });
-  if (!resend && k.re && k.sends && k.sends.length) h += reHist(k);
+  if (hist) h += reHist(k);
+  h += waitH;
   var lab = resend || k.re ? '다시 보내기' : '보내기';
   var gate = !pickedIds().length || !canSend() || !!blocked(id);
   if (S.stuck[id] && !busy) return h + '</div><div class="sft"><button type="button" class="mb dk" data-act="again">결과 다시 확인</button></div>';   // 새 번호로 보내기 대신 같은 번호로 묻기(두 통 막기)
@@ -795,7 +819,11 @@ function ok(o, r){
 function finishCard(id){
   var el = document.querySelector('.kc[data-k="' + cssEsc(id) + '"]');
   S.anim++;
-  if (!el) { delete S.fin[id]; S.anim--; paintList(); return; }
+  if (!el) {   // 목록에 카드가 없음(보낸 결과지 시트에서 다시 보냄 등) = 덮개를 보일 데가 없으니 토스트로(시안 6판)
+    delete S.fin[id]; S.anim--; paintList();
+    var x = S.extra[id]; if (x) setTimeout(function(){ toast(x.name + ' 결과지를 ' + (x.st === '시험' ? '시험으로 보냈어요' : '카톡으로 보냈어요'), true); }, 200);
+    return;
+  }
   S.fin[id] = 1;
   paintList();
   setTimeout(function(){
@@ -904,7 +932,7 @@ $('cfmGo').addEventListener('click', function(){
   call({ action: 'rs_off', job: c.job }).then(function(x){
     S.offing = false; b.textContent = OFFW.go;
     if (x && x.ok) {
-      closeCfm(); toast(x.dup ? '이미 닫은 링크예요' : OFFW.toast, true);
+      closeCfm(); toast(x.dup ? '이미 닫은 링크예요' : OFFW.toast);   // 체크 없음(시안 6판 — 닫기는 「잘 됐어요」가 아니라 알림)
       var k = findItem(c.id); if (k) { k.off = true; k.st = '닫음'; var n = new Date(); k.tl = (k.tl || []).concat([['지난 링크 닫음', (n.getMonth() + 1) + '/' + n.getDate() + ' ' + ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2)]]); }
       paintSheet(); paintList(); load(true); return;
     }
@@ -915,8 +943,11 @@ $('cfmGo').addEventListener('click', function(){
 /* ══════════ 토스트 ══════════ */
 var tT = null;
 function toast(t, ok){ var a = $('atoast'); a.querySelector('span').textContent = t; a.classList.toggle('ok', !!ok); a.classList.add('on'); clearTimeout(tT); tT = setTimeout(function(){ a.classList.remove('on'); }, 2600); }
-function copyText(t){
-  var ok = function(){ toast('링크를 복사했어요', true); }, no = function(){ toast('복사하지 못했어요. 링크를 끌어서 골라 주세요'); };
+function copyText(t, what, key){
+  var mail = what === 'mail';
+  var ok = function(){ toast(mail ? '메일 주소를 복사했어요' : '링크를 복사했어요', true); };
+  var no = mail ? function(){ S.mailShow[key] = 1; if (S.sheet) paintSheet(); toast('복사하지 못했어요. 주소를 다 보이게 했어요'); }   // 가린 채면 손으로도 못 옮김 → 온 주소를 펼침
+    : function(){ toast('복사하지 못했어요. 링크를 끌어서 골라 주세요'); };
   try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, function(){ fallback() ? ok() : no(); }); return; } } catch (e) { }
   if (fallback()) ok(); else no();
   function fallback(){ try { var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); var r = document.execCommand('copy'); ta.remove(); return r; } catch (x) { return false; } }
@@ -942,7 +973,7 @@ $('sheet').addEventListener('click', function(e){
   var t = e.target;
   var op = t.closest('[data-open]'); if (op) { e.stopPropagation(); openFile({ id: op.getAttribute('data-open') }, op); return; }
   var oj = t.closest('[data-ojob]'); if (oj) { e.stopPropagation(); openFile({ job: oj.getAttribute('data-ojob'), i: +oj.getAttribute('data-oi') }, oj); return; }
-  var cp = t.closest('[data-copy]'); if (cp) { copyText(cp.getAttribute('data-copy')); return; }
+  var cp = t.closest('[data-copy]'); if (cp) { copyText(cp.getAttribute('data-copy'), cp.getAttribute('data-cw'), cp.getAttribute('data-ck')); return; }
   var pk = t.closest('[data-pick]'); if (pk) { if (S.fixing) return; S.fxPick = +pk.getAttribute('data-pick'); paintSheet(); return; }
   var fr = t.closest('.fr[data-f]');
   if (fr) { if (S.sheet && isBusy(S.sheet.id)) return; var kd = fr.getAttribute('data-kd'), id = fr.getAttribute('data-f'); S.pick[kd] = S.pick[kd] === id ? '' : id; paintSheet(); return; }   // 한 종류에 하나만(누른 것으로 바꿈), 다시 누르면 뺌
