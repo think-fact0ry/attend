@@ -355,7 +355,7 @@ function callRead(body, hedge, ms){
    sheet = {t: 'kid'|'sent'|'chk', id, resend} / pick = 시트에서 고른 파일 {종류: id} */
 var S = { on: null, mode: '', tryAt: 0, pollT: null, vis: false, data: null, err: false, loading: false, loadSeq: 0, loadAt: 0, pend: null, q: '', search: null, sSeq: 0, sLoading: false,
   sel: {}, jobs: {}, queue: [], fail: {}, stuck: {}, unsure: {}, again: false, hold: {}, extra: {}, phones: {}, phAsked: {}, mailShow: {}, sheet: null, pick: {}, vOpen: false, rvOpen: false, fxPick: -1,
-  cfm: null, cfmAt: 0, offing: false, fixing: false, shiftAt: 0, pressing: false, anim: 0, fin: {}, batch: null, seen: null };
+  cfm: null, cfmAt: 0, offing: false, fixing: false, shiftAt: 0, pressing: false, pressAt: 0, anim: 0, fin: {}, batch: null, seen: null };
 
 /* ══════════ 켜짐 묻기 — 빈 찾기(07이 아이를 안 읽고 mode만) ══════════ */
 function ping(){
@@ -415,9 +415,10 @@ function sureUp(r, t0){
   if (S.sheet) paintSheet();
 }
 function blocked(id){ return S.stuck[id] ? 'stuck' : S.unsure[id] ? 'unsure' : ''; }
-function busyNow(){ return S.pressing || S.anim > 0 || !!S.sheet || !!S.cfm || $('fView').classList.contains('on') || Object.keys(S.jobs).length > 0; }
+function busyNow(){ return (S.pressing && Date.now() - S.pressAt < 8000) || S.anim > 0 || !!S.sheet || !!S.cfm || $('fView').classList.contains('on') || Object.keys(S.jobs).length > 0; }
 // 새 목록은 누르는 중, 시트 연 중, 모션 중, 보내는 중엔 기다렸다가 제자리에(손가락 밑으로 다른 카드가 오지 않게, 「발송 중」 카드 사이로 새 카드가 끼지 않게 — 11-26 점검).
-//  보내는 중이 끝나지 않는 일은 없다: 작업은 보냄, 실패, 꺼짐, 결과 모름(시한 130초 + 결과 묻기 3분 뒤 stuck) 어느 길이든 release로 빠진다
+//  보내는 중이 끝나지 않는 일은 없다: 작업은 보냄, 실패, 꺼짐, 결과 모름(시한 90초 + 결과 묻기 3분 뒤 stuck) 어느 길이든 release로 빠진다
+//  누르는 중 = 8초까지만(창 밖에서 손을 떼면 pointerup이 안 와 목록이 멈춰 있던 것 — 11-26 코드만 준 리뷰)
 function applyPend(){
   if (!S.pend) return;
   if (S.data && busyNow()) { setTimeout(applyPend, 800); return; }
@@ -458,16 +459,14 @@ function findItem(id){
 function findChk(id){ var a = S.data ? S.data.chk : []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 
 /* ══════════ 보호자 번호 — 목록 뒤 한 번에(번호 찾기가 몇 초라 목록을 막지 않게) ══════════ */
-function askPhones(){
-  var want = [], keys = {};
-  todoList().concat(sentList()).forEach(function(k){ if (!S.phones[k.key] && !S.phAsked[k.key] && !keys[k.key]) { keys[k.key] = 1; want.push({ tab: k.tab, svc: k.svc, label: k.label, b6: k.b6 }); } });
-  if (!want.length) return;
-  Object.keys(keys).forEach(function(k){ S.phAsked[k] = Date.now(); });
-  call({ action: 'rs_phones', kids: want.slice(0, 80) }, 60000).then(function(r){
-    if (r && r.ok && r.phones) Object.keys(r.phones).forEach(function(k){ S.phones[k] = r.phones[k]; });
-    Object.keys(keys).forEach(function(k){ if (!S.phones[k]) delete S.phAsked[k]; });
-    if (S.sheet) paintSheet();
-  }, function(){ Object.keys(keys).forEach(function(k){ delete S.phAsked[k]; }); });
+function askPhones(){ askPhonesFor(todoList().concat(sentList())); }
+// 다시 물을 때(11-26 코드만 준 리뷰 2 — 옛 판은 한 번 받으면 세션 내내 그대로라 「못 읽었어요. 잠시 뒤 다시 열어 주세요」가 거짓이 됐다):
+//  못 읽음(번호, 메일) = 1분 뒤 / 받은 값 = 30분 뒤(07 기억과 같은 길이 — 보호자가 06에서 메일을 고친 것)
+function phNeed(k){
+  if (S.phAsked[k.key]) return false;
+  var p = S.phones[k.key]; if (!p) return true;
+  var age = Date.now() - (p._at || 0);
+  return (p.mw === 'err' || p.why === '번호를 못 읽었어요') ? age > 60000 : age > 1800000;
 }
 function phoneLine(k){
   if (S.mode === 'test') return '시험 중이라 카톡은 안 가요';
@@ -579,18 +578,21 @@ function find(v, force){
 }
 function askPhonesFor(list){
   var want = [], keys = {};
-  list.forEach(function(k){ if (!S.phones[k.key] && !S.phAsked[k.key] && !keys[k.key]) { keys[k.key] = 1; want.push({ tab: k.tab, svc: k.svc, label: k.label, b6: k.b6 }); } });
+  list.forEach(function(k){ if (phNeed(k) && !keys[k.key]) { keys[k.key] = 1; want.push({ tab: k.tab, svc: k.svc, label: k.label, b6: k.b6 }); } });
   if (!want.length) return;
   Object.keys(keys).forEach(function(k){ S.phAsked[k] = Date.now(); });
   call({ action: 'rs_phones', kids: want.slice(0, 80) }, 60000).then(function(r){
-    if (r && r.ok && r.phones) Object.keys(r.phones).forEach(function(k){ S.phones[k] = r.phones[k]; });
-    Object.keys(keys).forEach(function(k){ if (!S.phones[k]) delete S.phAsked[k]; });
+    if (r && r.ok && r.phones) Object.keys(r.phones).forEach(function(k){ var p = r.phones[k]; if (p && typeof p === 'object') p._at = Date.now(); S.phones[k] = p; });
+    Object.keys(keys).forEach(function(k){ delete S.phAsked[k]; });   // 다시 물을지는 phNeed가(받은 때 _at)
     if (S.sheet) paintSheet();
   }, function(){ Object.keys(keys).forEach(function(k){ delete S.phAsked[k]; }); });
 }
 
 /* ══════════ 시트 ══════════ */
-function openSheet(s){ S.sheet = s; S.vOpen = false; S.rvOpen = false; S.fxPick = -1; if (s.t !== 'chk') S.pick = defaultPick(s); paintSheet(); }
+function openSheet(s){
+  S.sheet = s; S.vOpen = false; S.rvOpen = false; S.fxPick = -1; if (s.t !== 'chk') S.pick = defaultPick(s); paintSheet();
+  if (s.t !== 'chk') { var it = findItem(s.id); if (it) askPhonesFor([it]); }   // 「못 읽었어요. 잠시 뒤 다시 열어 주세요」 = 다시 열면 다시 물음(phNeed)
+}
 function closeSheet(){ if (!S.sheet) return false; S.sheet = null; paintSheet(); return true; }
 // 고른 파일 기본 = 종류마다 가장 새 판(잠기지 않은 것 — 07이 새 것 먼저). 다시 보내기 = 지난 링크에 있던 종류만(Claude 정함 11-26)
 function filesOf(s){ var k = findItem(s.id); if (!k) return null; return s.resend ? (k.now || { result: [], pat: [] }) : (k.files || { result: [], pat: [] }); }
@@ -650,7 +652,7 @@ function kidSheet(k, resend){
     var list = fs[kd] || [];
     if (!list.length) { if (!resend && k.wait === kd) waitH += '<div class="fr none"><span class="ck"></span><span class="fn"><b>' + esc(kindName(kd, k.stage)) + '</b><span>저장되면 이곳에 나와요</span></span></div>'; return; }
     h += frow(kd, list[0], false);
-    var prev = list.slice(1).filter(function(f){ return !(hist && f.sent); });
+    var prev = list.slice(1).filter(function(f){ return !(hist && ('h' in f ? f.h : f.sent)); });   // h = 아래 「보낸 결과지」에 있는 판(닫힌 링크 포함, 07 @57~ — 옛 07은 sent)
     if (prev.length) {
       if (!S.vOpen) h += '<button type="button" class="more1" data-act="vopen">같은 검사 앞 판 ' + prev.length + '개 더 ' + IC.down + '</button>';
       else prev.forEach(function(f){ h += frow(kd, f, true); });
@@ -954,7 +956,7 @@ function copyText(t, what, key){
 }
 
 /* ══════════ 누름 ══════════ */
-document.addEventListener('pointerdown', function(){ S.pressing = true; }, true);
+document.addEventListener('pointerdown', function(){ S.pressing = true; S.pressAt = Date.now(); }, true);
 document.addEventListener('pointerup', function(){ S.pressing = false; }, true);
 document.addEventListener('pointercancel', function(){ S.pressing = false; }, true);
 $('sdim').addEventListener('click', function(){ closeSheet(); });
