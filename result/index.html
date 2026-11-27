@@ -353,7 +353,7 @@ function callRead(body, hedge, ms){
    on = 07이 서명을 받음 / mode = live·test·off / data = rs_list 응답(첫 화면) / search = 검색 응답
    sel = 고른 카드 / jobs = 보내는 중(아동 단계 id → 작업) / fail = 못 보낸 까닭 / hold = 보낸 카드(서버가 따라올 때까지 뺌) + extra(그동안 보일 보낸 줄)
    sheet = {t: 'kid'|'sent'|'chk', id, resend} / pick = 시트에서 고른 파일 {종류: id} */
-var S = { on: null, mode: '', tryAt: 0, pollT: null, vis: false, data: null, err: false, loading: false, loadSeq: 0, loadAt: 0, pend: null, q: '', search: null, sSeq: 0, sLoading: false,
+var S = { on: null, mode: '', tp: 0, tryAt: 0, pollT: null, vis: false, data: null, err: false, loading: false, loadSeq: 0, loadAt: 0, pend: null, q: '', search: null, sSeq: 0, sLoading: false,
   sel: {}, jobs: {}, queue: [], fail: {}, stuck: {}, unsure: {}, again: false, hold: {}, extra: {}, phones: {}, phAsked: {}, mailShow: {}, sheet: null, pick: {}, vOpen: false, rvOpen: false, fxPick: -1,
   cfm: null, cfmAt: 0, offing: false, fixing: false, shiftAt: 0, pressing: false, pressAt: 0, anim: 0, fin: {}, batch: null, seen: null };
 
@@ -361,7 +361,7 @@ var S = { on: null, mode: '', tryAt: 0, pollT: null, vis: false, data: null, err
 function ping(){
   S.tryAt = Date.now();
   callRead({ action: 'rs_find', q: '' }).then(function(r){
-    if (r && r.ok && +r.lv >= SCREEN_V) { S.mode = r.mode || S.mode; goOn(); return; }   // lv = 07이 이 화면 동작(rs_list)을 아는 판(옛 07 @52는 찾기만 ok — 켜짐, 꺼짐이 번갈지 않게)
+    if (r && r.ok && +r.lv >= SCREEN_V) { S.mode = r.mode || S.mode; S.tp = +r.tp || 0; goOn(); return; }   // lv = 07이 이 화면 동작(rs_list)을 아는 판(옛 07 @52는 찾기만 ok — 켜짐, 꺼짐이 번갈지 않게)
     if ((r && r.ok) || offReply(r)) goOff();
   }, function(e){ if (e && e.noid) goOff(); });
 }
@@ -381,7 +381,7 @@ function paintBand(){
   var t = '';
   if (S.on === false) t = '지금은 검사 결과를 보낼 수 없어요. 잠시 뒤 다시 확인할게요';
   else if (S.mode === 'off') t = '지금은 보내기가 꺼져 있어요';
-  else if (S.mode === 'test') t = '시험 중이에요. 카톡은 안 가고, 보낸 결과지에 보호자 화면 링크가 나와요';
+  else if (S.mode === 'test') t = S.tp ? '시험 중이에요. 카톡은 대표님 폰으로만 가고, 보낸 결과지에 보호자 화면 링크가 나와요' : '시험 중이에요. 카톡은 안 가고, 보낸 결과지에 보호자 화면 링크가 나와요';   // tp = 07이 시험 알림톡을 대표님 폰(EF_TEST_PHONE)으로 보냄(11-27 — tp를 모르는 옛 07이면 옛 글)
   $('band').textContent = t; $('band').classList.toggle('on', !!t);
 }
 
@@ -395,7 +395,7 @@ function load(silent){
     if (my !== S.loadSeq) return;
     S.loading = false; S.loadAt = Date.now();
     if (!r || !r.ok) { if (offReply(r)) goOff(); if (!S.data) { S.err = true; paintList(); } after(); return; }
-    S.mode = r.mode || S.mode; goOn();
+    S.mode = r.mode || S.mode; S.tp = +r.tp || 0; goOn();
     sureUp(r, t0);
     S.pend = r; applyPend(); after();
   }, function(e){
@@ -469,7 +469,7 @@ function phNeed(k){
   return (p.mw === 'err' || p.why === '번호를 못 읽었어요') ? age > 60000 : age > 1800000;
 }
 function phoneLine(k){
-  if (S.mode === 'test') return '시험 중이라 카톡은 안 가요';
+  if (S.mode === 'test') return S.tp ? '시험 중이라 카톡은 대표님 폰으로 가요' : '시험 중이라 카톡은 안 가요';
   var p = S.phones[k.key];
   if (!p) return '';
   if (p.p) return p.p;
@@ -568,7 +568,7 @@ function find(v, force){
   callRead({ action: 'rs_list', q: v }, 8000, LIST_TIMEOUT_MS).then(function(r){
     if (my !== S.sSeq) return;
     if (!r || !r.ok) { if (offReply(r)) goOff(); if (force && S.search && !S.search.err) return; S.search = { err: true }; paintList(); return; }
-    S.mode = r.mode || S.mode; goOn();
+    S.mode = r.mode || S.mode; S.tp = +r.tp || 0; goOn();
     (function put(){
       if (my !== S.sSeq) return;
       if (force && S.anim > 0) { setTimeout(put, 400); return; }   // 보낸 카드가 접히는 중엔 기다렸다가(다시 그리면 접히던 카드가 다시 펴진다)
@@ -816,6 +816,7 @@ function ok(o, r){
     at: md, atMs: now.getTime(), since: o.t0 - 60000, st: r.mode === 'test' ? '시험' : '확인 중', tl: [[r.mode === 'test' ? '시험으로 보냄' : '보냄', md + ' ' + hm]], job: '', off: false, files: [], link: r.link || '', pick: pick, now: k.files || k.now, hl: true };
   if (S.sheet && S.sheet.id === id) { S.sheet = null; paintSheet(); setTimeout(function(){ finishCard(id); }, 320); }
   else finishCard(id);
+  if (r.mode === 'test' && r.tw) setTimeout(function(){ toast('대표님 폰 시험 카톡은 못 갔어요. ' + r.tw); }, 1700);   // 시험 보내기는 됐고(사본, 링크) 알림톡만 못 감(틀 승인 전, 번호 없음 — 07 _rsTestTalk_). 카드 접힘 뒤에
   setTimeout(function(){ load(true); if (S.q) find(S.q, true); }, 1500);   // 07 목록과 맞춤(보낸 사본 이름, 작업 번호 — 열기, 지난 링크 닫기에 씀)
 }
 function finishCard(id){
