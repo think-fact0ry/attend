@@ -484,7 +484,7 @@ function fileLine(k){
   var id = idOf(k);
   if (S.stuck[id]) return '<div class="l3 warn">결과를 아직 못 받았어요. 눌러서 다시 확인해 주세요</div>';
   if (S.fail[id]) return '<div class="l3 warn">' + esc(S.fail[id]) + '</div>';
-  var pre = k.re ? '<span class="mtag">수정됨</span>' : k.byMark ? '<span class="mtag g">서류철 ' + esc(k.mark || 'o') + '</span>' : '';
+  var pre = k.re ? '<span class="mtag">수정됨</span>' : k.byMark ? '<span class="mtag g">서류철 시트 ' + esc(k.mark || 'o') + '</span>' : '';
   var names = [];
   (k.files && k.files.result && k.files.result.length ? ['result'] : []).concat(k.files && k.files.pat && k.files.pat.length ? ['pat'] : []).forEach(function(kd){ names.push(esc(kindName(kd, k.stage))); });
   if (k.wait) names.push('<span class="miss">' + esc(kindName(k.wait, k.stage)) + '</span>');
@@ -499,7 +499,7 @@ function card(k){
     + '<div class="rc"' + (busy || fin || blk ? '' : ' data-kpick="' + esc(id) + '"') + '><span class="stg1">' + esc(k.stage) + '</span>' + rc + '</div>'
     + (S.fin[id] === 1 ? '<span class="card-chk"><b>' + IC.ck + '</b></span>' : '') + '</div>';
 }
-function chkWhy(c){ return c.why === 'same' ? '같은 이름 아동이 서류철에 ' + (c.cands || []).length + '명이에요' : c.why === 'nob6' ? '서류철에 생년월일이 없어요' : '서류철에 없는 이름이에요'; }
+function chkWhy(c){ return c.why === 'same' ? '같은 이름 아동이 서류철 시트에 ' + (c.cands || []).length + '명이에요' : c.why === 'nob6' ? '서류철 시트에 생년월일이 없어요' : '서류철 시트에 없는 이름이에요'; }
 function chkRow(c){ return '<button type="button" class="row' + (c.isNew ? ' new' : '') + '" data-c="' + esc(c.id) + '"><div class="fname">' + esc(c.file) + '</div><div class="l3">' + esc(c.at ? c.at + ' 저장' : '') + '</div><div class="l3 bad">' + esc(chkWhy(c)) + '</div></button>'; }
 function stCls(st){ return st === '열어 봄' ? ' ok' : (st === '확인 중' || st === '시험') ? ' wt' : (st === '못 받음' || st === '못 보냄' || st === '잠김') ? ' warn' : ''; }
 function sentRows(list){
@@ -527,7 +527,7 @@ function searchHtml(){
   var td = (r.todo || []).filter(shown).sort(cmpKid), sn = (r.sent || []).slice().sort(cmpKid), h = '';
   if (td.length) h += '<div class="gh">보낼 결과지</div>' + td.map(card).join('');
   if (sn.length) h += '<div class="gh">지난 결과지</div>' + sentRows(sn);
-  if (!h) h = '<div class="empty"><b>찾는 아동이 없어요</b>서류철 아동 이름으로 찾아요</div>';
+  if (!h) h = '<div class="empty"><b>찾는 아동이 없어요</b>서류철 시트의 아동 이름으로 찾아요</div>';
   return h;
 }
 function paintList(){
@@ -636,7 +636,7 @@ function kvBase(k){
     + '<div><dt>휴대폰 번호</dt><dd' + (ph ? '>' + esc(ph) : ' class="no">' + LD) + '</dd></div>'
     + mailRow(k)
     + (k.end ? '<div><dt>서비스 종료</dt><dd>' + (k.end === '중도포기' ? '중도포기' : '계약 종료') + '</dd></div>' : '')
-    + (k.mark ? '<div><dt>서류철 칸</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
+    + (k.mark ? '<div><dt>서류철 시트 칸</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
 }
 function openBtn(attrs){ return '<button type="button" class="cchip" ' + attrs + '>열기</button>'; }
 function kidSheet(k, resend){
@@ -702,9 +702,9 @@ function chkSheet(c){
   var h = '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="fname" style="font-size:var(--fs-body);white-space:normal;overflow-wrap:anywhere">' + esc(c.file) + '</div><div class="sub">' + esc(c.at ? c.at + ' 저장' : '') + '</div></div></div><div class="sbd" style="margin-top:6px">'
     + '<div class="note bad">' + esc(chkWhy(c)) + '</div>';
   var can = c.fix !== false && (c.cands || []).length && c.why !== 'nob6';
-  if (c.why === 'nob6') h += '<div class="note">서류철에 이 아동 생년월일을 적으면 보낼 결과지로 옮겨 가요</div>';
-  else if (c.fix === false) h += '<div class="note">파일 이름의 생년월일이 서류철과 달라요. 파일 이름을 확인해 주세요</div>';
-  else if (!(c.cands || []).length) h += '<div class="note">서류철에서 비슷한 이름을 못 찾았어요. 서류철 아동 칸 이름과 파일 이름이 같은지 확인해 주세요</div>';
+  if (c.why === 'nob6') h += '<div class="note">서류철 시트에 이 아동 생년월일을 적으면 보낼 결과지로 옮겨 가요</div>';
+  else if (c.fix === false) h += '<div class="note">파일 이름의 생년월일이 서류철 시트와 달라요. 파일 이름을 확인해 주세요</div>';
+  else if (!(c.cands || []).length) h += '<div class="note">서류철 시트에서 비슷한 이름을 못 찾았어요. 서류철 시트의 아동 이름과 파일 이름이 같은지 확인해 주세요</div>';
   else {
     h += '<div class="fxlab">' + (c.why === 'none' ? '이름이 비슷한 아동이에요. 맞으면 골라 주세요' : '어느 아동의 결과지인가요?') + '</div>';
     c.cands.slice().sort(cmpKid).forEach(function(x, i){
@@ -789,9 +789,9 @@ function done(o, r){
   if (r.error || why === 'error' || why === 'stale' || (o.fires > 1 && !/^(viewer|b6|phone|tpl|files|files_gone|locked|wait)$/.test(why))) { S.unsure[o.id] = Date.now(); end(o, '카톡이 나갔는지 확인하고 있어요', true); return; }
   var M = {
     files: ['파일이 바뀌었어요. 다시 골라 주세요', true], files_gone: ['파일이 바뀌었어요. 다시 골라 주세요', true], locked: ['같은 이름 아동 파일이라 못 보냈어요. 확인할 파일에서 맞춰 주세요', true],
-    phone: ["보호자 번호가 없어 안 보냈어요. 서류철 시트 '보호자전화' 탭에 번호를 적어 주세요"], b6: ['서류철에 생년월일이 없어 안 보냈어요'],
+    phone: ["보호자 번호가 없어 안 보냈어요. 서류철 시트 '보호자전화' 탭에 번호를 적어 주세요"], b6: ['서류철 시트에 생년월일이 없어 안 보냈어요'],
     copy: ['결과지를 옮기지 못해 안 보냈어요. 다시 보내 주세요'], talk: ['카톡을 보내지 못했어요. 보호자 번호를 확인해 주세요', true],
-    kid: ['서류철에서 이 아동을 다시 못 찾았어요', true], busy: ['다른 화면에서 이 아동을 보내고 있어요', true], tpl: ['알림톡을 지금 쓸 수 없어 안 보냈어요. 카톡으로 알려 주세요'],
+    kid: ['서류철 시트에서 이 아동을 다시 못 찾았어요', true], busy: ['다른 화면에서 이 아동을 보내고 있어요', true], tpl: ['알림톡을 지금 쓸 수 없어 안 보냈어요. 카톡으로 알려 주세요'],
     off: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], key: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], bad: ['지금은 보낼 수 없어요. 카톡은 안 갔어요'], job: ['보내지 못했어요. 다시 보내 주세요'],
     wait: ['다른 발송이 진행 중이라 안 보냈어요. 잠시 뒤 다시 보내 주세요']   // 07이 잠금을 못 잡음(1일 월 계획안, 20일 반기 발송 중) = 장부, 알림톡 0
   }[why] || ['보내지 못했어요. 카톡은 안 갔어요'];
