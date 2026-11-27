@@ -911,7 +911,7 @@ table.at{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
     <button class="mi" data-go="inq" id="miInq" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span class="lab">문의 채팅<span class="nb" id="miInqN"></span></span></span></button>
     <!-- 예약(11-07) = 문의 채팅과 같은 자격 + 06이 예약 서명을 받을 때만(06 속성 INQ_KEY 전엔 꺼짐 = 칸 없음). 보이기는 bkSync -->
     <button class="mi" data-go="bk" id="miBk" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15l2 2 4-4"/></svg><span class="lab">예약<span class="nb calm" id="miBkN"></span></span></span></button>
-    <!-- 검사 결과 발송(11-24) = 예약과 같은 자격 + 07이 서명을 받을 때만(07 속성 INQ_KEY 전, 07 옛 배포엔 꺼짐 = 칸 없음). 보이기는 rsSync -->
+    <!-- 검사 결과 발송(11-24) = 예약과 같은 자격. 문의 채팅과 같은 때 보임(11-27 v162), 07이 거절한 기기만 칸 없음(07 속성 INQ_KEY 없음, 07 옛 배포). 보이기는 rsSync -->
     <button class="mi" data-go="rs" id="miRs" style="display:none"><span class="min"><svg class="li" viewBox="0 0 24 24"><path d="M4 7l8 5 8-5"/><rect x="3" y="5" width="18" height="14" rx="3"/></svg><span class="lab">검사 결과 발송</span></span></button>
     <div class="div"></div>
     <button class="mi" data-go="me"><span class="min"><svg class="li" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>내 정보</span></button>
@@ -1289,9 +1289,13 @@ function bkVis(on) {
   bkPost({ type: 'vis', on: !!on });
 }
 /* 검사 결과 발송(11-24) — 예약과 같은 틀. 자격 = inqAllowed(문의 채팅과 같음) + 07이 서명을 받음(안 창이 on/off로 알림).
+   · 메뉴 칸은 문의 채팅과 같은 때 보인다(11-27 v162, 유성 「바로 있었으면 해」 — 옛 판은 4.5초 미리 부르기 + 07 첫 답을 기다려 문의 채팅보다 6.4초 늦게 생김, 실측).
+     07이 거절(off)한 기기만 숨긴 채 시작 = 마지막 답을 att_rs_off에 기억(07 열쇠를 뺐거나 옛 배포). 거절 뒤 안 창이 다시 물어 on이면 다시 보임
    · 잠기면 안 창을 뺀다 — 아이 이름, 보호자 메일 주소가 잠금 뒤에 남지 않게. 보내는 중에 잠겨도 07은 끝까지 한다(장부에 남음).
    · 메뉴 숫자 없음(할 일 목록이 아니라 찾기 화면). 화면 = result/(정본 주석은 그 파일 머리) */
-var rsUi = { frame: null, ready: false, preT: null, on: false, sig: '' };
+var rsUi = { frame: null, ready: false, preT: null, on: null, sig: '' };   // on = 이번에 07이 한 답(null = 아직 안 물음 → 마지막 답 att_rs_off)
+function rsLastOff() { try { return localStorage.getItem('att_rs_off') === '1'; } catch (e) { return false; } }
+function rsKeepOff(off) { try { if (off) localStorage.setItem('att_rs_off', '1'); else localStorage.removeItem('att_rs_off'); } catch (e) { } }
 function rsSync() {
   if (!rsUi) return;
   var ok = inqAllowed();
@@ -1301,7 +1305,7 @@ function rsSync() {
     if ($('s-rs').classList.contains('on')) { go('main'); refreshMain(); }   // 퇴근 등으로 자격이 사라졌다
     rsUnload();
   }
-  var show = ok === true && rsUi.on, sig = show ? '1' : '0';
+  var show = ok === true && (rsUi.on === true || (rsUi.on === null && !rsLastOff())), sig = show ? '1' : '0';
   if (sig !== rsUi.sig) { rsUi.sig = sig; $('miRs').style.display = show ? '' : 'none'; }
 }
 function rsFrameEnsure() {
@@ -1319,7 +1323,7 @@ function rsFrameEnsure() {
 function rsUnload() {
   if (!rsUi) return;
   clearTimeout(rsUi.preT); rsUi.preT = null;
-  rsUi.ready = false; rsUi.on = false;
+  rsUi.ready = false; rsUi.on = null;
   if (!rsUi.frame) return;
   try { rsUi.frame.remove(); } catch (e) { }
   rsUi.frame = null;
@@ -1464,8 +1468,8 @@ function takeInqGo() {
     else if (d.type === 'menu') openDrawer();
     else if (d.type === 'close') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'close' })); } catch (x) { } }
     else if (d.type === 'edge') { try { window.chrome.webview.postMessage(JSON.stringify({ type: 'edge', dir: 't' })); } catch (x) { } }
-    else if (d.type === 'on') { rsUi.on = true; rsSync(); }
-    else if (d.type === 'off') { rsUi.on = false; rsSync(); }
+    else if (d.type === 'on') { rsUi.on = true; rsKeepOff(false); rsSync(); }
+    else if (d.type === 'off') { rsUi.on = false; rsKeepOff(true); rsSync(); }
   });
   // 메뉴 아이콘 빨간 점 — 메뉴 버튼 6곳(메인, 캘린더, 신청, 나의 근태, 연차 내역, 내 정보)에 한 번 심는다. 켜고 끄기는 inqSync
   document.querySelectorAll('#menuBtnMain,#menuBtn,.hd .goMenu').forEach(function (b) { var d = document.createElement('span'); d.className = 'mdot'; b.appendChild(d); });
