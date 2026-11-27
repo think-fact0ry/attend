@@ -9,7 +9,7 @@
   · 무엇 = 첫 화면에 「보낼 결과지」 카드(결과지 폴더에 저장됐는데 아직 안 보낸 아동 단계) + 「확인할 파일」(같은 이름 아동, 서류철에 없는 이름) + 「최근 보낸 결과지」(30일).
     카드 오른쪽 칸(84×100)을 눌러 고르고 아래 바 「N명 결과지 보내기」 → 아동마다 07이 사본 + 장부 한 줄(열쇠) + 알림톡(버튼 = kr /result/?k=열쇠, 보호자가 아이 생년월일로 엶).
     카드를 누르면 아래 시트(파일 고르기, 앞 판, 보낸 판, 휴대폰 번호). 보낸 결과지 → 시트(보호자가 받음, 열어 봄, 지난 링크 닫기, 다시 보내기). 확인할 파일 → 「이 아동인가요」(07이 파일 이름 끝에 생년을 붙임).
-  · 서버 = 생각공작소 scripts/07_아동서류화일관리/결과지발송.js — rs_list(목록, q = 검색), rs_phones, rs_file(열기), rs_fix, rs_send, rs_res, rs_off. 요청마다 v:3(07 RS_SCREEN_V3 — 옛 07이면 rs_list = action = 꺼짐).
+  · 서버 = 생각공작소 scripts/07_아동서류화일관리/결과지발송.js — rs_list(목록, q = 검색), rs_phones, rs_file(열기), rs_fix, rs_move(11-28 「이 파일 지우기」 — 07이 mv를 실을 때만), rs_send, rs_res, rs_off. 요청마다 v:3(07 RS_SCREEN_V3 — 옛 07이면 rs_list = action = 꺼짐).
   · 정본 = 생각공작소 prototype/07_검사결과지_화면시안/app.html(6판), prototype/07_검사결과지_짓기계획_프리뷰.html(실물이 바꾼 규칙 둘), docs/6_백로그_원장_검사결과지발송.md.
   · 근태 앱(attend/index.html)의 「검사 결과 발송」 화면 안 창(iframe)으로만 산다 — 예약(booking/)과 같은 틀(창 신호는 부모를 거침, 따로 열리면 앱으로 돌려보냄).
   · 신원 = 문의 채팅과 같은 서명(att_inq — 19가 등록 PC + 한유성 폰에서만 줌). 07이 같은 키(INQ_KEY)로 확인. 07이 서명을 안 받으면(auth, 옛 배포) 꺼짐 → 앱에 off(메뉴 칸 숨김), 10분마다 다시.
@@ -213,6 +213,17 @@ svg.li{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .lk .u{flex:1;min-width:0;font-size:var(--fs-caption);color:var(--g700);background:var(--g50);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere;user-select:text}
 .more1{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;border:0;background:none;font:inherit;font-size:var(--fs-caption);font-weight:600;color:var(--g600);padding:6px 0;cursor:pointer}
 .more1 svg{width:14px;height:14px}
+.more1.open svg{transform:rotate(180deg)}
+/* 11-28 확인할 파일 2판 — 시트 몸통이 넘칠 때만 회색 띠(docs/1 §4.13-6 A안: 맨 위 = 아래만, 가운데 = 둘 다, 맨 끝 = 위만). 색 = 문의 창 회색 예외 값(kr js/inquiry-pane.js .ti-thf — g900 .028/.058 두 겹, 24px). 막대는 그대로 숨김 */
+.sbw{position:relative;display:flex;flex-direction:column;min-height:0;margin-top:6px}
+.sbw::before,.sbw::after{content:'';position:absolute;left:-18px;right:-18px;height:24px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
+.sbw::before{top:0;background:linear-gradient(to top,rgba(25,31,40,0) 0%,rgba(25,31,40,.028) 100%),linear-gradient(to top,rgba(25,31,40,0) 58%,rgba(25,31,40,.058) 100%)}
+.sbw::after{bottom:0;background:linear-gradient(to bottom,rgba(25,31,40,0) 0%,rgba(25,31,40,.028) 100%),linear-gradient(to bottom,rgba(25,31,40,0) 58%,rgba(25,31,40,.058) 100%)}
+.sbw.more::after,.sbw.moreTop::before{opacity:1}
+/* 드물게 누르는 「이 파일 지우기」 = §4.13-7 고스트(투명, g500 14px 600) — 진한 단추면 다시 만들기 전에 눌러 카드(할 일 알림)가 사라짐 */
+.gb{display:block;width:100%;flex:none;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--g500);padding:14px 0 2px;cursor:pointer;transition:transform .12s}
+.gb:active{transform:scale(.96)}
+.gb.busy{cursor:default;transform:none}
 .fxlab{font-size:var(--fs-sm);font-weight:600;color:var(--g700);margin:2px 2px -2px}
 /* 확인 창(§4.4 — 끄기는 되돌릴 수 없어 오른쪽 버튼 --danger) */
 .cdim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:35}
@@ -424,7 +435,7 @@ function applyPend(){
   if (S.data && busyNow()) { setTimeout(applyPend, 800); return; }
   var r = S.pend; S.pend = null;
   var before = S.data ? S.data.todo.map(idOf).concat(S.data.chk.map(function(c){ return c.id; })) : null;
-  S.data = { todo: r.todo || [], chk: r.chk || [], sent: r.sent || [], fileErr: r.fileErr || '' };
+  S.data = { todo: r.todo || [], chk: r.chk || [], sent: r.sent || [], fileErr: r.fileErr || '', mv: +r.mv || 0 };
   var now = Date.now();
   Object.keys(S.hold).forEach(function(id){ if (now - S.hold[id] > HOLD_MS) { delete S.hold[id]; delete S.extra[id]; } });
   // 서버 보낸 줄이 더 새면 내 줄을 버림
@@ -499,7 +510,11 @@ function card(k){
     + '<div class="rc"' + (busy || fin || blk ? '' : ' data-kpick="' + esc(id) + '"') + '><span class="stg1">' + esc(k.stage) + '</span>' + rc + '</div>'
     + (S.fin[id] === 1 ? '<span class="card-chk"><b>' + IC.ck + '</b></span>' : '') + '</div>';
 }
-function chkWhy(c){ return c.why === 'same' ? '같은 이름 아동이 서류철 시트에 ' + (c.cands || []).length + '명이에요' : c.why === 'nob6' ? '서류철 시트에 생년월일이 없어요' : '서류철 시트에 없는 이름이에요'; }
+// 같은 서비스엔 한 명 + 다른 서비스에 생년 다른 같은 이름(07 11-28 리뷰 #2) = 제목이 그 말, 회색 줄은 겹쳐서 뺌(다시 만들기 안내는 그대로)
+function sameOne(c){ return c.why === 'same' && (c.cands || []).length < 2 && (c.also || []).length > 0; }
+function chkWhy(c){ return c.why === 'same' ? (sameOne(c) ? '같은 이름 아동이 ' + c.also.join(', ') + '에도 있어요' : '같은 이름 아동이 서류철 시트에 ' + (c.cands || []).length + '명이에요') : c.why === 'nob6' ? '서류철 시트에 생년월일이 없어요' : c.why === 'svc' ? '서류철 시트의 ' + c.name + josa(c.name, '은', '는') + ' ' + (c.osvc || []).join(', ') + '에만 있어요' : '서류철 시트에 없는 이름이에요'; }
+// 받침 있으면 a(은), 없으면 b(는) — 한글 아닌 끝 글자는 b
+function josa(w, a, b){ var c = String(w || '').charCodeAt(String(w || '').length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? a : b; }
 function chkRow(c){ return '<button type="button" class="row' + (c.isNew ? ' new' : '') + '" data-c="' + esc(c.id) + '"><div class="fname">' + esc(c.file) + '</div><div class="l3">' + esc(c.at ? c.at + ' 저장' : '') + '</div><div class="l3 bad">' + esc(chkWhy(c)) + '</div></button>'; }
 function stCls(st){ return st === '열어 봄' ? ' ok' : (st === '확인 중' || st === '시험') ? ' wt' : (st === '못 받음' || st === '못 보냄' || st === '잠김') ? ' warn' : ''; }
 function sentRows(list){
@@ -590,7 +605,7 @@ function askPhonesFor(list){
 
 /* ══════════ 시트 ══════════ */
 function openSheet(s){
-  S.sheet = s; S.vOpen = false; S.rvOpen = false; S.fxPick = -1; if (s.t !== 'chk') S.pick = defaultPick(s); paintSheet();
+  S.sheet = s; S.vOpen = false; S.rvOpen = false; S.fxPick = -1; S.chkOpen = false; if (s.t !== 'chk') S.pick = defaultPick(s); paintSheet();
   if (s.t !== 'chk') { var it = findItem(s.id); if (it) askPhonesFor([it]); }   // 「못 읽었어요. 잠시 뒤 다시 열어 주세요」 = 다시 열면 다시 물음(phNeed)
 }
 function closeSheet(){ if (!S.sheet) return false; S.sheet = null; paintSheet(); return true; }
@@ -611,10 +626,17 @@ function paintSheet(){
     else { var k = findItem(S.sheet.id); inner = k ? (S.sheet.t === 'sent' && !S.sheet.resend ? sentSheet(k) : kidSheet(k, S.sheet.resend)) : ''; }
     if (!inner) { S.sheet = null; on = false; }
   }
-  sh.innerHTML = inner;
+  var ob = sh.querySelector('.sbw .sbd'), top = ob && S.sheet && S.sheet.t === 'chk' && sh.getAttribute('data-k') === S.sheet.id ? ob.scrollTop : 0;
+  sh.innerHTML = inner; sh.setAttribute('data-k', S.sheet ? S.sheet.id : '');
   sh.classList.toggle('on', on); $('sdim').classList.toggle('on', on);
   if (on) wireDrag();
+  var nb = sh.querySelector('.sbw .sbd');
+  if (nb) { nb.scrollTop = top; nb.addEventListener('scroll', sbFade); sbFade(); requestAnimationFrame(sbFade); }
 }
+// 시트 몸통 띠 켜기(§4.13-6) — 그릴 때, 굴릴 때, 시트가 올라온 뒤(높이가 그때 정해짐)
+function sbFade(){ var w = $('sheet').querySelector('.sbw'), b = w && w.querySelector('.sbd'); if (!b) return;
+  var h = b.clientHeight, over = h > 0 && b.scrollHeight > h + 1;
+  w.classList.toggle('more', over && b.scrollTop + h < b.scrollHeight - 1); w.classList.toggle('moreTop', over && b.scrollTop > 1); }
 function shead(k){ return '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="c1"><span class="nm">' + esc(k.label) + '</span>' + cbHtml(k) + '<span style="margin-left:auto"><span class="stg1">' + esc(k.stage) + '</span></span></div><div class="sub">' + esc(b6Text(k.b6)) + '</div></div></div>'; }
 // 보호자 메일(07 rs_phones m, mw — 06 신청폼 AA). 가려 보이고 「복사」는 온 주소(시안 2판 「휴대폰 번호처럼 가려요」 + 06 「복사」 요청, 11-26).
 //  아직 모름 = 점 / 07이 메일을 모르는 옛 판(mw 없음) = 줄 없음 / err = 못 읽음 / two = 주소 둘(07이 안 고름) / '' = 없음
@@ -698,22 +720,37 @@ function sentSheet(s){
   return h;
 }
 // 확인할 파일 — 앱에서 바로 고치기(유성 11-26 「폴더까지 열어서 생년월일은 수정하라 할 필요는 없다」, 3판 1번 = 이 아동인가요)
+/* 11-28 확인할 파일 2판(유성 11-27 붙여넣기 + 11-28 a2, a3 「진행」 — prototype/07_검사결과지_보호자카톡_확인할파일_프리뷰.html 2판):
+   같은 이름 = 다니는 아동과 끝난 지 2달 안인 아동만 보이고(07 fold), 나머지는 「이 아동이(들이) 아닌가요?」 안에 접음(보이는 아동 수로 단수, 복수).
+   서비스 다름(07 svc) = 빨강 「서류철 시트의 ○○는 아청에만 있어요」 + 바로 밑 노랑 다시 만들기 안내, 이름 고치기 없음. 다른 서비스에도 있음(also) = 회색 + 노랑.
+   맨 아래 고스트 「이 파일 지우기」(07 mv 있을 때만) = 지우지 않고 결과지 폴더 옆 「안 보낼 결과지」로 옮김, 토스트가 폴더를 말함(유성 11-28 a2). 몸통이 넘치면 회색 띠 */
+var REMAKE = function(sv){ return sv + ' 아동이면 ' + sv + ' 양식으로 다시 만들어 저장해 주세요'; };   // 유성 11-27 글 그대로(서비스 낱말만 바꿈)
 function chkSheet(c){
-  var h = '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="fname" style="font-size:var(--fs-body);white-space:normal;overflow-wrap:anywhere">' + esc(c.file) + '</div><div class="sub">' + esc(c.at ? c.at + ' 저장' : '') + '</div></div></div><div class="sbd" style="margin-top:6px">'
+  var h = '<div class="sgrab"><div class="handle"></div><div class="shd"><div class="fname" style="font-size:var(--fs-body);white-space:normal;overflow-wrap:anywhere">' + esc(c.file) + '</div><div class="sub">' + esc(c.at ? c.at + ' 저장' : '') + '</div></div></div><div class="sbw"><div class="sbd">'
     + '<div class="note bad">' + esc(chkWhy(c)) + '</div>';
-  var can = c.fix !== false && (c.cands || []).length && c.why !== 'nob6';
+  var all = candsSorted(c), vis = [], shut = [];
+  all.forEach(function(x, i){ (x.fold ? shut : vis).push(i); });
+  var can = c.fix !== false && all.length && c.why !== 'nob6' && c.why !== 'svc';
+  if (c.why === 'svc') h += '<div class="note warn">' + esc(REMAKE((c.osvc || [])[0] || '')) + '</div>';
+  if (c.why === 'same' && shut.length && vis.length && vis.every(function(i){ return all[i].done; })) h += '<div class="note warn">' + esc((vis.some(function(i){ return all[i].end; }) ? '지금 다니거나 끝난 지 2달 안인 ' : '지금 다니는 ') + c.name + josa(c.name, '은', '는') + ' 모두 이미 받았어요') + '</div>';
+  if (c.why === 'same' && (c.also || []).length) h += (sameOne(c) ? '' : '<div class="note">' + esc('서류철 시트엔 ' + c.also.join(', ') + '에도 ' + c.name + josa(c.name, '이', '가') + ' 있어요') + '</div>') + '<div class="note warn">' + esc(REMAKE(c.also[0])) + '</div>';
+  var row = function(x, i, pick){ return '<div class="fr' + (pick ? (S.fxPick === i ? ' on' : '') : ' info" style="cursor:default') + '"' + (pick ? ' data-pick="' + i + '"' : '') + '>' + (pick ? '<span class="rad"></span>' : '') + '<span class="fn"><span class="c1"><b>' + esc(x.label) + '</b>' + cbHtml(x) + endChip(x) + '</span><span>' + esc(b6Text(x.b6)) + (x.teacher ? ' / ' + esc(x.teacher) + ' 선생님' : '') + (x.done ? ', 이미 보냄' : '') + '</span></span></div>'; };
   if (c.why === 'nob6') h += '<div class="note">서류철 시트에 이 아동 생년월일을 적으면 보낼 결과지로 옮겨 가요</div>';
+  else if (c.why === 'svc') all.forEach(function(x, i){ h += row(x, i, false); });
   else if (c.fix === false) h += '<div class="note">파일 이름의 생년월일이 서류철 시트와 달라요. 파일 이름을 확인해 주세요</div>';
-  else if (!(c.cands || []).length) h += '<div class="note">서류철 시트에서 비슷한 이름을 못 찾았어요. 서류철 시트의 아동 이름과 파일 이름이 같은지 확인해 주세요</div>';
+  else if (!all.length) h += '<div class="note">서류철 시트에서 비슷한 이름을 못 찾았어요. 서류철 시트의 아동 이름과 파일 이름이 같은지 확인해 주세요</div>';
   else {
     h += '<div class="fxlab">' + (c.why === 'none' ? '이름이 비슷한 아동이에요. 맞으면 골라 주세요' : '어느 아동의 결과지인가요?') + '</div>';
-    c.cands.slice().sort(cmpKid).forEach(function(x, i){
-      h += '<div class="fr' + (S.fxPick === i ? ' on' : '') + '" data-pick="' + i + '"><span class="rad"></span><span class="fn"><span class="c1"><b>' + esc(x.label) + '</b>' + cbHtml(x) + endChip(x) + '</span><span>' + esc(b6Text(x.b6)) + (x.teacher ? ' / ' + esc(x.teacher) + ' 선생님' : '') + (x.done ? ', 이미 보냄' : '') + '</span></span></div>';
-    });
+    vis.forEach(function(i){ h += row(all[i], i, true); });
+    if (shut.length) {
+      h += '<button type="button" class="more1' + (S.chkOpen ? ' open' : '') + '" data-act="chkfold">' + (vis.length > 1 ? '이 아동들이 아닌가요?' : '이 아동이 아닌가요?') + ' ' + IC.down + '</button>';
+      if (S.chkOpen) shut.forEach(function(i){ h += row(all[i], i, true); });
+    }
     h += '<div class="foot" style="text-align:left;margin:2px 2px 0">' + (c.why === 'none' ? '고르면 폴더의 파일 이름이 그 아동 이름과 생년월일로 바뀌어요' : '고르면 폴더의 파일 이름 끝에 생년월일이 붙어요') + '</div>';
   }
-  h += '<div class="fr" style="cursor:default"><span class="fn"><b>' + esc(c.file) + '</b><span>' + esc(c.at ? c.at + ' 저장' : '') + '</span></span>' + (c.why === 'nob6' ? '' : openBtn('data-open="' + esc(c.id) + '"')) + '</div></div>';
-  if (can) h += '<div class="sft"><button type="button" class="mb ' + (S.fixing ? 'busy' : 'dk' + (S.fxPick === -1 ? ' gate' : '')) + '" data-act="fixgo">' + (S.fixing ? '파일 이름을 바꾸고 있어요' + LD : '이 아동으로 맞추기') + '</button></div>';
+  h += '<div class="fr" style="cursor:default"><span class="fn"><b>' + esc(c.file) + '</b><span>' + esc(c.at ? c.at + ' 저장' : '') + '</span></span>' + (c.why === 'nob6' ? '' : openBtn('data-open="' + esc(c.id) + '"')) + '</div></div></div>';
+  if (can) h += '<div class="sft"><button type="button" class="mb ' + (S.fixing === c.id ? 'busy' : 'dk' + (S.fxPick === -1 || S.moving === c.id ? ' gate' : '')) + '" data-act="fixgo">' + (S.fixing === c.id ? '파일 이름을 바꾸고 있어요' + LD : '이 아동으로 맞추기') + '</button></div>';
+  if (S.data && S.data.mv && c.why !== 'nob6') h += '<button type="button" class="gb' + (S.moving === c.id ? ' busy' : '') + '" data-act="mvgo">' + (S.moving === c.id ? '지우고 있어요' + LD : '이 파일 지우기') + '</button>';
   return h;
 }
 function candsSorted(c){ return (c.cands || []).slice().sort(cmpKid); }
@@ -879,20 +916,47 @@ function againStuck(id){
 }
 
 /* ══════════ 확인할 파일 고치기 ══════════ */
+// 하는 중(S.fixing, S.moving) = 그 파일 id(11-28 리뷰 #3 — 옛 판은 참/거짓 하나라 다른 시트를 열면 그 시트에 「하는 중」이 뜨고, 끝나면 그 시트가 닫혔다).
+//  한 번에 하나만은 그대로: 다른 파일이 하는 중이면 알림만. 답이 올 때 열린 시트가 그 파일일 때만 닫고, 아니면 알림 글에 아동 이름을 붙인다.
+function busyElse(c){
+  if (!S.moving && !S.fixing) return false;
+  if (S.moving !== c.id && S.fixing !== c.id) toast((S.moving ? '다른 파일을 지우고 있어요' : '다른 파일 이름을 바꾸고 있어요') + '. 잠시 뒤 눌러 주세요');
+  return true;
+}
+function chkHere(c){ return !!(S.sheet && S.sheet.t === 'chk' && S.sheet.id === c.id); }
+function fileSubj(c, here){ return here ? '파일' : c.name + ' 파일'; }
 function fixGo(btn){
-  var c = findChk(S.sheet.id); if (!c || S.fixing) return;
+  var c = findChk(S.sheet.id); if (!c || busyElse(c)) return;
   if (S.fxPick === -1) { btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); toast('아동을 먼저 골라 주세요'); return; }
   var why = cantWhy(); if (why) { toast(why); return; }
   var x = candsSorted(c)[S.fxPick];
-  S.fixing = true; paintSheet();
+  S.fixing = c.id; paintSheet();
   call({ action: 'rs_fix', id: c.id, to: { tab: x.tab, svc: x.svc, label: x.label, b6: x.b6 } }, 45000).then(function(r){
     S.fixing = false;
-    if (r && r.ok) { S.hold[c.id] = Date.now(); S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(x.label + ' 결과지를 보낼 결과지로 옮겼어요', true); }, 300); load(true); return; }
+    var here = chkHere(c), sj = fileSubj(c, here);
+    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(x.label + ' 결과지를 보낼 결과지로 옮겼어요', true); }, 300); load(true); return; }
     var w = r && r.why;
     paintSheet();
-    toast(w === 'exists' ? '같은 이름 파일이 폴더에 이미 있어요. 폴더에서 확인해 주세요' : w === 'gone' ? '파일이 바뀌었어요. 목록을 다시 불러올게요' : w === 'kid' ? '이 아동으로는 맞출 수 없어요' : offReply(r) ? '지금은 맞출 수 없어요' : '파일 이름을 못 바꿨어요. 다시 눌러 주세요');
-    if (w === 'gone' || w === 'kid') { S.sheet = null; paintSheet(); load(true); }
+    toast(w === 'exists' ? (here ? '같은 이름 파일이 폴더에 이미 있어요. 폴더에서 확인해 주세요' : sj + '을 못 맞췄어요. 같은 이름 파일이 폴더에 이미 있어요') : w === 'gone' ? sj + '이 바뀌었어요. 목록을 다시 불러올게요' : w === 'kid' ? (here ? '이 아동으로는 맞출 수 없어요' : sj + '을 그 아동으로는 맞출 수 없어요') : offReply(r) ? (here ? '지금은 맞출 수 없어요' : sj + '을 지금은 맞출 수 없어요') : (here ? '파일 이름을 못 바꿨어요. 다시 눌러 주세요' : sj + ' 이름을 못 바꿨어요'));
+    if (w === 'gone' || w === 'kid') { if (here) { S.sheet = null; paintSheet(); } load(true); }
   }, function(){ S.fixing = false; paintSheet(); toast('결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'); load(true); });
+}
+
+/* ══════════ 확인할 파일 지우기 = 「안 보낼 결과지」 폴더로 옮김(07 rs_move — 지우지 않음, 유성 11-28 a2) ══════════ */
+var MV_TOAST = "'안 보낼 결과지' 폴더로 옮겼어요";   // 유성 11-28 글 그대로
+function mvGo(btn){
+  var c = findChk(S.sheet.id); if (!c || busyElse(c)) return;
+  var why = cantWhy(); if (why) { toast(why); return; }
+  S.moving = c.id; paintSheet();
+  call({ action: 'rs_move', id: c.id }, 45000).then(function(r){
+    S.moving = false;
+    var here = chkHere(c), sj = fileSubj(c, here);
+    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(MV_TOAST, true); }, 300); load(true); return; }
+    var w = r && r.why;
+    paintSheet();
+    toast(w === 'gone' ? sj + '이 바뀌었어요. 목록을 다시 불러올게요' : w === 'exists' ? (here ? "'안 보낼 결과지' 폴더에 같은 이름 파일이 많아요. 폴더에서 확인해 주세요" : sj + "을 못 지웠어요. '안 보낼 결과지' 폴더에 같은 이름 파일이 많아요") : offReply(r) ? (here ? '지금은 지울 수 없어요' : sj + '을 지금은 지울 수 없어요') : sj + '을 못 지웠어요. 다시 눌러 주세요');
+    if (w === 'gone') { if (here) { S.sheet = null; paintSheet(); } load(true); }
+  }, function(){ S.moving = false; paintSheet(); toast('결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'); load(true); });
 }
 
 /* ══════════ 열기(앱 안 창) ══════════ */
@@ -977,7 +1041,7 @@ $('sheet').addEventListener('click', function(e){
   var op = t.closest('[data-open]'); if (op) { e.stopPropagation(); openFile({ id: op.getAttribute('data-open') }, op); return; }
   var oj = t.closest('[data-ojob]'); if (oj) { e.stopPropagation(); openFile({ job: oj.getAttribute('data-ojob'), i: +oj.getAttribute('data-oi') }, oj); return; }
   var cp = t.closest('[data-copy]'); if (cp) { copyText(cp.getAttribute('data-copy'), cp.getAttribute('data-cw'), cp.getAttribute('data-ck')); return; }
-  var pk = t.closest('[data-pick]'); if (pk) { if (S.fixing) return; S.fxPick = +pk.getAttribute('data-pick'); paintSheet(); return; }
+  var pk = t.closest('[data-pick]'); if (pk) { if (S.sheet && (S.fixing === S.sheet.id || S.moving === S.sheet.id)) return; S.fxPick = +pk.getAttribute('data-pick'); paintSheet(); return; }
   var fr = t.closest('.fr[data-f]');
   if (fr) { if (S.sheet && isBusy(S.sheet.id)) return; var kd = fr.getAttribute('data-kd'), id = fr.getAttribute('data-f'); S.pick[kd] = S.pick[kd] === id ? '' : id; paintSheet(); return; }   // 한 종류에 하나만(누른 것으로 바꿈), 다시 누르면 뺌
   var a = t.closest('[data-act]'); if (!a) return;
@@ -987,6 +1051,12 @@ $('sheet').addEventListener('click', function(e){
   if (act === 'sheetsend') { sheetSend(a); return; }
   if (act === 'again') { againStuck(S.sheet.id); return; }
   if (act === 'fixgo') { fixGo(a); return; }
+  if (act === 'mvgo') { mvGo(a); return; }
+  if (act === 'chkfold') {   // 접을 때 접히는 아동을 골라 뒀으면 고르기를 푼다 — 안 보이는 아동으로 맞춰지지 않게
+    S.chkOpen = !S.chkOpen;
+    if (!S.chkOpen) { var cf = findChk(S.sheet.id), px = cf && candsSorted(cf)[S.fxPick]; if (px && px.fold) S.fxPick = -1; }
+    paintSheet(); return;
+  }
   if (act === 'linkoff') { offAsk(); return; }
   if (act === 'resend') {
     if (!canSend()) { a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); toast(cantWhy()); return; }
