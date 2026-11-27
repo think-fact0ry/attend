@@ -636,7 +636,7 @@ function kvBase(k){
     + '<div><dt>휴대폰 번호</dt><dd' + (ph ? '>' + esc(ph) : ' class="no">' + LD) + '</dd></div>'
     + mailRow(k)
     + (k.end ? '<div><dt>서비스 종료</dt><dd>' + (k.end === '중도포기' ? '중도포기' : '계약 종료') + '</dd></div>' : '')
-    + (k.mark ? '<div><dt>서류철 시트 칸</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
+    + (k.mark ? '<div><dt>서류철 시트</dt><dd>' + esc(k.mark) + '</dd></div>' : '') + '</dl>';
 }
 function openBtn(attrs){ return '<button type="button" class="cchip" ' + attrs + '>열기</button>'; }
 function kidSheet(k, resend){
