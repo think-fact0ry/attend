@@ -924,7 +924,8 @@ function busyElse(c){
   return true;
 }
 function chkHere(c){ return !!(S.sheet && S.sheet.t === 'chk' && S.sheet.id === c.id); }
-function fileSubj(c, here){ return here ? '파일' : c.name + ' 파일'; }
+function fileSubj(c, here){ return here ? '파일' : c.name + ' ' + (c.kind === 'pat' ? '부모양육태도검사' : (c.stage ? c.stage + ' ' : '') + '결과서') + ' 파일'; }   // 다른 시트면 어느 파일인지(같은 아동 결과서와 검사지가 같이 있을 수 있음 — 재리뷰 #4)
+function lostMsg(c){ var here = chkHere(c); return (here ? '' : fileSubj(c, false) + '은 ') + '결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'; }
 function fixGo(btn){
   var c = findChk(S.sheet.id); if (!c || busyElse(c)) return;
   if (S.fxPick === -1) { btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake'); toast('아동을 먼저 골라 주세요'); return; }
@@ -934,12 +935,13 @@ function fixGo(btn){
   call({ action: 'rs_fix', id: c.id, to: { tab: x.tab, svc: x.svc, label: x.label, b6: x.b6 } }, 45000).then(function(r){
     S.fixing = false;
     var here = chkHere(c), sj = fileSubj(c, here);
-    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(x.label + ' 결과지를 보낼 결과지로 옮겼어요', true); }, 300); load(true); return; }
+    // 이미 보냄 아동을 골랐으면 보낼 결과지에 안 생김(재재리뷰 — 옛 글은 옮겼다고 하고 파일이 사라졌다)
+    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(x.done ? x.label + ' 파일로 맞췄어요. 이미 보낸 아동이라 보낼 결과지엔 안 나와요' : x.label + ' 결과지를 보낼 결과지로 옮겼어요', true); }, 300); load(true); return; }
     var w = r && r.why;
     paintSheet();
     toast(w === 'exists' ? (here ? '같은 이름 파일이 폴더에 이미 있어요. 폴더에서 확인해 주세요' : sj + '을 못 맞췄어요. 같은 이름 파일이 폴더에 이미 있어요') : w === 'gone' ? sj + '이 바뀌었어요. 목록을 다시 불러올게요' : w === 'kid' ? (here ? '이 아동으로는 맞출 수 없어요' : sj + '을 그 아동으로는 맞출 수 없어요') : offReply(r) ? (here ? '지금은 맞출 수 없어요' : sj + '을 지금은 맞출 수 없어요') : (here ? '파일 이름을 못 바꿨어요. 다시 눌러 주세요' : sj + ' 이름을 못 바꿨어요'));
     if (w === 'gone' || w === 'kid') { if (here) { S.sheet = null; paintSheet(); } load(true); }
-  }, function(){ S.fixing = false; paintSheet(); toast('결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'); load(true); });
+  }, function(){ S.fixing = false; paintSheet(); toast(lostMsg(c)); load(true); });
 }
 
 /* ══════════ 확인할 파일 지우기 = 「안 보낼 결과지」 폴더로 옮김(07 rs_move — 지우지 않음, 유성 11-28 a2) ══════════ */
@@ -951,12 +953,12 @@ function mvGo(btn){
   call({ action: 'rs_move', id: c.id }, 45000).then(function(r){
     S.moving = false;
     var here = chkHere(c), sj = fileSubj(c, here);
-    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(MV_TOAST, true); }, 300); load(true); return; }
+    if (r && r.ok) { S.hold[c.id] = Date.now(); if (here) S.sheet = null; paintSheet(); S.shiftAt = Date.now(); paintList(); setTimeout(function(){ toast(here ? MV_TOAST : sj + '을 ' + MV_TOAST, true); }, 300); load(true); return; }
     var w = r && r.why;
     paintSheet();
     toast(w === 'gone' ? sj + '이 바뀌었어요. 목록을 다시 불러올게요' : w === 'exists' ? (here ? "'안 보낼 결과지' 폴더에 같은 이름 파일이 많아요. 폴더에서 확인해 주세요" : sj + "을 못 지웠어요. '안 보낼 결과지' 폴더에 같은 이름 파일이 많아요") : offReply(r) ? (here ? '지금은 지울 수 없어요' : sj + '을 지금은 지울 수 없어요') : sj + '을 못 지웠어요. 다시 눌러 주세요');
     if (w === 'gone') { if (here) { S.sheet = null; paintSheet(); } load(true); }
-  }, function(){ S.moving = false; paintSheet(); toast('결과를 못 받았어요. 잠시 뒤 목록을 확인해 주세요'); load(true); });
+  }, function(){ S.moving = false; paintSheet(); toast(lostMsg(c)); load(true); });
 }
 
 /* ══════════ 열기(앱 안 창) ══════════ */
